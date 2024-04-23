@@ -22,6 +22,8 @@
                 gcc
                 qemu
                 qemu_kvm
+                cmake
+                unzip
               ];
             in
             with pkgs;
