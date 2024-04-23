@@ -19,7 +19,10 @@ libraries:
     version: '0.5'
     kconfig:
       - LIBCLICK_MAIN=y
+      - LIBCLICK_UBPF=y
+  ubpf:
+    version: '0.1'
 volumes:
   vol0:
     driver: initrd
-    source: ./helloworld.click
+    source: ./forward.click
