@@ -351,3 +351,4 @@ To run the AArch64 build, use `./run-qemu-aarch64.sh`:
 
 Similar to running for x86_64, this will start the `click` helloworld application.
 Similarly, to close the QEMU Click instance, use the `Ctrl+a x` keyboard shortcut.
+# appclick-ubpf
