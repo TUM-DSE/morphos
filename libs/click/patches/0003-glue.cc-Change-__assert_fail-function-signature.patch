@@ -1,0 +1,29 @@
+From 33cee463dd74661440551b676104107df07a193b Mon Sep 17 00:00:00 2001
+From: Stefan Jumarea <stefanjumarea02@gmail.com>
+Date: Fri, 8 Sep 2023 15:01:00 +0300
+Subject: [PATCH] glue.cc: Change __assert_fail function signature
+
+Musl uses int as the line type, instead of unsigned int, which will lead
+to conflicting definitions.
+
+Signed-off-by: Stefan Jumarea <stefanjumarea02@gmail.com>
+---
+ lib/glue.cc | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/lib/glue.cc b/lib/glue.cc
+index e9e14149e..ec37da7d0 100644
+--- a/lib/glue.cc
++++ b/lib/glue.cc
+@@ -782,7 +782,7 @@ extern "C" {
+ void
+ __assert_fail(const char *__assertion,
+ 	      const char *__file,
+-	      unsigned int __line,
++	      int __line,
+ 	      const char *__function)
+ {
+   click_chatter("assertion failed %s %s %d %s\n",
+-- 
+2.39.2
+

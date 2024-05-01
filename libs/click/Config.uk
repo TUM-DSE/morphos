@@ -1,0 +1,101 @@
+### Invisible option for dependencies
+config APP_DEPENDENCIES
+	bool
+	default y
+
+menuconfig LIBCLICK
+	bool "The Click modular router"
+	select LIBPOSIX_USER
+	select LIBNEWLIBC
+	select LIBLWIP
+	default y
+
+if LIBCLICK
+
+config LIBCLICK_MAIN
+	bool "Enable Click main function"
+	default n
+	help
+	  Define main function instead of click_main function
+
+config LIBCLICK_ELEMS_AQM
+	bool "Enable AQM elements"
+	default y
+	help
+	  Build with IP elements
+
+config LIBCLICK_ELEMS_ETHERNET
+	bool "Enable Ethernet elements"
+	default y
+	help
+	  Build with Ethernet elements
+
+config LIBCLICK_ELEMS_ETHERSWITCH
+	bool "Enable Ethernet switch elements"
+	default y
+	help
+	  Build with Ethernet switch elements
+
+config LIBCLICK_ELEMS_ICMP
+	bool "Enable ICMP elements"
+	default y
+	help
+	  Build with ICMP elements
+
+config LIBCLICK_ELEMS_IP
+	bool "Enable IP elements"
+	default y
+	help
+	  Build with adaptive queue management elements
+
+config LIBCLICK_ELEMS_UNIKRAFT
+	bool "Enable Unikraft networking"
+	default y
+	help
+	  Build with Unikraft FromDevice and ToDevice elements
+
+config LIBCLICK_ELEMS_LOCAL
+	bool "Enable local elements"
+	default y
+	help
+	  Build with local elements
+
+config LIBCLICK_ELEMS_SIMPLE
+	bool "Enable simple elements"
+	default y
+	help
+	  Build with simple elements
+
+config LIBCLICK_ELEMS_STANDARD
+	bool "Enable standard elements"
+	default y
+	help
+	  Build with standard elements
+
+config LIBCLICK_ELEMS_TCPUDP
+	bool "Enable TCP/UDP elements"
+	default y
+	help
+	  Build with TCP/UDP elements
+
+config LIBCLICK_ELEMS_THREADS
+	bool "Enable multi-threading elements"
+	default y
+	help
+	  Build with multi-threading elements
+
+config LIBCLICK_ELEMS_USERLEVEL
+	bool "Enable userlevel elements [BROKEN]"
+	default n
+	help
+	  Build with Click userlevel elements.
+	  Be aware this currently doesn't compile.
+
+config LIBCLICK_UBPF
+    bool "Enable ubpf element"
+    default y
+    select LIBUBPF
+    help
+      Build with Click ubpf elements.
+
+endif

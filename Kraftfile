@@ -1,0 +1,34 @@
+specification: '0.6'
+name: click
+unikraft:
+  version: stable
+  kconfig:
+    - CONFIG_LIBPOSIX_USER=y
+    - CONFIG_PLAT_KVM=y
+    - CONFIG_LIBVFSCORE_AUTOMOUNT_CI=y
+    - CONFIG_LIBVFSCORE_AUTOMOUNT_CI_EINITRD=y
+    - CONFIG_LIBVFSCORE_AUTOMOUNT_UP=y
+    - CONFIG_LIBVFSCORE_AUTOMOUNT=y
+    - CONFIG_LIBVFSCORE_NONLARGEFILE=y
+    - CONFIG_LIBVFSCORE=y
+targets:
+  - architecture: x86_64
+    platform: kvm
+libraries:
+  lwip:
+    version: stable
+    kconfig:
+      - CONFIG_LWIP=y
+      - CONFIG_LWIP_AUTOIFACE=n
+  musl:
+    version: stable
+  click:
+    version: '0.5'
+    source: libs/click
+    kconfig:
+      - CONFIG_LIBCLICK_MAIN=y
+      - CONFIG_LIBCLICK_UBPF=y
+  ubpf:
+    source: libs/ubpf
+    version: '0.1'
+rootfs: ./rootfs

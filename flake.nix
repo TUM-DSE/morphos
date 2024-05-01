@@ -1,17 +1,21 @@
 {
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-23.11";
+    unstablepkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
     flake-utils.url = "github:numtide/flake-utils";
   };
 
-  outputs = { self, nixpkgs, flake-utils }:
+  outputs = { self, nixpkgs, unstablepkgs, flake-utils }:
     (flake-utils.lib.eachDefaultSystem
         (system:
             let
               pkgs = import nixpkgs {
                   inherit system;
               };
-              buildInputs = with pkgs; [
+              unstable = import unstablepkgs {
+                   inherit system;
+              };
+              buildDeps = with pkgs; [
                 pkg-config
                 gnumake
                 flex
@@ -24,13 +28,15 @@
                 qemu_kvm
                 cmake
                 unzip
+                clang
               ];
             in
-            with pkgs;
             {
-              devShells.default = mkShell {
+              devShells.default = pkgs.mkShell {
                 name = "devShell";
-                inherit buildInputs;
+                buildInputs = buildDeps ++ [
+                    unstable.kraft
+                ];
               };
             }
         )

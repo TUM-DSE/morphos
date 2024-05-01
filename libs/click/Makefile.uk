@@ -1,0 +1,185 @@
+#
+#  Copyright (c) 2019, NEC Laboratories Europe GmbH, NEC Corporation.
+#                      All rights reserved.
+#
+#  Redistribution and use in source and binary forms, with or without
+#  modification, are permitted provided that the following conditions
+#  are met:
+#
+#  1. Redistributions of source code must retain the above copyright
+#     notice, this list of conditions and the following disclaimer.
+#  2. Redistributions in binary form must reproduce the above copyright
+#     notice, this list of conditions and the following disclaimer in the
+#     documentation and/or other materials provided with the distribution.
+#  3. Neither the name of the copyright holder nor the names of its
+#     contributors may be used to endorse or promote products derived from
+#     this software without specific prior written permission.
+#
+#  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+#  AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+#  IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+#  ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
+#  LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+#  CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+#  SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+#  INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+#  CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+#  ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+#  POSSIBILITY OF SUCH DAMAGE.
+#
+
+################################################################################
+# Check requirements: Click requires netdev access, so LWIP must not attach them
+# Sadly, kconfig doesn't support an "unselect" option, so the next best thing
+# we can do is catch this invalid configuration here and throw an error with
+# an explanation what to do.
+################################################################################
+ifeq ($(CONFIG_LWIP_AUTOIFACE),y)
+$(error Click cannot be built with LWIP option "Automatically attach netifs"! Please disable)
+endif
+
+################################################################################
+# Register with unikraft
+################################################################################
+$(eval $(call addlib,libclick))
+
+################################################################################
+# Sources
+################################################################################
+LIBCLICK_COMMIT_HASH=a5384835a6cac10f8d44da4eeea8eaa8f8e6a0c2
+LIBCLICK_URL=https://codeload.github.com/kohler/click/zip/$(LIBCLICK_COMMIT_HASH)
+$(eval $(call fetchas,libclick,$(LIBCLICK_URL),click-$(LIBCLICK_COMMIT_HASH).zip))
+LIBCLICK_PATCHDIR=$(LIBCLICK_BASE)/patches
+$(eval $(call patch,libclick,$(LIBCLICK_PATCHDIR),click-$(LIBCLICK_COMMIT_HASH)))
+
+################################################################################
+# Helpers
+################################################################################
+LIBCLICK_EXTRACTED=$(LIBCLICK_ORIGIN)/click-$(LIBCLICK_COMMIT_HASH)
+LIBCLICK_ELEMENTS_DIR=$(LIBCLICK_EXTRACTED)/elements
+LIBCLICK_BUILDTOOL=$(LIBCLICK_EXTRACTED)/bin/click-buildtool
+LIBCLICK_ELEM_DIRS=aqm ethernet etherswitch icmp ip unikraft \
+		   local simple standard tcpudp threads userlevel
+
+################################################################################
+# Config Menu - Filter which element categories actually get built
+################################################################################
+LIBCLICK_ELEM_DIRS_U=$(call uc,$(LIBCLICK_ELEM_DIRS))
+LIBCLICK_FILTERED_ELEM_DIRS_U := $(foreach V, $(LIBCLICK_ELEM_DIRS_U), \
+                                 $(if $(filter y,$(CONFIG_LIBCLICK_ELEMS_$V)),$V))
+LIBCLICK_FILTERED_ELEM_DIRS=$(call lc,$(LIBCLICK_FILTERED_ELEM_DIRS_U))
+
+################################################################################
+# App-specific Targets
+################################################################################
+# Run Click's configure script to generate tools needed by further prepare targets
+$(LIBCLICK_BUILD)/.configured: $(LIBCLICK_BUILD)/.cpfromtodevs
+	$(call verbose_cmd,CONFIGURE,libclick: $(notdir $@),\
+	       cd $(LIBCLICK_EXTRACTED) && CC=gcc CXX=gcc ./configure --enable-minios --with-xen=$(LIBCLICK_BUILD) --with-minios=$(LIBCLICK_BUILD) --with-newlib=$(LIBCLICK_BUILD) --with-lwip=$(LIBCLICK_BUILD) && \
+	       $(TOUCH) $@)
+
+# Generate element build rules using click-buildtool
+$(LIBCLICK_BUILD)/.elementsmk: $(LIBCLICK_BUILD)/.configured
+	$(call verbose_cmd,ELEMMK,libclick: $(notdir $@),\
+	       cd $(LIBCLICK_ELEMENTS_DIR) && echo "$(LIBCLICK_FILTERED_ELEM_DIRS)" | $(LIBCLICK_BUILDTOOL) findelem -r unikraft -X $(LIBCLICK_BUILD)/elements.exclude | grep -E "^[^#]" | awk '{print "LIBCLICK_SRCS-y += $$(LIBCLICK_EXTRACTED)/elements/" $$1}' > $@)
+
+# Generate elements.cc and add it to the build list
+$(LIBCLICK_BUILD)/elements.cc: $(LIBCLICK_BUILD)/.elementsmk
+	$(call verbose_cmd,ELEMCC,libclick: $(notdir $@),\
+	       echo "$(LIBCLICK_FILTERED_ELEM_DIRS)" | $(LIBCLICK_BUILDTOOL) findelem -r unikraft -p $(LIBCLICK_ELEMENTS_DIR) -X $(LIBCLICK_BUILD)/elements.exclude > $(LIBCLICK_BUILD)/.elementsconf && \
+	       $(LIBCLICK_BUILDTOOL) elem2export < $(LIBCLICK_BUILD)/.elementsconf > $(LIBCLICK_BUILD)/elements.cc)
+
+$(LIBCLICK_BUILD)/.cpfromtodevs: $(LIBCLICK_BUILD)/.origin
+	$(call verbose_cmd,ELEMCP,libclick: $(notdir $@),\
+	$(MKDIR) -p $(LIBCLICK_ORIGIN)/click-$(LIBCLICK_COMMIT_HASH)/elements && \
+	$(CP) -r $(LIBCLICK_BASE)/unikraft $(LIBCLICK_ORIGIN)/click-$(LIBCLICK_COMMIT_HASH)/elements/ && \
+	touch $@)
+
+ifneq ($(CONFIG_LIBCLICK_ELEMS_UNIKRAFT),)
+$(LIBCLICK_BUILD)/.prepared: $(LIBCLICK_BUILD)/.cpfromtodevs $(LIBCLICK_BUILD)/elements.cc
+else
+$(LIBCLICK_BUILD)/.prepared: $(LIBCLICK_BUILD)/elements.cc
+endif
+
+UK_PREPARE += $(LIBCLICK_BUILD)/.prepared
+
+################################################################################
+# App includes, compile flags
+################################################################################
+LIBCLICK_CINCLUDES   += -I$(LIBCLICK_BASE)/include         \
+		        -I$(LIBCLICK_EXTRACTED)	           \
+			-I$(LIBCLICK_EXTRACTED)/include    \
+			-I$(LIBLWIP_LWIP_SRCS)/include/posix
+LIBCLICK_CXXINCLUDES += -I$(LIBCLICK_BASE)/include         \
+		        -I$(LIBCLICK_EXTRACTED)            \
+			-I$(LIBCLICK_EXTRACTED)/include    \
+			-I$(LIBLWIP_LWIP_SRCS)/include/posix
+
+################################################################################
+# Global flags
+################################################################################
+LIBCLICK_CFLAGS-y       += -DLWIP_TIMEVAL_PRIVATE=0 -DCLICK_USERLEVEL
+LIBCLICK_CXXFLAGS-y     += -DLWIP_TIMEVAL_PRIVATE=0 -DCLICK_USERLEVEL -DHAVE_IP6
+LIBCLICK_CXXFLAGS       += -fno-exceptions -fno-rtti -std=c++11
+
+# Suppress some warnings to make the build process look neater
+LIBCLICK_SUPPRESS_FLAGS := -Wno-strict-aliasing -Wno-parentheses -Wno-pointer-arith -Wno-unused-parameter -Wno-cast-function-type
+LIBCLICK_CFLAGS-y += $(LIBCLICK_SUPPRESS_FLAGS)
+LIBCLICK_CXXFLAGS-y += $(LIBCLICK_SUPPRESS_FLAGS) -Wno-aligned-new -Wno-class-memaccess
+
+################################################################################
+# Unikraft <-> Click glue code
+################################################################################
+LIBCLICK_SRCS-y += $(LIBCLICK_BASE)/click.cc
+LIBCLICK_SRCS-y += $(LIBCLICK_BASE)/stubs.cc
+
+################################################################################
+# Click sources
+################################################################################
+LIBCLICK_SRCS-y += $(LIBCLICK_EXTRACTED)/lib/archive.cc
+LIBCLICK_SRCS-y += $(LIBCLICK_EXTRACTED)/lib/args.cc
+LIBCLICK_SRCS-y += $(LIBCLICK_EXTRACTED)/lib/atomic.cc
+LIBCLICK_SRCS-y += $(LIBCLICK_EXTRACTED)/lib/bighashmap_arena.cc
+LIBCLICK_SRCS-y += $(LIBCLICK_EXTRACTED)/lib/bitvector.cc
+LIBCLICK_SRCS-y += $(LIBCLICK_EXTRACTED)/lib/confparse.cc
+LIBCLICK_SRCS-y += $(LIBCLICK_EXTRACTED)/lib/crc32.c
+LIBCLICK_SRCS-y += $(LIBCLICK_EXTRACTED)/lib/driver.cc
+LIBCLICK_SRCS-y += $(LIBCLICK_EXTRACTED)/lib/element.cc
+LIBCLICK_SRCS-y += $(LIBCLICK_EXTRACTED)/lib/elemfilter.cc
+LIBCLICK_SRCS-y += $(LIBCLICK_EXTRACTED)/lib/error.cc
+LIBCLICK_SRCS-y += $(LIBCLICK_EXTRACTED)/lib/etheraddress.cc
+LIBCLICK_SRCS-y += $(LIBCLICK_EXTRACTED)/lib/gaprate.cc
+LIBCLICK_SRCS-y += $(LIBCLICK_EXTRACTED)/lib/glue.cc
+LIBCLICK_SRCS-y += $(LIBCLICK_EXTRACTED)/lib/handlercall.cc
+LIBCLICK_SRCS-y += $(LIBCLICK_EXTRACTED)/lib/hashallocator.cc
+LIBCLICK_SRCS-y += $(LIBCLICK_EXTRACTED)/lib/in_cksum.c
+LIBCLICK_SRCS-y += $(LIBCLICK_EXTRACTED)/lib/integers.cc
+LIBCLICK_SRCS-y += $(LIBCLICK_EXTRACTED)/lib/ipaddress.cc
+LIBCLICK_SRCS-y += $(LIBCLICK_EXTRACTED)/lib/ipflowid.cc
+LIBCLICK_SRCS-y += $(LIBCLICK_EXTRACTED)/lib/iptable.cc
+LIBCLICK_SRCS-y += $(LIBCLICK_EXTRACTED)/lib/lexer.cc
+LIBCLICK_SRCS-y += $(LIBCLICK_EXTRACTED)/lib/master.cc
+LIBCLICK_SRCS-y += $(LIBCLICK_EXTRACTED)/lib/md5.cc
+LIBCLICK_SRCS-y += $(LIBCLICK_EXTRACTED)/lib/nameinfo.cc
+LIBCLICK_SRCS-y += $(LIBCLICK_EXTRACTED)/lib/notifier.cc
+LIBCLICK_SRCS-y += $(LIBCLICK_EXTRACTED)/lib/packet.cc
+LIBCLICK_SRCS-y += $(LIBCLICK_EXTRACTED)/lib/router.cc
+LIBCLICK_SRCS-y += $(LIBCLICK_EXTRACTED)/lib/routerthread.cc
+LIBCLICK_SRCS-y += $(LIBCLICK_EXTRACTED)/lib/routervisitor.cc
+LIBCLICK_SRCS-y += $(LIBCLICK_EXTRACTED)/lib/straccum.cc
+LIBCLICK_SRCS-y += $(LIBCLICK_EXTRACTED)/lib/string.cc
+LIBCLICK_SRCS-y += $(LIBCLICK_EXTRACTED)/lib/task.cc
+LIBCLICK_SRCS-y += $(LIBCLICK_EXTRACTED)/lib/timer.cc
+LIBCLICK_SRCS-y += $(LIBCLICK_EXTRACTED)/lib/timerset.cc
+LIBCLICK_SRCS-y += $(LIBCLICK_EXTRACTED)/lib/timestamp.cc
+LIBCLICK_SRCS-y += $(LIBCLICK_EXTRACTED)/lib/variableenv.cc
+LIBCLICK_SRCS-y += $(LIBCLICK_EXTRACTED)/lib/ip6table.cc
+LIBCLICK_SRCS-y += $(LIBCLICK_EXTRACTED)/lib/ip6address.cc
+LIBCLICK_SRCS-y += $(LIBCLICK_EXTRACTED)/lib/ip6flowid.cc
+LIBCLICK_SRCS-y += $(LIBCLICK_EXTRACTED)/lib/selectset.cc
+
+################################################################################
+# Click elements
+################################################################################
+LIBCLICK_SRCS-y += $(LIBCLICK_BUILD)/elements.cc
+-include $(LIBCLICK_BUILD)/.elementsmk

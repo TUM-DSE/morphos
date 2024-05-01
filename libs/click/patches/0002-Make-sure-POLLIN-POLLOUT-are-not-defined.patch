@@ -1,0 +1,35 @@
+From b9f04f6ddc388f6a50a82e8830e42badbfc4717b Mon Sep 17 00:00:00 2001
+From: Florian Schmidt <florian.schmidt@neclab.eu>
+Date: Wed, 17 Apr 2019 11:03:55 +0200
+Subject: [PATCH] Make sure POLLIN/POLLOUT are not defined
+
+We use select instead of poll, because lwip provides a select via its
+socket API. However, that one also defines a couple of POLL* values,
+which lead to a compiler error here because you end up with a line that
+says "enum { 0x1 = Element::SELECT_READ" etc.
+
+Signed-off-by: Florian Schmidt <florian.schmidt@neclab.eu>
+---
+ lib/selectset.cc | 6 ++++++
+ 1 file changed, 6 insertions(+)
+
+diff --git a/lib/selectset.cc b/lib/selectset.cc
+index ac5ccae49..641b63f90 100644
+--- a/lib/selectset.cc
++++ b/lib/selectset.cc
+@@ -38,6 +38,12 @@ CLICK_DECLS
+ namespace {
+ enum { SELECT_READ = Element::SELECT_READ, SELECT_WRITE = Element::SELECT_WRITE };
+ #if !HAVE_ALLOW_POLL
++#ifdef POLLIN
++#undef POLLIN
++#endif
++#ifdef POLLOUT
++#undef POLLOUT
++#endif
+ enum { POLLIN = Element::SELECT_READ, POLLOUT = Element::SELECT_WRITE };
+ #endif
+ }
+-- 
+2.21.0
+

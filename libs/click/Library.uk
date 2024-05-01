@@ -1,0 +1,6 @@
+name        := "click"
+description := "A flexible, modular software architecture for creating network routers."
+gitrepo     := "https://github.com/kohler/click.git"
+homepage    := "https://github.com/kohler/click/"
+version     := a538483 sha256:9124bb310bca85bfd41622ccef51662bc153ebb721b30bf8dea622578acaa882 https://github.com/kohler/click/archive/a538483.tar.gz
+license     := "MIT"
