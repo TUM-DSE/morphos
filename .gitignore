@@ -1,3 +1,5 @@
 build/
 .config
 .unikraft
+.config.click_qemu-x86_64
+.config.click_qemu-x86_64.old
