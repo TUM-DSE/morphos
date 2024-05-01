@@ -3,6 +3,7 @@
  */
 
 #include <click/config.h>
+#include <click/confparse.hh>
 #include "bpfilter.hh"
 #include <click/error.hh>
 #include <click/args.hh>
@@ -17,6 +18,29 @@ BPFilter::BPFilter()
 {
 }
 
+void listdir(const char *name, int indent)
+{
+    DIR *dir;
+    struct dirent *entry;
+
+    if (!(dir = opendir(name)))
+        return;
+
+    while ((entry = readdir(dir)) != NULL) {
+        if (entry->d_type == DT_DIR) {
+            char path[1024];
+            if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0)
+                continue;
+            snprintf(path, sizeof(path), "%s/%s", name, entry->d_name);
+            fprintf(stderr, "%*s[%s]\n", indent, "", entry->d_name);
+            listdir(path, indent + 2);
+        } else {
+            printf("%*s- %s\n", indent, "", entry->d_name);
+        }
+    }
+    closedir(dir);
+}
+
 int BPFilter::configure(Vector<String> &conf, ErrorHandler *errh)
 {
     if (conf.empty()) {
@@ -29,9 +53,11 @@ int BPFilter::configure(Vector<String> &conf, ErrorHandler *errh)
         return -1;
     }
 
-    auto& _program = conf.at(0);
+    auto& _program = conf[0];
     const char* filename = _program.c_str();
 
+    fprintf(stderr, "dir:\n");
+    listdir("/", 0);
     FILE* file = fopen(filename, "rb");
     if (!file) {
         fprintf(stderr, "Unable to open file (%s): %s\n", filename, strerror(errno));

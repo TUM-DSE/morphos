@@ -11,3 +11,4 @@ The repository extends the default appclick with following features:
 2. Build the project: `kraft build`
 3. Setup the network interfaces: `./setup.sh`
 4. Run the project: `./run.sh`
+ 
