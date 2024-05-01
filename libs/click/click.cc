@@ -158,8 +158,17 @@ get_config()
 
 	UK_ASSERT(!macaddr_preamble.empty());
 
-    if (ukplat_memregion_find_initrd0(&img) >= 0) {
-        /* First, try initrd */
+    /* First, try to read from "config.click" */
+    FILE* file = fopen("/config.click", "r");
+    if (file) {
+        fseek(file, 0, SEEK_END);
+        size_t file_size = (size_t) ftell(file);
+        fseek(file, 0, SEEK_SET);
+
+        cstr = (char*)malloc(file_size);
+        cstr_len = fread(cstr, 1, file_size, file);
+    } else if (ukplat_memregion_find_initrd0(&img) >= 0) {
+        /* Then, try initrd */
 		cstr = (char *)img->pbase;
 		cstr_len = img->len;
 	} else {
