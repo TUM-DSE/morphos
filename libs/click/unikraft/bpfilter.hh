@@ -53,6 +53,11 @@ class BPFilter : public Element { public:
     int configure(Vector<String> &conf, ErrorHandler *errh) CLICK_COLD;
     void add_handlers() CLICK_COLD;
 
+    struct bpfilter_context {
+        const unsigned char* data;
+        size_t data_len;
+    };
+
     void push(int, Packet *);
 
 private:

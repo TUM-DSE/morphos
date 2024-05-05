@@ -56,7 +56,7 @@ int BPFilter::configure(Vector<String> &conf, ErrorHandler *errh)
     auto& _program = conf[0];
     const char* filename = _program.c_str();
 
-    fprintf(stderr, "dir:\n");
+    printf("dir:\n");
     listdir("/", 0);
     FILE* file = fopen(filename, "rb");
     if (!file) {
@@ -83,12 +83,6 @@ int BPFilter::configure(Vector<String> &conf, ErrorHandler *errh)
         return -1;
     }
 
-    printf("Read following bytes from file: %s\n", filename);
-    for (int i = 0; i < bytes_read; ++i) {
-        printf("%02x", buffer[i]);
-    }
-    printf("\n");
-
     fclose(file);
 
     char* error_msg;
@@ -107,15 +101,23 @@ void BPFilter::push(int, Packet *p)
 {
     _count++;
 
+    printf("BPFilter: Received packet\n");
+
+    struct bpfilter_context ctx = { p->buffer(), p->buffer_length() };
+
     uint64_t ret;
-    if (ubpf_exec(_ubpf_vm, NULL, 0, &ret) != 0) {
+    if (ubpf_exec(_ubpf_vm, (void*) &ctx, sizeof(ctx), &ret) != 0) {
         fprintf(stderr, "Error executing ubpf program\n");
         return;
     }
 
     if (ret == 1) {
+        printf("BPFilter: Dropped packet\n");
         _filtered++;
         p->kill();
+    } else {
+        printf("BPFilter: Didn't drop packet\n");
+        output(0).push(p);
     }
 }
 
