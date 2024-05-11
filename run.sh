@@ -6,5 +6,3 @@ sudo qemu-system-x86_64 \
   -kernel .unikraft/build/click_qemu-x86_64 \
   -initrd .unikraft/build/initramfs-x86_64.cpio \
   -nographic
-
-sudo kraft run --network clicknet:172.44.0.2/24:172.44.0.1:::: --rm --log-level debug

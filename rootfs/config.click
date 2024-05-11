@@ -1,6 +1,4 @@
 FromDevice
-  -> Print('Running packet through BPFilter')
-  -> IPPrint(CONTENTS HEX)
-  -> BPFilter(filter-rs)
-  -> Print('Packet passed BPFilter')
+  -> Print('Received packet from device')
+  -> IPPrint
   -> ToDevice;
