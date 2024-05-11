@@ -41,6 +41,10 @@ void listdir(const char *name, int indent)
     closedir(dir);
 }
 
+static void ubpf_print(const char *msg) {
+    printf("%s", msg);
+}
+
 int BPFilter::configure(Vector<String> &conf, ErrorHandler *errh)
 {
     if (conf.empty()) {
@@ -52,6 +56,8 @@ int BPFilter::configure(Vector<String> &conf, ErrorHandler *errh)
         fprintf(stderr, "Unable to create ubpf vm\n");
         return -1;
     }
+
+    ubpf_register(_ubpf_vm, 0, "ubpf_print", (void*) ubpf_print);
 
     auto& _program = conf[0];
     const char* filename = _program.c_str();
@@ -103,10 +109,8 @@ void BPFilter::push(int, Packet *p)
 
     printf("BPFilter: Received packet\n");
 
-    struct bpfilter_context ctx = { p->buffer(), p->buffer_length() };
-
     uint64_t ret;
-    if (ubpf_exec(_ubpf_vm, (void*) &ctx, sizeof(ctx), &ret) != 0) {
+    if (ubpf_exec(_ubpf_vm, (void*) p->buffer(), p->buffer_length(), &ret) != 0) {
         fprintf(stderr, "Error executing ubpf program\n");
         return;
     }

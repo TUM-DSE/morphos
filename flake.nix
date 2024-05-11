@@ -29,6 +29,7 @@
                 cmake
                 unzip
                 clang
+                openssl
               ];
             in
             {
@@ -36,6 +37,7 @@
                 name = "devShell";
                 buildInputs = buildDeps ++ [
                     unstable.kraft
+                    unstable.rustup
                 ];
                 KRAFTKIT_NO_WARN_SUDO = "1";
                 KRAFTKIT_NO_CHECK_UPDATES = "true";

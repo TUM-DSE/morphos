@@ -2,6 +2,11 @@ specification: '0.6'
 name: click
 unikraft:
   version: stable
+  config:
+    CONFIG_LIBUKDEBUG_PRINTK_INFO: 'y'
+    CONFIG_LIBUKDEBUG_PRINTK_WARN: 'y'
+    CONFIG_LIBUKDEBUG_PRINTK_CRIT: 'y'
+    CONFIG_LIBUKNETDEV_EINFO_LIBPARAM: 'y'
   kconfig:
     - CONFIG_LIBPOSIX_USER=y
     - CONFIG_PLAT_KVM=y
