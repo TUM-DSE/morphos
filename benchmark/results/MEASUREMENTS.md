@@ -18,6 +18,6 @@ FromDevice
 Results:
 ```
 Benchmark 1: ./target/release/click-benchmark
-  Time (mean ± σ):     466.6 ms ±  72.0 ms    [User: 2.4 ms, System: 10.8 ms]
-  Range (min … max):   433.5 ms … 859.5 ms    100 runs
+  Time (mean ± σ):     462.6 ms ±  57.7 ms    [User: 2.4 ms, System: 10.8 ms]
+  Range (min … max):   439.1 ms … 776.4 ms    100 runs
 ```

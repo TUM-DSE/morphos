@@ -30,6 +30,9 @@
                 unzip
                 clang
                 openssl
+                python3Packages.numpy
+                python3Packages.matplotlib
+                python3Packages.scipy
               ];
             in
             {
