@@ -39,6 +39,7 @@ fn start_clickos() -> anyhow::Result<Child> {
         .args([
             "qemu-system-x86_64",
             "-accel", "kvm",
+            "-cpu", "max",
             "-netdev", "bridge,id=en0,br=clicknet",
             "-device", "virtio-net-pci,netdev=en0",
             "-append", &format!(r#"netdev.ip={CLICKOS_IPV4_ADDR}/24:172.44.0.1 --"#),
