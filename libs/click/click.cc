@@ -38,6 +38,7 @@ extern "C"{
 #include <stdio.h>
 #include <string.h>
 #include <poll.h>
+#include <dirent.h>
 }
 
 #include <click/config.h>
@@ -148,6 +149,29 @@ make_macaddr_preamble()
 	uk_pr_info("MAC address macros:\n%s\n", macaddr_preamble.c_str());
 }
 
+static void listdir(const char *name, int indent)
+{
+    DIR *dir;
+    struct dirent *entry;
+
+    if (!(dir = opendir(name)))
+        return;
+
+    while ((entry = readdir(dir)) != NULL) {
+        if (entry->d_type == DT_DIR) {
+            char path[1024];
+            if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0)
+                continue;
+            snprintf(path, sizeof(path), "%s/%s", name, entry->d_name);
+            uk_pr_info("%*s[%s]\n", indent, "", entry->d_name);
+            listdir(path, indent + 2);
+        } else {
+            uk_pr_info("%*s- %s\n", indent, "", entry->d_name);
+        }
+    }
+    closedir(dir);
+}
+
 static String *
 get_config()
 {
@@ -158,9 +182,13 @@ get_config()
 
 	UK_ASSERT(!macaddr_preamble.empty());
 
+    uk_pr_info("Files @ /:\n");
+    listdir("/", 0);
+
     /* First, try to read from "config.click" */
     FILE* file = fopen("/config.click", "r");
     if (file) {
+        uk_pr_info("Reading config from /config.click\n");
         fseek(file, 0, SEEK_END);
         size_t file_size = (size_t) ftell(file);
         fseek(file, 0, SEEK_SET);
@@ -169,6 +197,8 @@ get_config()
         cstr_len = fread(cstr, 1, file_size, file);
     } else if (ukplat_memregion_find_initrd0(&img) >= 0) {
         /* Then, try initrd */
+        uk_pr_info("Reading config from initrd0\n");
+
 		cstr = (char *)img->pbase;
 		cstr_len = img->len;
 	} else {
