@@ -40,9 +40,9 @@ fn start_clickos() -> anyhow::Result<Child> {
             "qemu-system-x86_64",
             "-netdev", "bridge,id=en0,br=clicknet",
             "-device", "virtio-net-pci,netdev=en0",
-            "-append", &format!(r#""netdev.ipv4_addr={CLICKOS_IPV4_ADDR} netdev.ipv4_gw_addr=172.44.0.1 netdev.ipv4_subnet_mask=255.255.255.0 --""#),
+            "-append", &format!(r#""netdev.ip={CLICKOS_IPV4_ADDR}/24:172.44.0.1 vfs.fstab=[\"initrd0:/:extract::ramfs=1:\"] --""#),
             "-kernel", "../.unikraft/build/click_qemu-x86_64",
-            "-initrd", "../.unikraft/build/initramfs-x86_64.cpio",
+            "-initrd", "minimal.click",
             "-nographic"
         ])
         .stdout(Stdio::piped())
