@@ -230,6 +230,7 @@ router_thread(void *thread_data)
 	if (ri->r->initialize(errh) < 0) {
 		LOG("Router init failed!");
 		ri->f_stop = 1;
+        exit(1);
 		return;
 	}
 
