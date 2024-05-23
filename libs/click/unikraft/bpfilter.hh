@@ -6,6 +6,7 @@
 #include <click/element.hh>
 #include <click/error.hh>
 #include <click/task.hh>
+#include <uk/rwlock.h>
 
 #include "ubpf.h"
 
@@ -48,17 +49,18 @@ class BPFilter : public Element { public:
 
     const char *class_name() const override		{ return "BPFilter"; }
     const char *port_count() const override		{ return PORTS_1_1; }
-    bool can_live_reconfigure() const   { return true; }
+    bool can_live_reconfigure() const override   { return true; }
 
-    int configure(Vector<String> &conf, ErrorHandler *errh) CLICK_COLD;
-    void add_handlers() CLICK_COLD;
+    int configure(Vector<String> &conf, ErrorHandler *errh) override CLICK_COLD;
+    void add_handlers() override CLICK_COLD;
 
-    void push(int, Packet *);
+    void push(int, Packet *) override;
 
 private:
 
     uint64_t _count;
     uint64_t _filtered;
+    struct uk_rwlock _lock = UK_RWLOCK_INITIALIZER(_lock, 0);
 
     struct ubpf_vm* _ubpf_vm;
 

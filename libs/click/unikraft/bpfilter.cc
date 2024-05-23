@@ -28,21 +28,26 @@ int BPFilter::configure(Vector<String> &conf, ErrorHandler *errh)
         return -1;
     }
 
-    _ubpf_vm = ubpf_create();
-    if (_ubpf_vm == NULL) {
-        fprintf(stderr, "Unable to create ubpf vm\n");
-        return -1;
-    }
+    uk_pr_info("Configuring BPFilter\n");
 
-    ubpf_register(_ubpf_vm, 0, "ubpf_print", (void*) ubpf_print);
+    bool reconfigure = false;
+    if (_ubpf_vm == NULL) {
+        _ubpf_vm = ubpf_create();
+        if (_ubpf_vm == NULL) {
+            return errh->error("unable to create ubpf vm\n");
+        }
+
+        ubpf_register(_ubpf_vm, 0, "ubpf_print", (void*) ubpf_print);
+    } else {
+        reconfigure = true;
+    }
 
     auto& _program = conf[0];
     const char* filename = _program.c_str();
 
     FILE* file = fopen(filename, "rb");
     if (!file) {
-        fprintf(stderr, "Unable to open file (%s): %s\n", filename, strerror(errno));
-        return -1;
+        return errh->error("unable to open file (%s): %s\n", filename, strerror(errno));
     }
 
     fseek(file, 0, SEEK_END);
@@ -51,28 +56,30 @@ int BPFilter::configure(Vector<String> &conf, ErrorHandler *errh)
 
     unsigned char* buffer = (unsigned char*)malloc(file_size);
     if (!buffer) {
-        fclose(file);
-        fprintf(stderr, "Error allocating memory for file (%s): %s\n", filename, strerror(errno));
-        return -1;
+        return errh->error("error allocating memory for file (%s): %s\n", filename, strerror(errno));
     }
 
     size_t bytes_read = fread(buffer, 1, file_size, file);
     if (bytes_read != file_size) {
         fclose(file);
         free(buffer);
-        fprintf(stderr, "Error reading file (%s): %s\n", filename, strerror(errno));
-        return -1;
+        return errh->error("error reading file (%s): %s\n", filename, strerror(errno));
     }
 
     fclose(file);
 
+    uk_rwlock_wlock(&_lock);
+    if (reconfigure) {
+        ubpf_unload_code(_ubpf_vm);
+    }
+
     char* error_msg;
     ubpf_load_elf(_ubpf_vm, buffer, file_size, &error_msg);
 
+    uk_rwlock_wunlock(&_lock);
+
     if (error_msg != NULL) {
-        fprintf(stderr, "Error loading ubpf program: %s\n", error_msg);
-        free(error_msg);
-        return -1;
+        return errh->error("Error loading ubpf program: %s\n", error_msg);
     }
 
     return 0;
@@ -82,20 +89,22 @@ void BPFilter::push(int, Packet *p)
 {
     _count++;
 
-    printf("BPFilter: Received packet\n");
+    uk_pr_debug("BPFilter: Received packet\n");
 
+    uk_rwlock_rlock(&_lock);
     uint64_t ret;
     if (ubpf_exec(_ubpf_vm, (void*) p->buffer(), p->buffer_length(), &ret) != 0) {
-        fprintf(stderr, "Error executing ubpf program\n");
+        uk_pr_err("Error executing ubpf program\n");
         return;
     }
+    uk_rwlock_runlock(&_lock);
 
     if (ret == 1) {
-        printf("BPFilter: Dropped packet\n");
+        uk_pr_debug("BPFilter: Dropped packet\n");
         _filtered++;
         p->kill();
     } else {
-        printf("BPFilter: Didn't drop packet\n");
+        uk_pr_debug("BPFilter: Didn't drop packet\n");
         output(0).push(p);
     }
 }

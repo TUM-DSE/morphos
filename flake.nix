@@ -30,6 +30,8 @@
                 unzip
                 clang
                 openssl
+                ncurses
+                bridge-utils
                 python3Packages.numpy
                 python3Packages.matplotlib
                 python3Packages.scipy
