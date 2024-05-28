@@ -28,7 +28,7 @@ int BPFilter::configure(Vector<String> &conf, ErrorHandler *errh)
         return -1;
     }
 
-    uk_pr_info("Configuring BPFilter\n");
+    uk_pr_info("Configuring BPFilter...\n");
 
     bool reconfigure = false;
     if (_ubpf_vm == NULL) {
@@ -88,6 +88,8 @@ int BPFilter::configure(Vector<String> &conf, ErrorHandler *errh)
     if (error_msg != NULL) {
         return errh->error("Error loading ubpf program: %s\n", error_msg);
     }
+
+    uk_pr_info("Configured BPFilter (ID: %lu) with program %s\n", _bpfilter_id, filename);
 
     return 0;
 }
