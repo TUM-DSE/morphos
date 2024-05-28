@@ -42,8 +42,15 @@ int BPFilter::configure(Vector<String> &conf, ErrorHandler *errh)
         reconfigure = true;
     }
 
-    auto& _program = conf[0];
-    const char* filename = _program.c_str();
+    String program_string = String();
+    if (Args(conf, this, errh)
+    .read("ID", _bpfilter_id)
+    .read("FILE", AnyArg(), program_string)
+    .complete() < 0) {
+        return -1;
+    }
+
+    const char* filename = program_string.c_str();
 
     FILE* file = fopen(filename, "rb");
     if (!file) {

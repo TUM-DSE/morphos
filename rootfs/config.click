@@ -21,5 +21,5 @@ c0[2] -> Discard;
 
 // === Data network ===
 FromDevice(0)
-  -> BPFilter(filter-rs)
+  -> BPFilter(ID 1, FILE filter-rs)
   -> ToDevice(0);

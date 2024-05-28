@@ -56,8 +56,11 @@ class BPFilter : public Element { public:
 
     void push(int, Packet *) override;
 
+    uint64_t bpfilter_id() const { return _bpfilter_id; }
+
 private:
 
+    uint64_t _bpfilter_id;
     uint64_t _count;
     uint64_t _filtered;
     struct uk_rwlock _lock = UK_RWLOCK_INITIALIZER(_lock, 0);
