@@ -21,5 +21,6 @@ c0[2] -> Discard;
 
 // === Data network ===
 FromDevice(0)
+  -> IPPrint('Received packet')
   -> BPFilter(ID 1, FILE filter-rs)
   -> ToDevice(0);

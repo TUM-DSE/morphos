@@ -1,7 +1,26 @@
+use std::env::args;
 use std::net::UdpSocket;
-use anyhow::Context;
+use anyhow::{bail, Context};
 
 fn main() -> anyhow::Result<()> {
+    let arg = args().nth(1);
+    match arg.as_deref() {
+        Some("reload") => {
+            reload()?;
+        }
+        Some("send-packet") => {
+            send_packet()?;
+        }
+        _ => bail!("Invalid argument")
+    }
+
+    Ok(())
+}
+
+const CONTROL_ADDR: &str = "173.44.0.2:4444";
+const DATA_ADDR: &str = "172.44.0.2:4444";
+
+fn reload() -> anyhow::Result<()> {
     let new_program = b"filter-rs";
 
     let mut data = Vec::new();
@@ -10,8 +29,17 @@ fn main() -> anyhow::Result<()> {
     data.extend_from_slice(&(new_program.len() as u64).to_le_bytes());
     data.extend_from_slice(new_program);
 
-    let socket = UdpSocket::bind("0.0.0.0:0").context("couldn't bind to socket")?;
-    socket.send_to(&data, "173.44.0.2:4444").context("couldn't send packet")?;
+    socket()?.send_to(&data, CONTROL_ADDR).context("couldn't send packet")?;
 
     Ok(())
+}
+
+fn send_packet() -> anyhow::Result<()> {
+    socket()?.send_to(b"data", DATA_ADDR).context("couldn't send packet")?;
+
+    Ok(())
+}
+
+fn socket() -> anyhow::Result<UdpSocket> {
+    UdpSocket::bind("0.0.0.0:0").context("couldn't bind to socket")
 }

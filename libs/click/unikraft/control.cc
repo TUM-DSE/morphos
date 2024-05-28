@@ -51,9 +51,6 @@ void Control::push(int, Packet *p) {
     uint64_t program_name_len = *(uint64_t * )(udp_data_ptr + offset);
     offset += sizeof(uint64_t);
 
-    uk_pr_info("bpfilter_id: %lu\n", bpfilter_id);
-    uk_pr_info("program_name_len: %lu\n", program_name_len);
-
     if (udp_data_ptr + offset + program_name_len > p->end_data()) {
         uk_pr_err("Received control packet with invalid program_name_len\n");
         return;
