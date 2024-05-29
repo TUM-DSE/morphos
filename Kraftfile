@@ -17,6 +17,7 @@ unikraft:
     CONFIG_LIBVFSCORE_NONLARGEFILE: 'y'
     CONFIG_LIBUKCPIO: 'y'
     CONFIG_LIBRAMFS: 'y'
+    CONFIG_LIBUK9P: 'y'
 targets:
   - architecture: x86_64
     platform: kvm

@@ -19,7 +19,8 @@ sudo qemu-system-x86_64 \
   -cpu max \
   -netdev bridge,id=en0,br=clicknet -device virtio-net-pci,netdev=en0 \
   -netdev bridge,id=en1,br=controlnet -device virtio-net-pci,netdev=en1 \
-  -append "vfs.fstab=[\"initrd0:/:extract::ramfs=1:\"] --" \
+  -fsdev local,security_model=passthrough,id=hvirtio1,path=rootfs -device virtio-9p-pci,fsdev=hvirtio1,mount_tag=fs1 \
+  -append "vfs.fstab=[\"fs1:/:9pfs\"] --" \
   -kernel .unikraft/build/click_qemu-x86_64 \
   -initrd .unikraft/build/initramfs-x86_64.cpio \
   -nographic
