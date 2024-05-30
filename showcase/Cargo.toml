@@ -1,0 +1,13 @@
+[package]
+name = "showcase"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+crossterm = "0.27.0"
+eyre = "0.6.12"
+ratatui = "0.26"
+color-eyre = "0.6.3"
+tui-logger = "0.11"
+log = "0.4.21"
+strip-ansi-escapes = "0.2.0"

@@ -21,6 +21,23 @@ c0[2] -> Discard;
 
 // === Data network ===
 FromDevice(0)
-  -> IPPrint('Received packet')
-  -> BPFilter(ID 1, FILE filter-rs)
-  -> ToDevice(0);
+ -> c1 :: Classifier(12/0806 20/0001,
+                     12/0800,
+                     -);
+
+// Answer ARP requests
+c1[0] -> ARPResponder(172.44.0.2 $MAC0)
+      -> ToDevice(0);
+
+// Handle IP Packets
+c1[1] -> StripEtherVLANHeader
+ -> CheckIPHeader
+ -> IPReassembler
+ -> SetUDPChecksum
+ -> CheckUDPHeader
+ -> IPFilter(allow src ip 172.44.0.1 and dest ip 172.44.0.2, deny all)
+ -> BPFilter(ID 1, FILE pass)
+ -> Print('Received packet')
+ -> ToDevice(0);
+
+ c1[2] -> Discard;
