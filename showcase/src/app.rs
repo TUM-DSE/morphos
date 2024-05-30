@@ -11,7 +11,8 @@ use crate::click_api::ClickApi;
 
 pub struct App {
     click_api: ClickApi,
-    packet_received_receiver: Receiver<()>,
+    vm_packet_received_receiver: Receiver<()>,
+    post_filtering_packet_received_receiver: Receiver<()>,
 
     terminal: Terminal<CrosstermBackend<Stdout>>,
 
@@ -24,16 +25,20 @@ const PACKET_HISTORY_SIZE: usize = 120;
 
 struct UiState {
     ticks: u64,
+
     sent_packet_in_window: bool,
-    received_packet_in_window: bool,
-
-    received_packets_count: u64,
-    received_packets: Vec<bool>,
-
     sent_packets_count: u64,
     sent_packets: Vec<bool>,
 
-    active_controls_button: Option<Button>,
+    vm_received_packet_in_window: bool,
+    vm_received_packets_count: u64,
+    vm_received_packets: Vec<bool>,
+
+    post_filtering_received_packet_in_window: bool,
+    post_filtering_received_packets_count: u64,
+    post_filtering_received_packets: Vec<bool>,
+
+    selected_controls_button: Option<Button>,
     controls_state: ListState,
 }
 
@@ -78,7 +83,11 @@ impl<'a> Into<ListItem<'a>> for ControlButton {
 }
 
 impl App {
-    pub fn new(click_api: ClickApi, packet_received_receiver: Receiver<()>) -> eyre::Result<Self> {
+    pub fn new(
+        click_api: ClickApi,
+        vm_packet_received_receiver: Receiver<()>,
+        post_filtering_packet_received_receiver: Receiver<()>,
+    ) -> eyre::Result<Self> {
         stdout().execute(EnterAlternateScreen)?;
         enable_raw_mode()?;
 
@@ -87,17 +96,21 @@ impl App {
 
         Ok(Self {
             click_api,
-            packet_received_receiver,
+            vm_packet_received_receiver,
+            post_filtering_packet_received_receiver,
             terminal,
             ui_state: UiState {
                 ticks: 0,
                 sent_packet_in_window: false,
-                received_packet_in_window: false,
-                received_packets_count: 0,
-                received_packets: vec![false; PACKET_HISTORY_SIZE],
+                vm_received_packet_in_window: false,
+                vm_received_packets_count: 0,
+                vm_received_packets: vec![false; PACKET_HISTORY_SIZE],
+                post_filtering_received_packet_in_window: false,
+                post_filtering_received_packets_count: 0,
+                post_filtering_received_packets: vec![false; PACKET_HISTORY_SIZE],
                 sent_packets_count: 0,
                 sent_packets: vec![false; PACKET_HISTORY_SIZE],
-                active_controls_button: Some(Button::AllowPackets),
+                selected_controls_button: Some(Button::AllowPackets),
                 controls_state: ListState::default().with_selected(Some(0)),
             },
             stopped: false,
@@ -160,7 +173,7 @@ impl App {
 
         let list = List::new(Button::all().map(|button| ControlButton {
             button,
-            selected: ui_state.active_controls_button == Some(button),
+            selected: ui_state.selected_controls_button == Some(button),
         }))
             .block(block)
             .style(Style::default().fg(Color::White))
@@ -189,7 +202,9 @@ impl App {
             .constraints([
                 Constraint::Length(2), // sent packets
                 Constraint::Length(1), // margin
-                Constraint::Length(2), // received packets
+                Constraint::Length(2), // received packets in VM
+                Constraint::Length(1), // margin
+                Constraint::Length(2), // received packets in server
             ]).split(block.inner(area));
 
         let sent_packets_block = Block::default()
@@ -201,22 +216,34 @@ impl App {
         let sent_packets_sparkline = Sparkline::default()
             .block(sent_packets_block)
             .data(&sent_packets_data)
-            .style(Style::default().fg(Color::LightBlue).bg(Color::Gray));
+            .style(Style::default().fg(Color::Cyan).bg(Color::Gray));
 
-        let received_packets_block = Block::default()
-            .title(format!("Received packets ({})", ui_state.received_packets_count))
+        let vm_received_packets_block = Block::default()
+            .title(format!("Received packets in VM ({})", ui_state.vm_received_packets_count))
             .borders(Borders::NONE)
             .title_style(Style::default().fg(Color::White).add_modifier(Modifier::ITALIC));
 
-        let received_packets_data = ui_state.received_packets.iter().rev().map(|&b| if b { 1 } else { 0 }).collect::<Vec<_>>();
-        let received_packets_sparkline = Sparkline::default()
-            .block(received_packets_block)
-            .data(&received_packets_data)
-            .style(Style::default().fg(Color::Green).bg(Color::Gray));
+        let vm_received_packets_data = ui_state.vm_received_packets.iter().rev().map(|&b| if b { 1 } else { 0 }).collect::<Vec<_>>();
+        let vm_received_packets_sparkline = Sparkline::default()
+            .block(vm_received_packets_block)
+            .data(&vm_received_packets_data)
+            .style(Style::default().fg(Color::Blue).bg(Color::Gray));
+
+        let post_filtering_received_packets_block = Block::default()
+            .title(format!("Non-dropped packets ({})", ui_state.post_filtering_received_packets_count))
+            .borders(Borders::NONE)
+            .title_style(Style::default().fg(Color::White).add_modifier(Modifier::ITALIC));
+
+        let post_filtering_received_packets_data = ui_state.post_filtering_received_packets.iter().rev().map(|&b| if b { 1 } else { 0 }).collect::<Vec<_>>();
+        let post_filtering_received_packets_sparkline = Sparkline::default()
+            .block(post_filtering_received_packets_block)
+            .data(&post_filtering_received_packets_data)
+            .style(Style::default().fg(Color::LightGreen).bg(Color::Gray));
 
         frame.render_widget(block, area);
         frame.render_widget(sent_packets_sparkline, layout[0]);
-        frame.render_widget(received_packets_sparkline, layout[2]);
+        frame.render_widget(vm_received_packets_sparkline, layout[2]);
+        frame.render_widget(post_filtering_received_packets_sparkline, layout[4]);
     }
 
     fn draw_logs_pane(frame: &mut Frame, area: Rect) {
@@ -285,11 +312,11 @@ impl App {
                             match button {
                                 Button::AllowPackets => {
                                     self.click_api.reconfigure(1, "pass")?;
-                                    self.ui_state.active_controls_button = Some(Button::AllowPackets);
+                                    self.ui_state.selected_controls_button = Some(Button::AllowPackets);
                                 }
                                 Button::BlockPackets => {
                                     self.click_api.reconfigure(1, "drop")?;
-                                    self.ui_state.active_controls_button = Some(Button::BlockPackets);
+                                    self.ui_state.selected_controls_button = Some(Button::BlockPackets);
                                 }
                                 Button::SendPacket if !self.ui_state.sent_packet_in_window => {
                                     self.click_api.send_data_packet()?;
@@ -325,24 +352,45 @@ impl App {
             }
         }
 
-        // Update received packets
-        self.packet_received_receiver.try_iter().for_each(|_| {
-            self.ui_state.received_packets_count += 1;
-            if !self.ui_state.received_packet_in_window {
-                self.ui_state.received_packets.push(true);
-                self.ui_state.received_packet_in_window = true;
+        // Update received packets in VM
+        self.vm_packet_received_receiver.try_iter().for_each(|_| {
+            self.ui_state.vm_received_packets_count += 1;
+            if !self.ui_state.vm_received_packet_in_window {
+                self.ui_state.vm_received_packets.push(true);
+                self.ui_state.vm_received_packet_in_window = true;
             }
         });
 
         if packet_history_movement_tick {
-            if !self.ui_state.received_packet_in_window {
-                self.ui_state.received_packets.push(false);
+            if !self.ui_state.vm_received_packet_in_window {
+                self.ui_state.vm_received_packets.push(false);
             }
 
-            self.ui_state.received_packet_in_window = false;
+            self.ui_state.vm_received_packet_in_window = false;
 
-            if self.ui_state.received_packets.len() > PACKET_HISTORY_SIZE {
-                self.ui_state.received_packets.remove(0);
+            if self.ui_state.vm_received_packets.len() > PACKET_HISTORY_SIZE {
+                self.ui_state.vm_received_packets.remove(0);
+            }
+        }
+
+        // Update received packets in server
+        self.post_filtering_packet_received_receiver.try_iter().for_each(|_| {
+            self.ui_state.post_filtering_received_packets_count += 1;
+            if !self.ui_state.post_filtering_received_packet_in_window {
+                self.ui_state.post_filtering_received_packets.push(true);
+                self.ui_state.post_filtering_received_packet_in_window = true;
+            }
+        });
+
+        if packet_history_movement_tick {
+            if !self.ui_state.post_filtering_received_packet_in_window {
+                self.ui_state.post_filtering_received_packets.push(false);
+            }
+
+            self.ui_state.post_filtering_received_packet_in_window = false;
+
+            if self.ui_state.post_filtering_received_packets.len() > PACKET_HISTORY_SIZE {
+                self.ui_state.post_filtering_received_packets.remove(0);
             }
         }
 

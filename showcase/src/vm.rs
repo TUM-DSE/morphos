@@ -3,13 +3,15 @@ use std::process::{Command, Stdio};
 use std::sync::mpsc::Sender;
 
 pub struct Vm {
-    packet_received_sender: Sender<()>,
+    vm_packet_received_sender: Sender<()>,
+    post_filtering_packet_received_sender: Sender<()>
 }
 
 impl Vm {
-    pub fn new(packet_received_sender: Sender<()>) -> eyre::Result<Self> {
+    pub fn new(vm_packet_received_sender: Sender<()>, post_filtering_packet_received_sender: Sender<()>) -> eyre::Result<Self> {
         Ok(Self {
-            packet_received_sender
+            vm_packet_received_sender,
+            post_filtering_packet_received_sender
         })
     }
 
@@ -35,8 +37,13 @@ impl Vm {
                 .target("vm")
                 .build());
 
-            if line.contains("Received packet") && !line.contains("->") {
-                self.packet_received_sender.send(())?;
+            if line.contains("Received packet (pre-filtering)") && !line.contains("->") {
+                self.vm_packet_received_sender.send(())?;
+            }
+
+
+            if line.contains("Received packet (post-filtering)") && !line.contains("->") {
+                self.post_filtering_packet_received_sender.send(())?;
             }
         }
 

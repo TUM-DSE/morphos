@@ -14,11 +14,13 @@ mod vm;
 fn main() -> eyre::Result<()> {
     color_eyre::install()?;
 
-    let (packet_received_sender, packet_received_receiver) = std::sync::mpsc::channel();
+    let (vm_packet_received_sender, vm_packet_received_receiver) = std::sync::mpsc::channel();
+    let (post_filtering_packet_received_sender, post_filtering_packet_received_receiver) = std::sync::mpsc::channel();
 
     let click_api = ClickApi::new()?;
-    let mut vm = vm::Vm::new(packet_received_sender)?;
-    let mut app = App::new(click_api, packet_received_receiver)?;
+    let mut vm = vm::Vm::new(vm_packet_received_sender, post_filtering_packet_received_sender)?;
+
+    let mut app = App::new(click_api, vm_packet_received_receiver, post_filtering_packet_received_receiver)?;
 
     thread::spawn(move || {
         vm.run().expect("Failed to run VM");
