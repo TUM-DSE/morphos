@@ -28,15 +28,15 @@ struct UiState {
 
     sent_packet_in_window: bool,
     sent_packets_count: u64,
-    sent_packets: Vec<bool>,
+    sent_packets: Vec<u64>,
 
     vm_received_packet_in_window: bool,
     vm_received_packets_count: u64,
-    vm_received_packets: Vec<bool>,
+    vm_received_packets: Vec<u64>,
 
     post_filtering_received_packet_in_window: bool,
     post_filtering_received_packets_count: u64,
-    post_filtering_received_packets: Vec<bool>,
+    post_filtering_received_packets: Vec<u64>,
 
     selected_controls_button: Option<Button>,
     controls_state: ListState,
@@ -101,15 +101,15 @@ impl App {
             terminal,
             ui_state: UiState {
                 ticks: 0,
-                sent_packet_in_window: false,
                 vm_received_packet_in_window: false,
                 vm_received_packets_count: 0,
-                vm_received_packets: vec![false; PACKET_HISTORY_SIZE],
+                vm_received_packets: vec![0; PACKET_HISTORY_SIZE],
                 post_filtering_received_packet_in_window: false,
                 post_filtering_received_packets_count: 0,
-                post_filtering_received_packets: vec![false; PACKET_HISTORY_SIZE],
+                post_filtering_received_packets: vec![0; PACKET_HISTORY_SIZE],
+                sent_packet_in_window: false,
                 sent_packets_count: 0,
-                sent_packets: vec![false; PACKET_HISTORY_SIZE],
+                sent_packets: vec![0; PACKET_HISTORY_SIZE],
                 selected_controls_button: Some(Button::AllowPackets),
                 controls_state: ListState::default().with_selected(Some(0)),
             },
@@ -212,10 +212,10 @@ impl App {
             .borders(Borders::NONE)
             .title_style(Style::default().fg(Color::White).add_modifier(Modifier::ITALIC));
 
-        let sent_packets_data = ui_state.sent_packets.iter().rev().map(|&b| if b { 1 } else { 0 }).collect::<Vec<_>>();
+        let data = ui_state.sent_packets.iter().rev().copied().collect::<Vec<_>>();
         let sent_packets_sparkline = Sparkline::default()
             .block(sent_packets_block)
-            .data(&sent_packets_data)
+            .data(&data)
             .style(Style::default().fg(Color::Cyan).bg(Color::Gray));
 
         let vm_received_packets_block = Block::default()
@@ -223,10 +223,10 @@ impl App {
             .borders(Borders::NONE)
             .title_style(Style::default().fg(Color::White).add_modifier(Modifier::ITALIC));
 
-        let vm_received_packets_data = ui_state.vm_received_packets.iter().rev().map(|&b| if b { 1 } else { 0 }).collect::<Vec<_>>();
+        let data = ui_state.vm_received_packets.iter().copied().rev().collect::<Vec<_>>();
         let vm_received_packets_sparkline = Sparkline::default()
             .block(vm_received_packets_block)
-            .data(&vm_received_packets_data)
+            .data(&data)
             .style(Style::default().fg(Color::Blue).bg(Color::Gray));
 
         let post_filtering_received_packets_block = Block::default()
@@ -234,10 +234,10 @@ impl App {
             .borders(Borders::NONE)
             .title_style(Style::default().fg(Color::White).add_modifier(Modifier::ITALIC));
 
-        let post_filtering_received_packets_data = ui_state.post_filtering_received_packets.iter().rev().map(|&b| if b { 1 } else { 0 }).collect::<Vec<_>>();
+        let data = ui_state.post_filtering_received_packets.iter().copied().rev().collect::<Vec<_>>();
         let post_filtering_received_packets_sparkline = Sparkline::default()
             .block(post_filtering_received_packets_block)
-            .data(&post_filtering_received_packets_data)
+            .data(&data)
             .style(Style::default().fg(Color::LightGreen).bg(Color::Gray));
 
         frame.render_widget(block, area);
@@ -322,7 +322,7 @@ impl App {
                                     self.click_api.send_data_packet()?;
 
                                     self.ui_state.sent_packets_count += 1;
-                                    self.ui_state.sent_packets.push(true);
+                                    self.ui_state.sent_packets.push(1);
                                     self.ui_state.sent_packet_in_window = true;
                                 }
                                 _ => {}
@@ -342,7 +342,7 @@ impl App {
         let packet_history_movement_tick = self.ui_state.ticks % TICKS_PER_PACKET_HISTORY_MOVEMENT == 0;
         if packet_history_movement_tick {
             if !self.ui_state.sent_packet_in_window {
-                self.ui_state.sent_packets.push(false);
+                self.ui_state.sent_packets.push(0);
             }
 
             self.ui_state.sent_packet_in_window = false;
@@ -356,14 +356,14 @@ impl App {
         self.vm_packet_received_receiver.try_iter().for_each(|_| {
             self.ui_state.vm_received_packets_count += 1;
             if !self.ui_state.vm_received_packet_in_window {
-                self.ui_state.vm_received_packets.push(true);
+                self.ui_state.vm_received_packets.push(1);
                 self.ui_state.vm_received_packet_in_window = true;
             }
         });
 
         if packet_history_movement_tick {
             if !self.ui_state.vm_received_packet_in_window {
-                self.ui_state.vm_received_packets.push(false);
+                self.ui_state.vm_received_packets.push(0);
             }
 
             self.ui_state.vm_received_packet_in_window = false;
@@ -377,14 +377,14 @@ impl App {
         self.post_filtering_packet_received_receiver.try_iter().for_each(|_| {
             self.ui_state.post_filtering_received_packets_count += 1;
             if !self.ui_state.post_filtering_received_packet_in_window {
-                self.ui_state.post_filtering_received_packets.push(true);
+                self.ui_state.post_filtering_received_packets.push(1);
                 self.ui_state.post_filtering_received_packet_in_window = true;
             }
         });
 
         if packet_history_movement_tick {
             if !self.ui_state.post_filtering_received_packet_in_window {
-                self.ui_state.post_filtering_received_packets.push(false);
+                self.ui_state.post_filtering_received_packets.push(0);
             }
 
             self.ui_state.post_filtering_received_packet_in_window = false;
