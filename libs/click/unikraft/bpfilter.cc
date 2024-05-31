@@ -132,8 +132,8 @@ BPFilter::write_handler(const String &s, Element *e, void *user_data,
 void
 BPFilter::add_handlers()
 {
-    add_data_handlers("count", Handler::OP_READ, &_count);
-    add_data_handlers("filtered", Handler::OP_READ, &_filtered);
+    add_data_handlers("count", Handler::h_read, &_count);
+    add_data_handlers("filtered", Handler::h_read, &_filtered);
 
     add_write_handler("reset_count", write_handler, 0, Handler::h_button | Handler::h_nonexclusive);
 }
