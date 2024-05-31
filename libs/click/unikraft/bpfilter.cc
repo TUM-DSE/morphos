@@ -28,10 +28,10 @@ int BPFilter::configure(Vector<String> &conf, ErrorHandler *errh)
         return -1;
     }
 
-    uk_pr_info("Configuring BPFilter...\n");
-
     bool reconfigure = false;
     if (_ubpf_vm == NULL) {
+        uk_pr_info("Configuring BPFilter...\n");
+
         _ubpf_vm = ubpf_create();
         if (_ubpf_vm == NULL) {
             return errh->error("unable to create ubpf vm\n");
@@ -39,6 +39,8 @@ int BPFilter::configure(Vector<String> &conf, ErrorHandler *errh)
 
         ubpf_register(_ubpf_vm, 0, "ubpf_print", (void*) ubpf_print);
     } else {
+        uk_pr_info("Reconfiguring BPFilter...\n");
+
         reconfigure = true;
     }
 
@@ -89,7 +91,11 @@ int BPFilter::configure(Vector<String> &conf, ErrorHandler *errh)
         return errh->error("Error loading ubpf program: %s\n", error_msg);
     }
 
-    uk_pr_info("Configured BPFilter (ID: %lu) with program %s\n", _bpfilter_id, filename);
+    if (reconfigure) {
+        uk_pr_info("Reconfigured BPFilter (ID: %lu) with program %s\n", _bpfilter_id, filename);
+    } else {
+        uk_pr_info("Configured BPFilter (ID: %lu) with program %s\n", _bpfilter_id, filename);
+    }
 
     return 0;
 }
