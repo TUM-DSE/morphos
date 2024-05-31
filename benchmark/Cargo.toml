@@ -4,7 +4,17 @@ version = "0.1.0"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[lib]
 
 [dependencies]
 anyhow = "1.0"
 criterion = "0.5.1"
+tempfile = "3.10.1"
+
+[[bench]]
+name = "live_reconfigure"
+harness = false
+
+[[bench]]
+name = "startup"
+harness = false

@@ -1,6 +1,9 @@
-use crate::DATA_ADDR;
 use std::io::{BufReader, Lines};
+use std::net::{Ipv4Addr, SocketAddrV4};
 use std::process::{Child, ChildStdout, Command, Stdio};
+
+pub const DATA_ADDR: Ipv4Addr = Ipv4Addr::new(172, 44, 0, 2);
+pub const CONTROL_ADDR: SocketAddrV4 = SocketAddrV4::new(Ipv4Addr::new(173, 44, 0, 2), 4444);
 
 pub enum FileSystem<'a> {
     CpioArchive(&'a str),
@@ -39,7 +42,6 @@ pub fn start_click(fs: FileSystem, extra_args: &[String]) -> anyhow::Result<Chil
     .to_vec();
 
     args.extend_from_slice(extra_args);
-    println!("Starting Click with following arguments: {args:?}");
 
     let child = Command::new("sudo")
         .args(args)
@@ -52,7 +54,6 @@ pub fn start_click(fs: FileSystem, extra_args: &[String]) -> anyhow::Result<Chil
 pub fn wait_until_ready(lines: &mut Lines<BufReader<ChildStdout>>) {
     for line in lines {
         if let Ok(line) = line {
-            println!("{line}");
             if line.contains("Received packet") && !line.contains("->") {
                 return;
             }

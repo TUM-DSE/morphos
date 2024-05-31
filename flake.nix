@@ -35,6 +35,7 @@
                 python3Packages.numpy
                 python3Packages.matplotlib
                 python3Packages.scipy
+                gnuplot
               ];
             in
             {
@@ -43,7 +44,6 @@
                 buildInputs = buildDeps ++ [
                     unstable.kraft
                     unstable.rustup
-                    unstable.hyperfine
                 ];
                 KRAFTKIT_NO_WARN_SUDO = "1";
                 KRAFTKIT_NO_CHECK_UPDATES = "true";

@@ -1,0 +1,200 @@
+// Module responsible for handling *live reconfiguration* benchmarks.
+//
+// # Preparation
+// 1. Start click VM with the desired configuration
+// 2. Wait until the router is ready
+//
+// # Benchmarking procedure
+// 1. Triggers reconfiguration
+// 2. Waits until "Reconfiguring BPFilter..." is printed => starts measurement from here (this is the start of the "downtime" of the router"
+// 3. Waits until "Reconfigured BPFilter" is printed = ends measurement from here (from here on, the router is available again)
+
+use std::cell::RefCell;
+use std::io::{BufRead, BufReader, Lines};
+use std::net::UdpSocket;
+use std::path::PathBuf;
+use std::process::ChildStdout;
+use std::time::{Duration, Instant};
+
+use anyhow::Context;
+use click_benchmark::cpio::make_cpio_archive;
+use click_benchmark::terminal;
+use click_benchmark::vm::{self, wait_until_ready, FileSystem, CONTROL_ADDR};
+use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion};
+use tempfile::TempDir;
+
+struct Configuration<'a> {
+    name: &'a str,
+    bpfilter_program: &'a str,
+}
+
+const CONFIGURATIONS: &[Configuration] = &[
+    Configuration {
+        name: "pass",
+        bpfilter_program: "pass",
+    },
+    Configuration {
+        name: "drop",
+        bpfilter_program: "drop",
+    },
+    Configuration {
+        name: "target-port",
+        bpfilter_program: "target-port",
+    },
+];
+
+pub fn live_reconfigure(c: &mut Criterion) {
+    let mut group = c.benchmark_group("Live Reconfigure");
+
+    for config in CONFIGURATIONS {
+        // prepare click VM
+        let cpio = prepare_cpio_archive(config).expect("couldn't prepare cpio archive");
+
+        let mut child = vm::start_click(
+            FileSystem::CpioArchive(&cpio.path.to_string_lossy()),
+            &[
+                "-netdev".to_string(),
+                "bridge,id=en1,br=controlnet".to_string(),
+                "-device".to_string(),
+                "virtio-net-pci,netdev=en1".to_string(),
+            ],
+        )
+        .expect("couldn't start click");
+
+        // wait until the router is ready
+        let mut lines =
+            BufReader::new(child.stdout.take().expect("child stdout can't be taken")).lines();
+        wait_until_ready(&mut lines);
+
+        let lines = RefCell::new(lines);
+
+        group.bench_with_input(
+            BenchmarkId::from_parameter(config.name),
+            config,
+            |b, config| {
+                b.iter_custom(|iters| {
+                    let mut sum = Duration::new(0, 0);
+                    for _ in 0..iters {
+                        let mut lines = lines.borrow_mut();
+                        sum += run_benchmark(config, &mut *lines);
+                    }
+                    sum
+                });
+            },
+        );
+
+        child.kill().expect("couldn't kill child process");
+    }
+
+    group.finish();
+    terminal::restore_echo();
+}
+
+fn run_benchmark(config: &Configuration, lines: &mut Lines<BufReader<ChildStdout>>) -> Duration {
+    trigger_reconfiguration(config.name).expect("couldn't trigger reconfiguration");
+    wait_until_reconfiguration_start(lines);
+
+    let now = Instant::now();
+    wait_until_reconfiguration_end(lines);
+
+    now.elapsed()
+}
+
+fn trigger_reconfiguration(program: &str) -> anyhow::Result<()> {
+    let mut data = Vec::new();
+    data.extend_from_slice(b"control");
+    data.extend_from_slice(&1u64.to_le_bytes());
+    data.extend_from_slice(&(program.len() as u64).to_le_bytes());
+    data.extend_from_slice(program.as_bytes());
+
+    let socket = UdpSocket::bind("0.0.0.0:0").context("couldn't bind to control addr")?;
+    socket
+        .send_to(&data, CONTROL_ADDR)
+        .context("couldn't send packet")?;
+
+    Ok(())
+}
+
+fn wait_until_reconfiguration_start(lines: &mut Lines<BufReader<ChildStdout>>) {
+    lines
+        .filter_map(Result::ok)
+        .find(|line| line.contains("Reconfiguring BPFilter..."));
+}
+
+fn wait_until_reconfiguration_end(lines: &mut Lines<BufReader<ChildStdout>>) {
+    lines
+        .filter_map(Result::ok)
+        .find(|line| line.contains("Reconfigured BPFilter"));
+}
+
+const BPFILTER_BASE_PATH: &str = "bpfilters";
+
+struct CpioArchive {
+    path: PathBuf,
+
+    // Temporary directory that contains the cpio archive.
+    // Held so that it's not deleted until the archive is no longer needed.
+    _parent: TempDir,
+}
+
+fn prepare_cpio_archive(configuration: &Configuration) -> anyhow::Result<CpioArchive> {
+    let tmpdir = tempfile::tempdir()?;
+
+    // write click configuration
+    let click_configuration = create_click_configuration(configuration.bpfilter_program);
+    let click_configuration_path = tmpdir.path().join("config.click");
+    std::fs::write(&click_configuration_path, click_configuration)?;
+
+    // copy filter binary
+    let filter_binary_path = tmpdir.path().join(configuration.bpfilter_program);
+    std::fs::copy(
+        PathBuf::from(BPFILTER_BASE_PATH).join(configuration.bpfilter_program),
+        &filter_binary_path,
+    )?;
+
+    // create cpio archive
+    let cpio_archive_path = tmpdir.path().join("config.cpio");
+    make_cpio_archive(&cpio_archive_path, tmpdir.path())?;
+
+    Ok(CpioArchive {
+        path: cpio_archive_path,
+        _parent: tmpdir,
+    })
+}
+
+fn create_click_configuration(bpfilter_program: &str) -> String {
+    format!(
+        r#"
+// === Control network ===
+elementclass ControlReceiver {{ $deviceid |
+    FromDevice($deviceid)
+     -> c0 :: Classifier(12/0806 20/0001,
+                         12/0800,
+                         -);
+
+    // Answer ARP requests
+    c0[0] -> ARPResponder(173.44.0.2 $MAC1)
+          -> ToDevice($deviceid);
+
+    // Handle IP packets
+    c0[1] -> StripEtherVLANHeader
+     -> CheckIPHeader
+     -> IPFilter(allow dst port 4444, deny all)
+     -> IPReassembler
+     -> SetUDPChecksum
+     -> CheckUDPHeader
+     -> Control;
+
+    c0[2] -> Discard;
+}}
+
+ControlReceiver(1);
+
+// === Data network ===
+FromDevice(0) -> Print('Received packet') -> BPFilter(ID 1, FILE {bpfilter_program}) -> Discard;
+"#
+    )
+}
+
+criterion_group!(benches, live_reconfigure);
+criterion_main!(benches);
