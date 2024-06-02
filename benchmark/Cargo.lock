@@ -145,6 +145,7 @@ dependencies = [
  "anyhow",
  "criterion",
  "criterion-plot",
+ "itertools",
  "mac_address",
  "serde",
  "serde_json",

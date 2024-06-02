@@ -14,11 +14,13 @@ mod measurement;
 mod persistence;
 mod plots;
 mod statistics;
+mod summary;
 
 use crate::measurement::measure_throughput;
-use crate::persistence::{dump_measurement, dump_statistics, restore_measurement};
+use crate::persistence::{dump_measurement, dump_statistics, dump_summary, restore_measurement};
 use serde::{Deserialize, Serialize};
 use std::fs::OpenOptions;
+use crate::summary::calculate_summary;
 
 struct Configuration<'a> {
     name: &'a str,
@@ -67,13 +69,19 @@ pub fn main() {
         .map(|arg| arg == "--skip-measurement")
         .unwrap_or(false);
 
+    let mut datapoints_per_config = Vec::with_capacity(CONFIGURATIONS.len());
     for config in CONFIGURATIONS.iter() {
-        run_benchmark(config, skip_measurement);
+        let datapoints = run_benchmark(config, skip_measurement);
+        datapoints_per_config.push((config.name, datapoints));
     }
+
+    let summary = calculate_summary(&datapoints_per_config);
+    dump_summary(&summary);
+    println!("\n=== Summary ===\n{summary}");
 }
 
-fn run_benchmark(config: &Configuration, skip_measurement: bool) {
-    println!("=== Running benchmark for {} ===", config.name);
+fn run_benchmark(config: &Configuration, skip_measurement: bool) -> Vec<Datapoint> {
+    println!("\n=== Running benchmark for {} ===", config.name);
 
     let datapoints = if !skip_measurement {
         let datapoints = measure_throughput(config);
@@ -91,4 +99,6 @@ fn run_benchmark(config: &Configuration, skip_measurement: bool) {
 
     // plot
     plots::create_plots(config.name, &datapoints);
+
+    datapoints
 }

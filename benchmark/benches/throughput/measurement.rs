@@ -25,7 +25,7 @@ pub fn measure_throughput(config: &Configuration) -> Vec<Datapoint> {
 }
 
 fn measure_datapoints() -> Vec<Datapoint> {
-    const READING_INTERVAL_MS: u64 = 100;
+    const READING_INTERVAL_MS: u64 = 1000;
 
     let mut child = Command::new("bmon")
         .stdout(Stdio::piped())
@@ -58,8 +58,8 @@ fn measure_datapoints() -> Vec<Datapoint> {
         .expect("couldn't read line");
     let (baseline_rx_packets, baseline_rx_bytes) = parse_bmon_output(&baseline_line);
 
-    // read for 20 seconds
-    const MEASUREMENT_TIME: u64 = 20_000;
+    // read for 30 seconds
+    const MEASUREMENT_TIME: u64 = 30_000;
     const MEASUREMENT_LINES: usize = (MEASUREMENT_TIME / READING_INTERVAL_MS) as usize;
 
     println!("Measuring for {:.2}s", MEASUREMENT_TIME as f64 / 1000.0);

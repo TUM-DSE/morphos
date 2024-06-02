@@ -3,13 +3,13 @@ use serde::{Deserialize, Serialize};
 use statrs::statistics::{Distribution as StatsrsDistribution, Max, Median, Min};
 use std::fmt::{Display, Formatter};
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Copy, Clone)]
 pub struct Statistics {
     pub rx_packets: Distribution,
     pub rx_bytes: Distribution,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Copy, Clone)]
 pub struct Distribution {
     pub total: u64,
     pub min: f64,
