@@ -10,6 +10,12 @@ edition = "2021"
 anyhow = "1.0"
 criterion = "0.5.1"
 tempfile = "3.10.1"
+mac_address = "1.1.7"
+serde = { version = "1.0.203", features = ["derive"] }
+serde_json = "1.0.117"
+tabled = "0.15.0"
+statrs = "0.16.0"
+criterion-plot = "0.5.0"
 
 [[bench]]
 name = "live_reconfigure"
@@ -17,4 +23,8 @@ harness = false
 
 [[bench]]
 name = "startup"
+harness = false
+
+[[bench]]
+name = "throughput"
 harness = false

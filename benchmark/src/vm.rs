@@ -2,6 +2,7 @@ use std::io::{BufReader, Lines};
 use std::net::{Ipv4Addr, SocketAddrV4};
 use std::process::{Child, ChildStdout, Command, Stdio};
 
+pub const DATA_IFACE: &str = "clicknet";
 pub const DATA_ADDR: Ipv4Addr = Ipv4Addr::new(172, 44, 0, 2);
 pub const CONTROL_ADDR: SocketAddrV4 = SocketAddrV4::new(Ipv4Addr::new(173, 44, 0, 2), 4444);
 
@@ -55,6 +56,16 @@ pub fn wait_until_ready(lines: &mut Lines<BufReader<ChildStdout>>) {
     for line in lines {
         if let Ok(line) = line {
             if line.contains("Received packet") && !line.contains("->") {
+                return;
+            }
+        }
+    }
+}
+
+pub fn wait_until_driver_start(lines: &mut Lines<BufReader<ChildStdout>>) {
+    for line in lines {
+        if let Ok(line) = line {
+            if line.contains("Starting driver...") {
                 return;
             }
         }

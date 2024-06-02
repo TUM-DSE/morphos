@@ -44,6 +44,7 @@
                 buildInputs = buildDeps ++ [
                     unstable.kraft
                     unstable.rustup
+                    unstable.bmon
                 ];
                 KRAFTKIT_NO_WARN_SUDO = "1";
                 KRAFTKIT_NO_CHECK_UPDATES = "true";

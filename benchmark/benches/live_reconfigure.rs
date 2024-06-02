@@ -17,11 +17,10 @@ use std::process::ChildStdout;
 use std::time::{Duration, Instant};
 
 use anyhow::Context;
-use click_benchmark::cpio::make_cpio_archive;
+use click_benchmark::cpio::prepare_cpio_archive;
 use click_benchmark::terminal;
 use click_benchmark::vm::{self, wait_until_ready, FileSystem, CONTROL_ADDR};
 use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion};
-use tempfile::TempDir;
 
 struct Configuration<'a> {
     name: &'a str,
@@ -43,12 +42,18 @@ const CONFIGURATIONS: &[Configuration] = &[
     },
 ];
 
+const BPFILTER_BASE_PATH: &str = "bpfilters";
+
 pub fn live_reconfigure(c: &mut Criterion) {
     let mut group = c.benchmark_group("Live Reconfigure");
 
     for config in CONFIGURATIONS {
         // prepare click VM
-        let cpio = prepare_cpio_archive(config).expect("couldn't prepare cpio archive");
+        let cpio = prepare_cpio_archive(
+            &create_click_configuration(config.bpfilter_program),
+            &PathBuf::from(BPFILTER_BASE_PATH).join(config.bpfilter_program),
+        )
+        .expect("couldn't prepare cpio archive");
 
         let mut child = vm::start_click(
             FileSystem::CpioArchive(&cpio.path.to_string_lossy()),
@@ -125,41 +130,6 @@ fn wait_until_reconfiguration_end(lines: &mut Lines<BufReader<ChildStdout>>) {
     lines
         .filter_map(Result::ok)
         .find(|line| line.contains("Reconfigured BPFilter"));
-}
-
-const BPFILTER_BASE_PATH: &str = "bpfilters";
-
-struct CpioArchive {
-    path: PathBuf,
-
-    // Temporary directory that contains the cpio archive.
-    // Held so that it's not deleted until the archive is no longer needed.
-    _parent: TempDir,
-}
-
-fn prepare_cpio_archive(configuration: &Configuration) -> anyhow::Result<CpioArchive> {
-    let tmpdir = tempfile::tempdir()?;
-
-    // write click configuration
-    let click_configuration = create_click_configuration(configuration.bpfilter_program);
-    let click_configuration_path = tmpdir.path().join("config.click");
-    std::fs::write(&click_configuration_path, click_configuration)?;
-
-    // copy filter binary
-    let filter_binary_path = tmpdir.path().join(configuration.bpfilter_program);
-    std::fs::copy(
-        PathBuf::from(BPFILTER_BASE_PATH).join(configuration.bpfilter_program),
-        &filter_binary_path,
-    )?;
-
-    // create cpio archive
-    let cpio_archive_path = tmpdir.path().join("config.cpio");
-    make_cpio_archive(&cpio_archive_path, tmpdir.path())?;
-
-    Ok(CpioArchive {
-        path: cpio_archive_path,
-        _parent: tmpdir,
-    })
 }
 
 fn create_click_configuration(bpfilter_program: &str) -> String {
