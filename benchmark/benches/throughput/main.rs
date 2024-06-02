@@ -1,3 +1,15 @@
+// Module responsible for handling *throughput* benchmarks.
+//
+// # Preparation
+// 1. Start click VM with the desired configuration
+// 2. Wait until the router is ready
+//
+// # Benchmarking procedure
+// 1. The Click router generates a lot of traffic by itself
+// 2. The generated packets pass through the specified element (or specifically not)
+// 3. The traffic is sent to the host machine
+// 4. The host machine measures the throughput using bmon
+
 mod measurement;
 mod persistence;
 mod plots;

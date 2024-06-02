@@ -51,11 +51,11 @@ pub fn live_reconfigure(c: &mut Criterion) {
         // prepare click VM
         let cpio = prepare_cpio_archive(
             &create_click_configuration(config.bpfilter_program),
-            &PathBuf::from(BPFILTER_BASE_PATH).join(config.bpfilter_program),
+            Some(&PathBuf::from(BPFILTER_BASE_PATH).join(config.bpfilter_program)),
         )
         .expect("couldn't prepare cpio archive");
 
-        let mut child = vm::start_click(
+        let mut click_vm = vm::start_click(
             FileSystem::CpioArchive(&cpio.path.to_string_lossy()),
             &[
                 "-netdev".to_string(),
@@ -67,8 +67,7 @@ pub fn live_reconfigure(c: &mut Criterion) {
         .expect("couldn't start click");
 
         // wait until the router is ready
-        let mut lines =
-            BufReader::new(child.stdout.take().expect("child stdout can't be taken")).lines();
+        let mut lines = click_vm.stdout.take().unwrap().lines();
         wait_until_ready(&mut lines);
 
         let lines = RefCell::new(lines);
@@ -87,12 +86,9 @@ pub fn live_reconfigure(c: &mut Criterion) {
                 });
             },
         );
-
-        child.kill().expect("couldn't kill child process");
     }
 
     group.finish();
-    terminal::restore_echo();
 }
 
 fn run_benchmark(config: &Configuration, lines: &mut Lines<BufReader<ChildStdout>>) -> Duration {

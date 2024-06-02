@@ -93,25 +93,19 @@ pub fn startup(c: &mut Criterion) {
     }
 
     group.finish();
-    terminal::restore_echo();
 }
 
 fn run_benchmark(config: &Configuration) -> Duration {
     let extra_args: Vec<_> = config.vm_extra_args.iter().map(|s| s.to_string()).collect();
 
     let start = Instant::now();
-    let mut child = vm::start_click(FileSystem::Raw(config.click_configuration), &extra_args)
+    let mut click_vm = vm::start_click(FileSystem::Raw(config.click_configuration), &extra_args)
         .expect("failed to start clickos");
 
     // wait until the child receives one packet -> wait until the child prints "Received packet"
-    let stdout = child.stdout.take().expect("failed to take stdout");
-    let reader = BufReader::new(stdout);
-    wait_until_ready(&mut reader.lines());
+    wait_until_ready(&mut click_vm.stdout.take().unwrap().lines());
 
-    let elapsed = start.elapsed();
-    child.kill().unwrap();
-
-    elapsed
+    start.elapsed()
 }
 
 fn send_packet_loop() -> anyhow::Result<()> {

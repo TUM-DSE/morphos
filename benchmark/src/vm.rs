@@ -1,3 +1,4 @@
+use crate::terminal::restore_echo;
 use std::io::{BufReader, Lines};
 use std::net::{Ipv4Addr, SocketAddrV4};
 use std::process::{Child, ChildStdout, Command, Stdio};
@@ -6,12 +7,24 @@ pub const DATA_IFACE: &str = "clicknet";
 pub const DATA_ADDR: Ipv4Addr = Ipv4Addr::new(172, 44, 0, 2);
 pub const CONTROL_ADDR: SocketAddrV4 = SocketAddrV4::new(Ipv4Addr::new(173, 44, 0, 2), 4444);
 
+pub struct ClickVm {
+    pub child: Child,
+    pub stdout: Option<BufReader<ChildStdout>>,
+}
+
+impl Drop for ClickVm {
+    fn drop(&mut self) {
+        self.child.kill().expect("failed to kill click child");
+        restore_echo();
+    }
+}
+
 pub enum FileSystem<'a> {
     CpioArchive(&'a str),
     Raw(&'a str),
 }
 
-pub fn start_click(fs: FileSystem, extra_args: &[String]) -> anyhow::Result<Child> {
+pub fn start_click(fs: FileSystem, extra_args: &[String]) -> anyhow::Result<ClickVm> {
     let vfs_fstab = match fs {
         FileSystem::CpioArchive(_) => " vfs.fstab=[\"initrd0:/:extract::ramfs=1:\"]",
         FileSystem::Raw(_) => "",
@@ -44,12 +57,14 @@ pub fn start_click(fs: FileSystem, extra_args: &[String]) -> anyhow::Result<Chil
 
     args.extend_from_slice(extra_args);
 
-    let child = Command::new("sudo")
+    let mut child = Command::new("sudo")
         .args(args)
         .stdout(Stdio::piped())
         .spawn()?;
 
-    Ok(child)
+    let stdout = BufReader::new(child.stdout.take().expect("cannot get stdout of click vm"));
+
+    Ok(ClickVm { child, stdout: Some(stdout) })
 }
 
 pub fn wait_until_ready(lines: &mut Lines<BufReader<ChildStdout>>) {

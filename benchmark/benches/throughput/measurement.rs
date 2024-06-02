@@ -15,19 +15,13 @@ pub fn measure_throughput(config: &Configuration) -> Vec<Datapoint> {
     .expect("couldn't prepare cpio archive");
 
     println!("Starting Click");
-    let mut child = start_click(FileSystem::CpioArchive(&cpio.path.to_string_lossy()), &[])
+    let mut click_vm = start_click(FileSystem::CpioArchive(&cpio.path.to_string_lossy()), &[])
         .expect("couldn't start click");
 
-    wait_until_driver_start(
-        &mut BufReader::new(child.stdout.take().expect("failed to take click stdout")).lines(),
-    );
+    wait_until_driver_start(&mut click_vm.stdout.take().unwrap().lines());
     println!("Click started and router ready");
 
-    let datapoints = measure_datapoints();
-
-    child.kill().expect("couldn't kill click");
-
-    datapoints
+    measure_datapoints()
 }
 
 fn measure_datapoints() -> Vec<Datapoint> {
