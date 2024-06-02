@@ -1,24 +1,20 @@
 // Original source dual-licensed under MIT / Apache 2: https://github.com/bheisler/criterion.rs/blob/master/src/plot/gnuplot_backend/iteration_times.rs
 // Modified to change iteration times to average throughput
 
-use std::fmt::format;
-use std::process::Child;
-use criterion_plot::prelude::*;
 use crate::persistence::plot_path;
+use criterion_plot::prelude::*;
+use std::process::Child;
 
 use super::*;
 
-fn throughput_figure(
-    unit: &str,
-    data: &[(u64, f64)],
-    size: Option<Size>,
-) -> Figure {
+fn throughput_figure(unit: &str, data: &[(u64, f64)], size: Option<Size>) -> Figure {
     let mut figure = Figure::new();
     figure
         .set(Font(DEFAULT_FONT))
         .set(size.unwrap_or(SIZE))
         .configure(Axis::BottomX, |a| {
-            a.configure(Grid::Major, |g| g.show()).set(Label("Time (ms)"))
+            a.configure(Grid::Major, |g| g.show())
+                .set(Label("Time (ms)"))
         })
         .configure(Axis::LeftY, |a| {
             a.configure(Grid::Major, |g| g.show())

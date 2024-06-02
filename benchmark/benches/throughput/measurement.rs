@@ -1,4 +1,4 @@
-use crate::Datapoint;
+use crate::{Configuration, Datapoint};
 use click_benchmark::cpio::prepare_cpio_archive;
 use click_benchmark::vm::{start_click, wait_until_driver_start, FileSystem, DATA_IFACE};
 use mac_address::mac_address_by_name;
@@ -6,11 +6,11 @@ use std::io::{BufRead, BufReader};
 use std::path::PathBuf;
 use std::process::{Command, Stdio};
 
-pub fn measure_throughput() -> Vec<Datapoint> {
+pub fn measure_throughput(config: &Configuration) -> Vec<Datapoint> {
     println!("Preparing CPIO archive");
     let cpio = prepare_cpio_archive(
-        &create_click_configuration(),
-        &PathBuf::from("bpfilters/drop"),
+        &create_click_configuration(config),
+        config.bpfilter_program.map(PathBuf::from),
     )
     .expect("couldn't prepare cpio archive");
 
@@ -116,10 +116,12 @@ fn parse_bmon_output(line: &str) -> (u64, u64) {
     (rx, bytes)
 }
 
-fn create_click_configuration() -> String {
+fn create_click_configuration(config: &Configuration) -> String {
     let mac_address = mac_address_by_name(DATA_IFACE)
         .expect("couldn't get mac address")
         .expect("no mac address found");
+
+    let click_element_config = config.click_config.unwrap_or("");
 
     format!(
         r#"
@@ -129,6 +131,7 @@ FromDevice(0) -> Discard;
 InfiniteSource(DATA \<0800>, LENGTH 60, LIMIT -1, BURST 100000)
 -> UDPIPEncap(172.44.0.2, 5678, 172.44.0.1, 5678)
 -> EtherEncap(0x0800, $MAC0, {mac_address})
+{click_element_config}
 -> ToDevice(0);
 "#
     )

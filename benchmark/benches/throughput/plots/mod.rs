@@ -1,7 +1,7 @@
-use criterion_plot::*;
-use crate::Datapoint;
 use crate::plots::throughput::{throughput, throughput_small};
 use crate::statistics::derivative;
+use crate::Datapoint;
+use criterion_plot::*;
 
 mod throughput;
 
@@ -24,8 +24,16 @@ pub fn create_plots(name: &str, datapoints: &[Datapoint]) {
     let bytes_derivative = derivative(&bytes_points);
 
     // merge with time
-    let packets_time = packets_derivative.into_iter().enumerate().map(|(idx, d)| (datapoints[idx].time, d)).collect::<Vec<_>>();
-    let bytes_time = bytes_derivative.into_iter().enumerate().map(|(idx, d)| (datapoints[idx].time, d)).collect::<Vec<_>>();
+    let packets_time = packets_derivative
+        .into_iter()
+        .enumerate()
+        .map(|(idx, d)| (datapoints[idx].time, d))
+        .collect::<Vec<_>>();
+    let bytes_time = bytes_derivative
+        .into_iter()
+        .enumerate()
+        .map(|(idx, d)| (datapoints[idx].time, d))
+        .collect::<Vec<_>>();
 
     let children = [
         throughput(name, "packets", "packets", &packets_time, None),

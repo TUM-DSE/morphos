@@ -13,7 +13,7 @@ pub struct CpioArchive {
 
 pub fn prepare_cpio_archive(
     click_configuration: &str,
-    bpfilter_path: &Path,
+    bpfilter_path: Option<impl AsRef<Path>>,
 ) -> anyhow::Result<CpioArchive> {
     let tmpdir = tempfile::tempdir()?;
 
@@ -22,11 +22,14 @@ pub fn prepare_cpio_archive(
     std::fs::write(&click_configuration_path, click_configuration)?;
 
     // copy filter binary
-    let bpfilter_file_name = bpfilter_path
-        .file_name()
-        .expect("couldn't find bpfilter file name");
-    let filter_binary_path = tmpdir.path().join(bpfilter_file_name);
-    std::fs::copy(bpfilter_path, &filter_binary_path)?;
+    if let Some(bpfilter_path) = bpfilter_path {
+        let bpfilter_path = bpfilter_path.as_ref();
+        let bpfilter_file_name = bpfilter_path
+            .file_name()
+            .expect("couldn't find bpfilter file name");
+        let filter_binary_path = tmpdir.path().join(bpfilter_file_name);
+        std::fs::copy(bpfilter_path, &filter_binary_path)?;
+    }
 
     // create cpio archive
     let cpio_archive_path = tmpdir.path().join("config.cpio");
