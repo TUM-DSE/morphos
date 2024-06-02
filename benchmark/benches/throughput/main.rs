@@ -37,22 +37,22 @@ const CONFIGURATIONS: &[Configuration] = &[
     Configuration {
         name: "pass (IPFilter)",
         bpfilter_program: None,
-        click_config: Some("-> IPFilter(allow all)"),
+        click_config: Some("-> IPFilter(allow all) "),
     },
     Configuration {
         name: "pass (bpfilter)",
         bpfilter_program: Some("bpfilters/pass"),
-        click_config: Some("-> BPFilter(ID 1, FILE pass)"),
+        click_config: Some("-> BPFilter(ID 1, FILE pass) "),
     },
     Configuration {
         name: "source port (IPFilter)",
         bpfilter_program: None,
-        click_config: Some("-> IPFilter(deny src port 1234, allow all)"),
+        click_config: Some("-> IPFilter(deny src port 1234, allow all) "),
     },
     Configuration {
         name: "target port (bpfilter)",
         bpfilter_program: Some("bpfilters/target-port"),
-        click_config: Some("-> BPFilter(ID 1, FILE target-port)"),
+        click_config: Some("-> BPFilter(ID 1, FILE target-port) "),
     },
 ];
 

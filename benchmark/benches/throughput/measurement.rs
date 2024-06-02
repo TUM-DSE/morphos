@@ -115,7 +115,8 @@ fn create_click_configuration(config: &Configuration) -> String {
         .expect("couldn't get mac address")
         .expect("no mac address found");
 
-    let click_element_config = config.click_config.unwrap_or("");
+    // enhance the effect of the click element on the benchmarking times by repeating it 50 times
+    let click_element_config = config.click_config.unwrap_or("").repeat(50);
 
     format!(
         r#"
