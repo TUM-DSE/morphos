@@ -61,6 +61,7 @@ class BPFilter : public Element { public:
 private:
 
     uint64_t _bpfilter_id;
+    bool _jit;
     uint64_t _count;
     uint64_t _filtered;
     struct uk_rwlock _lock = UK_RWLOCK_INITIALIZER(_lock, 0);

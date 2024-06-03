@@ -18,45 +18,11 @@ BPFilter::BPFilter()
 {
 }
 
-static void ubpf_print(const char *msg) {
-    printf("%s", msg);
-}
-
-int BPFilter::configure(Vector<String> &conf, ErrorHandler *errh)
+char* BPFilter::read_file(const char* filename, size_t* size)
 {
-    if (conf.empty()) {
-        return -1;
-    }
-
-    bool reconfigure = false;
-    if (_ubpf_vm == NULL) {
-        uk_pr_info("Configuring BPFilter...\n");
-
-        _ubpf_vm = ubpf_create();
-        if (_ubpf_vm == NULL) {
-            return errh->error("unable to create ubpf vm\n");
-        }
-
-        ubpf_register(_ubpf_vm, 0, "ubpf_print", (void*) ubpf_print);
-    } else {
-        uk_pr_info("Reconfiguring BPFilter...\n");
-
-        reconfigure = true;
-    }
-
-    String program_string = String();
-    if (Args(conf, this, errh)
-    .read("ID", _bpfilter_id)
-    .read("FILE", AnyArg(), program_string)
-    .complete() < 0) {
-        return -1;
-    }
-
-    const char* filename = program_string.c_str();
-
     FILE* file = fopen(filename, "rb");
     if (!file) {
-        return errh->error("unable to open file (%s): %s\n", filename, strerror(errno));
+        return NULL;
     }
 
     fseek(file, 0, SEEK_END);
@@ -65,17 +31,59 @@ int BPFilter::configure(Vector<String> &conf, ErrorHandler *errh)
 
     unsigned char* buffer = (unsigned char*)malloc(file_size);
     if (!buffer) {
-        return errh->error("error allocating memory for file (%s): %s\n", filename, strerror(errno));
+        fclose(file);
+        return NULL;
     }
 
     size_t bytes_read = fread(buffer, 1, file_size, file);
     if (bytes_read != file_size) {
         fclose(file);
         free(buffer);
-        return errh->error("error reading file (%s): %s\n", filename, strerror(errno));
+        return NULL;
     }
 
     fclose(file);
+
+    *size = file_size;
+    return (char*)buffer;
+}
+
+int BPFilter::configure(Vector<String> &conf, ErrorHandler *errh)
+{
+    if (conf.empty()) {
+        return -1;
+    }
+
+    String program_string = String();
+    if (Args(conf, this, errh)
+                .read("ID", _bpfilter_id)
+                .read("JIT", _jit)
+                .read("FILE", AnyArg(), program_string)
+                .complete() < 0) {
+        return -1;
+    }
+
+    const char* filename = program_string.c_str();
+
+    bool reconfigure = _ubpf_vm != NULL;
+    if (reconfigure) {
+        uk_pr_info("Reconfiguring BPFilter (ID: %lu - JIT: %b) with program %s..\n", _bpfilter_id, _jit, filename);
+    } else {
+        uk_pr_info("Configuring BPFilter (ID: %lu - JIT: %b) with program %s...\n", _bpfilter_id, _jit, filename);
+    }
+
+    size_t file_size;
+    char* buffer = read_file(filename, &file_size);
+    if (buffer == NULL) {
+        return errh->error("Error reading file %s\n", filename);
+    }
+
+    if (!reconfigure) {
+        _ubpf_vm = ubpf_create();
+        if (_ubpf_vm == NULL) {
+            return errh->error("Error creating ubpf vm\n");
+        }
+    }
 
     uk_rwlock_wlock(&_lock);
     if (reconfigure) {
@@ -92,9 +100,9 @@ int BPFilter::configure(Vector<String> &conf, ErrorHandler *errh)
     }
 
     if (reconfigure) {
-        uk_pr_info("Reconfigured BPFilter (ID: %lu) with program %s\n", _bpfilter_id, filename);
+        uk_pr_info("Reconfigured BPFilter (ID: %lu - JIT: %b) with program %s\n", _bpfilter_id, _jit, filename);
     } else {
-        uk_pr_info("Configured BPFilter (ID: %lu) with program %s\n", _bpfilter_id, filename);
+        uk_pr_info("Configured BPFilter (ID: %lu - JIT: %b) with program %s\n", _bpfilter_id, _jit, filename);
     }
 
     return 0;
