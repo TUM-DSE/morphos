@@ -18,27 +18,45 @@ use std::time::{Duration, Instant};
 
 use anyhow::Context;
 use click_benchmark::cpio::prepare_cpio_archive;
-use click_benchmark::terminal;
 use click_benchmark::vm::{self, wait_until_ready, FileSystem, CONTROL_ADDR};
 use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion};
 
 struct Configuration<'a> {
     name: &'a str,
     bpfilter_program: &'a str,
+    jit: bool,
 }
 
 const CONFIGURATIONS: &[Configuration] = &[
     Configuration {
         name: "pass",
         bpfilter_program: "pass",
+        jit: false,
+    },
+    Configuration {
+        name: "pass-jit",
+        bpfilter_program: "pass",
+        jit: true,
     },
     Configuration {
         name: "drop",
         bpfilter_program: "drop",
+        jit: false,
+    },
+    Configuration {
+        name: "drop-jit",
+        bpfilter_program: "drop",
+        jit: true,
     },
     Configuration {
         name: "target-port",
         bpfilter_program: "target-port",
+        jit: false,
+    },
+    Configuration {
+        name: "target-port-jit",
+        bpfilter_program: "target-port",
+        jit: true,
     },
 ];
 
@@ -50,10 +68,10 @@ pub fn live_reconfigure(c: &mut Criterion) {
     for config in CONFIGURATIONS {
         // prepare click VM
         let cpio = prepare_cpio_archive(
-            &create_click_configuration(config.bpfilter_program),
+            &create_click_configuration(config.bpfilter_program, config.jit),
             Some(&PathBuf::from(BPFILTER_BASE_PATH).join(config.bpfilter_program)),
         )
-        .expect("couldn't prepare cpio archive");
+            .expect("couldn't prepare cpio archive");
 
         let mut click_vm = vm::start_click(
             FileSystem::CpioArchive(&cpio.path.to_string_lossy()),
@@ -64,7 +82,7 @@ pub fn live_reconfigure(c: &mut Criterion) {
                 "virtio-net-pci,netdev=en1".to_string(),
             ],
         )
-        .expect("couldn't start click");
+            .expect("couldn't start click");
 
         // wait until the router is ready
         let mut lines = click_vm.stdout.take().unwrap().lines();
@@ -92,7 +110,7 @@ pub fn live_reconfigure(c: &mut Criterion) {
 }
 
 fn run_benchmark(config: &Configuration, lines: &mut Lines<BufReader<ChildStdout>>) -> Duration {
-    trigger_reconfiguration(config.name).expect("couldn't trigger reconfiguration");
+    trigger_reconfiguration(config.bpfilter_program).expect("couldn't trigger reconfiguration");
     wait_until_reconfiguration_start(lines);
 
     let now = Instant::now();
@@ -119,7 +137,7 @@ fn trigger_reconfiguration(program: &str) -> anyhow::Result<()> {
 fn wait_until_reconfiguration_start(lines: &mut Lines<BufReader<ChildStdout>>) {
     lines
         .filter_map(Result::ok)
-        .find(|line| line.contains("Reconfiguring BPFilter..."));
+        .find(|line| line.contains("Reconfiguring BPFilter"));
 }
 
 fn wait_until_reconfiguration_end(lines: &mut Lines<BufReader<ChildStdout>>) {
@@ -128,7 +146,7 @@ fn wait_until_reconfiguration_end(lines: &mut Lines<BufReader<ChildStdout>>) {
         .find(|line| line.contains("Reconfigured BPFilter"));
 }
 
-fn create_click_configuration(bpfilter_program: &str) -> String {
+fn create_click_configuration(bpfilter_program: &str, jit: bool) -> String {
     format!(
         r#"
 // === Control network ===
@@ -157,8 +175,8 @@ elementclass ControlReceiver {{ $deviceid |
 ControlReceiver(1);
 
 // === Data network ===
-FromDevice(0) -> Print('Received packet') -> BPFilter(ID 1, FILE {bpfilter_program}) -> Discard;
-"#
+FromDevice(0) -> Print('Received packet') -> BPFilter(ID 1, FILE {bpfilter_program}, JIT {jit_arg}) -> Discard;
+"#, jit_arg = if jit { "true" } else { "false" }
     )
 }
 

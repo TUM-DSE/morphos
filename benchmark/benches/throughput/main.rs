@@ -45,14 +45,24 @@ const CONFIGURATIONS: &[Configuration] = &[
         click_config: Some("-> BPFilter(ID 1, FILE pass) "),
     },
     Configuration {
-        name: "source port (IPFilter)",
+        name: "pass (bpfilter - JIT)",
+        bpfilter_program: Some("bpfilters/pass"),
+        click_config: Some("-> BPFilter(ID 1, FILE pass, JIT true) "),
+    },
+    Configuration {
+        name: "target port (IPFilter)",
         bpfilter_program: None,
-        click_config: Some("-> IPFilter(deny src port 1234, allow all) "),
+        click_config: Some("-> IPFilter(deny dst port 1234, allow all) "),
     },
     Configuration {
         name: "target port (bpfilter)",
         bpfilter_program: Some("bpfilters/target-port"),
         click_config: Some("-> BPFilter(ID 1, FILE target-port) "),
+    },
+    Configuration {
+        name: "target port (bpfilter - JIT)",
+        bpfilter_program: Some("bpfilters/target-port"),
+        click_config: Some("-> BPFilter(ID 1, FILE target-port, JIT true) "),
     },
 ];
 
@@ -78,6 +88,8 @@ pub fn main() {
     let summary = calculate_summary(&datapoints_per_config);
     dump_summary(&summary);
     println!("\n=== Summary ===\n{summary}");
+
+    plots::whisker().wait().expect("whisker failed");
 }
 
 fn run_benchmark(config: &Configuration, skip_measurement: bool) -> Vec<Datapoint> {

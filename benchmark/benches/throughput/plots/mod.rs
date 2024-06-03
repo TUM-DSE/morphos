@@ -4,6 +4,9 @@ use crate::Datapoint;
 use criterion_plot::*;
 
 mod throughput;
+mod whisker;
+
+pub use whisker::whisker;
 
 static DEFAULT_FONT: &str = "Helvetica";
 static KDE_POINTS: usize = 500;

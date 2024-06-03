@@ -2,7 +2,7 @@ use std::fmt;
 use std::fmt::Display;
 use serde::{Deserialize, Serialize};
 use crate::Datapoint;
-use crate::statistics::{calculate_statistics, derivative, Distribution, Statistics};
+use crate::statistics::{calculate_statistics, derivative, Distribution};
 
 #[derive(Serialize, Deserialize)]
 pub struct Summary<'a> {
