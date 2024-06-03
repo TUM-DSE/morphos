@@ -67,8 +67,10 @@ private:
     struct uk_rwlock _lock = UK_RWLOCK_INITIALIZER(_lock, 0);
 
     struct ubpf_vm* _ubpf_vm;
+    ubpf_jit_fn _ubpf_jit_fn;
 
     static int write_handler(const String &, Element *, void *, ErrorHandler *) CLICK_COLD;
+    int exec_filter(Packet *p);
 
 };
 

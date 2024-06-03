@@ -14,13 +14,11 @@
 
 CLICK_DECLS
 
-BPFilter::BPFilter()
-{
+BPFilter::BPFilter() {
 }
 
-char* BPFilter::read_file(const char* filename, size_t* size)
-{
-    FILE* file = fopen(filename, "rb");
+char* read_file(const char *filename, size_t *size) {
+    FILE *file = fopen(filename, "rb");
     if (!file) {
         return NULL;
     }
@@ -29,7 +27,7 @@ char* BPFilter::read_file(const char* filename, size_t* size)
     size_t file_size = (size_t) ftell(file);
     fseek(file, 0, SEEK_SET);
 
-    unsigned char* buffer = (unsigned char*)malloc(file_size);
+    unsigned char *buffer = (unsigned char *) malloc(file_size);
     if (!buffer) {
         fclose(file);
         return NULL;
@@ -45,11 +43,10 @@ char* BPFilter::read_file(const char* filename, size_t* size)
     fclose(file);
 
     *size = file_size;
-    return (char*)buffer;
+    return (char *) buffer;
 }
 
-int BPFilter::configure(Vector<String> &conf, ErrorHandler *errh)
-{
+int BPFilter::configure(Vector <String> &conf, ErrorHandler *errh) {
     if (conf.empty()) {
         return -1;
     }
@@ -63,17 +60,17 @@ int BPFilter::configure(Vector<String> &conf, ErrorHandler *errh)
         return -1;
     }
 
-    const char* filename = program_string.c_str();
+    const char *filename = program_string.c_str();
 
     bool reconfigure = _ubpf_vm != NULL;
     if (reconfigure) {
-        uk_pr_info("Reconfiguring BPFilter (ID: %lu - JIT: %b) with program %s..\n", _bpfilter_id, _jit, filename);
+        uk_pr_info("Reconfiguring BPFilter (ID: %lu - JIT: %d) with program %s..\n", _bpfilter_id, _jit, filename);
     } else {
-        uk_pr_info("Configuring BPFilter (ID: %lu - JIT: %b) with program %s...\n", _bpfilter_id, _jit, filename);
+        uk_pr_info("Configuring BPFilter (ID: %lu - JIT: %d) with program %s...\n", _bpfilter_id, _jit, filename);
     }
 
     size_t file_size;
-    char* buffer = read_file(filename, &file_size);
+    char *buffer = read_file(filename, &file_size);
     if (buffer == NULL) {
         return errh->error("Error reading file %s\n", filename);
     }
@@ -90,36 +87,54 @@ int BPFilter::configure(Vector<String> &conf, ErrorHandler *errh)
         ubpf_unload_code(_ubpf_vm);
     }
 
-    char* error_msg;
+    char *error_msg;
     ubpf_load_elf(_ubpf_vm, buffer, file_size, &error_msg);
-
-    uk_rwlock_wunlock(&_lock);
 
     if (error_msg != NULL) {
         return errh->error("Error loading ubpf program: %s\n", error_msg);
     }
 
+    if (_jit) {
+        char *errmsg;
+        _ubpf_jit_fn = ubpf_compile(_ubpf_vm, &errmsg);
+        if (_ubpf_jit_fn == NULL) {
+            return errh->error("Error compiling ubpf program: %s\n", errmsg);
+        }
+    }
+
+    uk_rwlock_wunlock(&_lock);
+
     if (reconfigure) {
-        uk_pr_info("Reconfigured BPFilter (ID: %lu - JIT: %b) with program %s\n", _bpfilter_id, _jit, filename);
+        uk_pr_info("Reconfigured BPFilter (ID: %lu - JIT: %d) with program %s\n", _bpfilter_id, _jit, filename);
     } else {
-        uk_pr_info("Configured BPFilter (ID: %lu - JIT: %b) with program %s\n", _bpfilter_id, _jit, filename);
+        uk_pr_info("Configured BPFilter (ID: %lu - JIT: %d) with program %s\n", _bpfilter_id, _jit, filename);
     }
 
     return 0;
 }
 
-void BPFilter::push(int, Packet *p)
-{
+int BPFilter::exec_filter(Packet *p) {
+    uint64_t ret;
+
+    if (_jit) {
+        ret = _ubpf_jit_fn((void *) p->buffer(), p->buffer_length());
+    } else {
+        if (ubpf_exec(_ubpf_vm, (void *) p->buffer(), p->buffer_length(), &ret) != 0) {
+            uk_pr_err("Error executing filter\n");
+            return -1;
+        }
+    }
+
+    return ret;
+}
+
+void BPFilter::push(int, Packet *p) {
     _count++;
 
     uk_pr_debug("BPFilter: Received packet\n");
 
     uk_rwlock_rlock(&_lock);
-    uint64_t ret;
-    if (ubpf_exec(_ubpf_vm, (void*) p->buffer(), p->buffer_length(), &ret) != 0) {
-        uk_pr_err("Error executing ubpf program\n");
-        return;
-    }
+    uint64_t ret = exec_filter(p);
     uk_rwlock_runlock(&_lock);
 
     if (ret == 1) {
@@ -134,9 +149,8 @@ void BPFilter::push(int, Packet *p)
 
 int
 BPFilter::write_handler(const String &s, Element *e, void *user_data,
-                        ErrorHandler *errh)
-{
-    BPFilter * bp_filter = static_cast<BPFilter *>(e);
+                        ErrorHandler *errh) {
+    BPFilter *bp_filter = static_cast<BPFilter *>(e);
     bp_filter->_count = 0;
     bp_filter->_filtered = 0;
 
@@ -144,8 +158,7 @@ BPFilter::write_handler(const String &s, Element *e, void *user_data,
 }
 
 void
-BPFilter::add_handlers()
-{
+BPFilter::add_handlers() {
     add_data_handlers("count", Handler::h_read, &_count);
     add_data_handlers("filtered", Handler::h_read, &_filtered);
 
@@ -154,4 +167,5 @@ BPFilter::add_handlers()
 
 CLICK_ENDDECLS
 ELEMENT_REQUIRES(int64)
+
 EXPORT_ELEMENT(BPFilter)

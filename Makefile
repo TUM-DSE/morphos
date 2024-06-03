@@ -7,7 +7,5 @@ build:
 run:
 	./run.sh
 
-build-run: build run
-
 benchmark:
 	cd benchmarks && cargo bench

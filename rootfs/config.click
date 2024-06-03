@@ -1,72 +1,48 @@
-// need this to initialize the device 0
-FromDevice(0) -> Discard;
+// === Control network ===
+elementclass ControlReceiver { $deviceid |
+    FromDevice($deviceid)
+     -> c0 :: Classifier(12/0806 20/0001,
+                         12/0800,
+                         -);
 
-// bmon -p 'clicknet' -o format:fmt='rx=$(attr:rx:packets) rx_pps=$(attr:rxrate:packets)\n' -r 0.1 -R 1
-// baseline: 50kpps
-// bpfilter pass: 50kpps
-// ipfilter: 50kpps
+    // Answer ARP requests
+    c0[0] -> ARPResponder(173.44.0.2 $MAC1)
+          -> ToDevice($deviceid);
 
-InfiniteSource(DATA <>, LENGTH 0, BURST 10000)
--> UDPIPEncap(172.44.0.2, 5678, 172.44.0.1, 5678)
--> EtherEncap(0x0800, $MAC0, 76:7e:90:d4:98:54)
--> BPFilter(ID 1, FILE filter-rs)
--> BPFilter(ID 1, FILE filter-rs)
--> BPFilter(ID 1, FILE filter-rs)
--> BPFilter(ID 1, FILE filter-rs)
--> BPFilter(ID 1, FILE filter-rs)
--> BPFilter(ID 1, FILE filter-rs)
--> BPFilter(ID 1, FILE filter-rs)
--> BPFilter(ID 1, FILE filter-rs)
--> BPFilter(ID 1, FILE filter-rs)
--> BPFilter(ID 1, FILE filter-rs)
--> BPFilter(ID 1, FILE filter-rs)
--> BPFilter(ID 1, FILE filter-rs)
--> BPFilter(ID 1, FILE filter-rs)
--> BPFilter(ID 1, FILE filter-rs)
--> BPFilter(ID 1, FILE filter-rs)
--> BPFilter(ID 1, FILE filter-rs)
--> BPFilter(ID 1, FILE filter-rs)
--> BPFilter(ID 1, FILE filter-rs)
--> BPFilter(ID 1, FILE filter-rs)
--> BPFilter(ID 1, FILE filter-rs)
--> BPFilter(ID 1, FILE filter-rs)
--> BPFilter(ID 1, FILE filter-rs)
--> BPFilter(ID 1, FILE filter-rs)
--> BPFilter(ID 1, FILE filter-rs)
--> BPFilter(ID 1, FILE filter-rs)
--> BPFilter(ID 1, FILE filter-rs)
--> BPFilter(ID 1, FILE filter-rs)
--> BPFilter(ID 1, FILE filter-rs)
--> BPFilter(ID 1, FILE filter-rs)
--> BPFilter(ID 1, FILE filter-rs)
--> BPFilter(ID 1, FILE filter-rs)
--> BPFilter(ID 1, FILE filter-rs)
--> BPFilter(ID 1, FILE filter-rs)
--> BPFilter(ID 1, FILE filter-rs)
--> BPFilter(ID 1, FILE filter-rs)
--> BPFilter(ID 1, FILE filter-rs)
--> BPFilter(ID 1, FILE filter-rs)
--> BPFilter(ID 1, FILE filter-rs)
--> BPFilter(ID 1, FILE filter-rs)
--> BPFilter(ID 1, FILE filter-rs)
--> BPFilter(ID 1, FILE filter-rs)
--> BPFilter(ID 1, FILE filter-rs)
--> BPFilter(ID 1, FILE filter-rs)
--> BPFilter(ID 1, FILE filter-rs)
--> BPFilter(ID 1, FILE filter-rs)
--> BPFilter(ID 1, FILE filter-rs)
--> BPFilter(ID 1, FILE filter-rs)
--> BPFilter(ID 1, FILE filter-rs)
--> BPFilter(ID 1, FILE filter-rs)
--> BPFilter(ID 1, FILE filter-rs)
--> BPFilter(ID 1, FILE filter-rs)
--> BPFilter(ID 1, FILE filter-rs)
--> BPFilter(ID 1, FILE filter-rs)
--> BPFilter(ID 1, FILE filter-rs)
--> BPFilter(ID 1, FILE filter-rs)
--> BPFilter(ID 1, FILE filter-rs)
--> BPFilter(ID 1, FILE filter-rs)
--> BPFilter(ID 1, FILE filter-rs)
--> BPFilter(ID 1, FILE filter-rs)
--> BPFilter(ID 1, FILE filter-rs)
--> ToDevice(0)
+    // Handle IP packets
+    c0[1] -> StripEtherVLANHeader
+     -> CheckIPHeader
+     -> IPFilter(allow dst port 4444, deny all)
+     -> IPReassembler
+     -> SetUDPChecksum
+     -> CheckUDPHeader
+     -> Control;
+
+    c0[2] -> Discard;
+}
+
+ControlReceiver(1);
+
+// === Data network ===
+FromDevice(0)
+ -> c1 :: Classifier(12/0806 20/0001,
+                     12/0800,
+                     -);
+
+// Answer ARP requests
+c1[0] -> ARPResponder(172.44.0.2 $MAC0)
+      -> ToDevice(0);
+
+// Handle IP Packets
+c1[1] -> StripEtherVLANHeader
+ -> CheckIPHeader
+ -> IPReassembler
+ -> SetUDPChecksum
+ -> CheckUDPHeader
+ -> IPFilter(allow src ip 172.44.0.1 and dest ip 172.44.0.2, deny all)
+ -> Print('Received packet (pre-filtering)')
+ -> BPFilter(ID 1, FILE drop, JIT true)
+ -> Print('Received packet (post-filtering)')
+ -> ToDevice(0);
+
+c1[2] -> Discard;
