@@ -5,7 +5,6 @@
 // 2. Exit the program once "Received packet" was printed to qemu's stdout
 // 3. In a separate thread, continuously send a lot of UDP packets to qemu (in order to trigger the "Received packet" message).
 
-use click_benchmark::terminal;
 use click_benchmark::vm::{self, wait_until_ready, FileSystem, DATA_ADDR};
 use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion};
 use std::io::{BufRead, BufReader};

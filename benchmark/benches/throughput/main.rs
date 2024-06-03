@@ -78,10 +78,14 @@ pub fn main() {
         .nth(1)
         .map(|arg| arg == "--skip-measurement")
         .unwrap_or(false);
+    let except = std::env::args().skip(1)
+        .filter(|arg| arg.starts_with("--except"))
+        .map(|arg| arg.split('=').nth(1).unwrap().to_string())
+        .collect::<Vec<String>>();
 
     let mut datapoints_per_config = Vec::with_capacity(CONFIGURATIONS.len());
     for config in CONFIGURATIONS.iter() {
-        let datapoints = run_benchmark(config, skip_measurement);
+        let datapoints = run_benchmark(config, skip_measurement, &except);
         datapoints_per_config.push((config.name, datapoints));
     }
 
@@ -92,10 +96,10 @@ pub fn main() {
     plots::whisker().wait().expect("whisker failed");
 }
 
-fn run_benchmark(config: &Configuration, skip_measurement: bool) -> Vec<Datapoint> {
+fn run_benchmark(config: &Configuration, skip_measurement: bool, except: &[String]) -> Vec<Datapoint> {
     println!("\n=== Running benchmark for {} ===", config.name);
 
-    let datapoints = if !skip_measurement {
+    let datapoints = if !skip_measurement || except.contains(&config.name.to_string()) {
         let datapoints = measure_throughput(config);
         dump_measurement(config.name, &datapoints);
 

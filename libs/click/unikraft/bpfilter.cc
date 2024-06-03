@@ -17,7 +17,7 @@ CLICK_DECLS
 BPFilter::BPFilter() {
 }
 
-char* read_file(const char *filename, size_t *size) {
+char *read_file(const char *filename, size_t *size) {
     FILE *file = fopen(filename, "rb");
     if (!file) {
         return NULL;
@@ -46,16 +46,34 @@ char* read_file(const char *filename, size_t *size) {
     return (char *) buffer;
 }
 
+char write_file(const char *filename, void *buffer, size_t size) {
+    FILE *file = fopen(filename, "wb");
+    if (!file) {
+        return -1;
+    }
+
+    size_t bytes_written = fwrite(buffer, 1, size, file);
+    if (bytes_written != size) {
+        fclose(file);
+        return -1;
+    }
+
+    fclose(file);
+    return 0;
+}
+
 int BPFilter::configure(Vector <String> &conf, ErrorHandler *errh) {
     if (conf.empty()) {
         return -1;
     }
 
+    bool dump_jit;
     String program_string = String();
     if (Args(conf, this, errh)
                 .read("ID", _bpfilter_id)
                 .read("JIT", _jit)
                 .read("FILE", AnyArg(), program_string)
+                .read("DUMP_JIT", dump_jit)
                 .complete() < 0) {
         return -1;
     }
@@ -80,6 +98,8 @@ int BPFilter::configure(Vector <String> &conf, ErrorHandler *errh) {
         if (_ubpf_vm == NULL) {
             return errh->error("Error creating ubpf vm\n");
         }
+
+        ubpf_toggle_bounds_check(_ubpf_vm, false);
     }
 
     uk_rwlock_wlock(&_lock);
@@ -95,11 +115,27 @@ int BPFilter::configure(Vector <String> &conf, ErrorHandler *errh) {
     }
 
     if (_jit) {
-        char *errmsg;
-        _ubpf_jit_fn = ubpf_compile(_ubpf_vm, &errmsg);
+        _ubpf_jit_fn = ubpf_compile(_ubpf_vm, &error_msg);
         if (_ubpf_jit_fn == NULL) {
-            return errh->error("Error compiling ubpf program: %s\n", errmsg);
+            return errh->error("Error compiling ubpf program: %s\n", error_msg);
         }
+    }
+
+    if (dump_jit) {
+        uint8_t *buffer = (uint8_t*) calloc(65536, 1);
+        if (buffer == NULL) {
+            return errh->error("Error allocating buffer for jit dump\n");
+        }
+
+        size_t jitted_size;
+        if (ubpf_translate(_ubpf_vm, buffer, &jitted_size, &error_msg) < 0) {
+            return errh->error("Error translating ubpf program: %s\n", error_msg);
+        }
+
+        write_file("jit_dump.bin", buffer, jitted_size);
+        free(buffer);
+
+        uk_pr_info("Dumped JIT code to jit_dump.bin\n");
     }
 
     uk_rwlock_wunlock(&_lock);

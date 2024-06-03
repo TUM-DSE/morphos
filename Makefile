@@ -7,5 +7,8 @@ build:
 run:
 	./run.sh
 
+disassemble-jit-dump:
+	objdump -D -b binary -mi386 -Maddr16,data16 rootfs/jit_dump.bin
+
 benchmark:
 	cd benchmarks && cargo bench
