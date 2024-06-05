@@ -7,12 +7,6 @@ use network_types::ip::{IpProto, Ipv4Hdr};
 use network_types::tcp::TcpHdr;
 use network_types::udp::UdpHdr;
 
-#[repr(C)]
-pub struct BPFFilterContext {
-    pub data: *const u8,
-    pub data_len: usize,
-}
-
 const DROP: u32 = 1;
 const PASS: u32 = 0;
 

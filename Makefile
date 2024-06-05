@@ -8,7 +8,7 @@ run:
 	./run.sh
 
 disassemble-jit-dump:
-	objdump -D -b binary -mi386 -Maddr16,data16 rootfs/jit_dump.bin
+	objdump -D -b binary -mi386 -Maddr16,data16 rootfs/jit_dump.bin -Mintel
 
 benchmark:
 	cd benchmarks && cargo bench

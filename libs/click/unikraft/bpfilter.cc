@@ -122,7 +122,7 @@ int BPFilter::configure(Vector <String> &conf, ErrorHandler *errh) {
     }
 
     if (dump_jit) {
-        uint8_t *buffer = (uint8_t*) calloc(65536, 1);
+        uint8_t *buffer = (uint8_t *) calloc(65536, 1);
         if (buffer == NULL) {
             return errh->error("Error allocating buffer for jit dump\n");
         }
@@ -149,19 +149,18 @@ int BPFilter::configure(Vector <String> &conf, ErrorHandler *errh) {
     return 0;
 }
 
-int BPFilter::exec_filter(Packet *p) {
-    uint64_t ret;
-
+inline int BPFilter::exec_filter(Packet *p) {
     if (_jit) {
-        ret = _ubpf_jit_fn((void *) p->buffer(), p->buffer_length());
+        return _ubpf_jit_fn((void *) p->buffer(), p->buffer_length());
     } else {
+        uint64_t ret;
         if (ubpf_exec(_ubpf_vm, (void *) p->buffer(), p->buffer_length(), &ret) != 0) {
             uk_pr_err("Error executing filter\n");
             return -1;
         }
-    }
 
-    return ret;
+        return ret;
+    }
 }
 
 void BPFilter::push(int, Packet *p) {
