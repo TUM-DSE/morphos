@@ -124,7 +124,7 @@
 /* #undef HAVE_NEW_H */
 
 /* Define if <new> exists and works. */
-/* #undef HAVE_NEW_HDR 1 */
+#define HAVE_NEW_HDR 1
 
 /* Define if you have -lpcap and pcap.h. */
 #define HAVE_PCAP 1

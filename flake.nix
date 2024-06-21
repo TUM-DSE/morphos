@@ -45,6 +45,7 @@
                     unstable.kraft
                     unstable.rustup
                     unstable.bmon
+                    unstable.gh
                 ];
                 KRAFTKIT_NO_WARN_SUDO = "1";
                 KRAFTKIT_NO_CHECK_UPDATES = "true";

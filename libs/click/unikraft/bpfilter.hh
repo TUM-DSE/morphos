@@ -7,8 +7,8 @@
 #include <click/error.hh>
 #include <click/task.hh>
 #include <uk/rwlock.h>
-
-#include "ubpf.h"
+#include <bpf_helpers.hh>
+#include <ubpf.h>
 
 CLICK_DECLS
 
@@ -69,6 +69,7 @@ private:
     struct ubpf_vm* _ubpf_vm;
     ubpf_jit_fn _ubpf_jit_fn;
 
+    ubpf_vm* init_ubpf_vm();
     static int write_handler(const String &, Element *, void *, ErrorHandler *) CLICK_COLD;
     int exec_filter(Packet *p);
 

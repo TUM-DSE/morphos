@@ -4,13 +4,14 @@
 
 #include <click/config.h>
 #include <click/confparse.hh>
-#include "bpfilter.hh"
 #include <click/error.hh>
 #include <click/args.hh>
 #include <click/standard/scheduleinfo.hh>
 #include <stdio.h>
 #include <dirent.h>
 #include <stdlib.h>
+
+#include "bpfilter.hh"
 
 CLICK_DECLS
 
@@ -62,6 +63,23 @@ char write_file(const char *filename, void *buffer, size_t size) {
     return 0;
 }
 
+ubpf_vm *BPFilter::init_ubpf_vm() {
+    ubpf_vm *vm = ubpf_create();
+    if (vm == NULL) {
+        return NULL;
+    }
+
+    ubpf_toggle_bounds_check(vm, false);
+
+    // register bpf helpers
+    ubpf_register(vm, 0, "bpf_trace_printk", (void *) bpf_trace_printk);
+    ubpf_register(vm, 1, "bpf_map_lookup_elem", (void *) bpf_map_lookup_elem);
+    ubpf_register(vm, 2, "bpf_map_update_elem", (void *) bpf_map_update_elem);
+    ubpf_register(vm, 3, "bpf_map_delete_elem", (void *) bpf_map_delete_elem);
+
+    return vm;
+}
+
 int BPFilter::configure(Vector <String> &conf, ErrorHandler *errh) {
     if (conf.empty()) {
         return -1;
@@ -94,12 +112,10 @@ int BPFilter::configure(Vector <String> &conf, ErrorHandler *errh) {
     }
 
     if (!reconfigure) {
-        _ubpf_vm = ubpf_create();
+        _ubpf_vm = this->init_ubpf_vm();
         if (_ubpf_vm == NULL) {
-            return errh->error("Error creating ubpf vm\n");
+            return errh->error("Error initializing ubpf vm\n");
         }
-
-        ubpf_toggle_bounds_check(_ubpf_vm, false);
     }
 
     uk_rwlock_wlock(&_lock);

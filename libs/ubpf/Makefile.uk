@@ -66,6 +66,7 @@ UK_PREPARE-$(CONFIG_LIBUBPF) += $(LIBUBPF_SRC)/vm/inc/ubpf_config.h
 ################################################################################
 CINCLUDES-y += -I$(LIBUBPF_BASE)/include
 CINCLUDES-$(CONFIG_LIBUBPF) += -I$(LIBUBPF_SRC)/vm/inc
+CINCLUDES-$(CONFIG_LIBUBPF) += -I$(LIBUBPF_SRC)/helper/include
 
 ################################################################################
 # Flags
@@ -73,20 +74,24 @@ CINCLUDES-$(CONFIG_LIBUBPF) += -I$(LIBUBPF_SRC)/vm/inc
 LIBUBPF_FLAGS =
 
 # Suppress some warnings to make the build process look neater
-LIBUBPF_FLAGS_SUPPRESS =
+LIBUBPF_FLAGS_SUPPRESS = -Wsign-compare
 
 LIBUBPF_CFLAGS-y += $(LIBUBPF_FLAGS)
 LIBUBPF_CFLAGS-y += -Wall -Wunused-parameter
 LIBUBPF_CFLAGS-y += $(LIBUBPF_FLAGS_SUPPRESS)
 
+LIBUBPF_CXXFLAGS  += -fno-exceptions -fno-rtti -std=c++11
+LIBUBPF_CXXFLAGS  += $(LIBUBPF_FLAGS)
+LIBUBPF_CXXFLAGS  += $(LIBUBPF_FLAGS_SUPPRESS)
+
 ################################################################################
 # Glue code
 ################################################################################
 # Include paths
-# LIBUBPF_CINCLUDES-y   += $(LIBUBPF_COMMON_INCLUDES-y)
-LIBUBPF_CINCLUDES-y   += -I$(LIBUBPF_SRC)/vm/inc
-# LIBUBPF_CXXINCLUDES-y += $(LIBUBPF_COMMON_INCLUDES-y)
-LIBUBPFSRCS-$(CONFIG_LIBUBPF_MAIN_FUNCTION) += $(LIBUBPF_BASE)/main.c|unikraft
+CINCLUDES-$(CONFIG_LIBUBPF)     += -I$(LIBUBPF_SRC)/vm/inc
+CINCLUDES-$(CONFIG_LIBUBPF)     += -I$(LIBUBPF_SRC)/helper/include
+CXXINCLUDES-$(CONFIG_LIBUBPF)   += -I$(LIBUBPF_SRC)/vm/inc
+CXXINCLUDES-$(CONFIG_LIBUBPF)   += -I$(LIBUBPF_SRC)/helper/include
 
 ################################################################################
 # Library sources
@@ -96,3 +101,5 @@ LIBUBPF_SRCS-y += $(LIBUBPF_SRC)/vm/ubpf_vm.c
 LIBUBPF_SRCS-y += $(LIBUBPF_SRC)/vm/ubpf_loader.c
 LIBUBPF_SRCS-y += $(LIBUBPF_SRC)/vm/ubpf_jit.c
 LIBUBPF_SRCS-y += $(LIBUBPF_SRC)/vm/ubpf_jit_x86_64.c
+
+LIBUBPF_SRCS-y += $(LIBUBPF_SRC)/helper/bpf_helpers.cc

@@ -123,7 +123,7 @@ LIBCLICK_CXXFLAGS-y     += -DLWIP_TIMEVAL_PRIVATE=0 -DCLICK_USERLEVEL -DHAVE_IP6
 LIBCLICK_CXXFLAGS       += -fno-exceptions -fno-rtti -std=c++11
 
 # Suppress some warnings to make the build process look neater
-LIBCLICK_SUPPRESS_FLAGS := -Wno-strict-aliasing -Wno-parentheses -Wno-pointer-arith -Wno-unused-parameter -Wno-cast-function-type
+LIBCLICK_SUPPRESS_FLAGS := -Wno-strict-aliasing -Wno-parentheses -Wno-pointer-arith -Wno-unused-parameter -Wno-cast-function-type -Waddress-of-packed-member
 LIBCLICK_CFLAGS-y += $(LIBCLICK_SUPPRESS_FLAGS)
 LIBCLICK_CXXFLAGS-y += $(LIBCLICK_SUPPRESS_FLAGS) -Wno-aligned-new -Wno-class-memaccess
 

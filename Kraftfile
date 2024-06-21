@@ -29,6 +29,14 @@ libraries:
       - CONFIG_LWIP_AUTOIFACE=n
   musl:
     version: stable
+  libunwind:
+    version: stable
+  libcxxabi:
+    version: stable
+  libcxx:
+    version: stable
+  compiler-rt:
+    version: stable
   click:
     version: '0.5'
     source: libs/click
