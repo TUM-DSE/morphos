@@ -1,3 +1,6 @@
+// Copyright (c) 2022 IO Visor Project
+// SPDX-License-Identifier: Apache-2.0
+
 /*
   Copyright (c) 2022-present, IO Visor Project
   All rights reserved.
@@ -12,7 +15,17 @@
 
 #define STDIN_FILENO 0
 
+#ifdef __cplusplus
+extern "C"
+{
+#endif
+
 int
 rand_r(unsigned int* seedp);
 int
 vasprintf(char** strp, const char* fmt, va_list ap);
+
+
+#ifdef __cplusplus
+}
+#endif

@@ -17,6 +17,8 @@ const PASS: u32 = 0;
 pub extern "C" fn filter(data: *const u8, data_len: usize) -> u32 {
     let data = unsafe { core::slice::from_raw_parts(data, data_len) };
 
+    trace_printk(c"abv\n");
+
     match try_filter(data) {
         Ok(ret) => ret,
         Err(_) => DROP,

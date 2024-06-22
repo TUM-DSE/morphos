@@ -1,3 +1,6 @@
+// Copyright (c) 2022 IO Visor Project
+// SPDX-License-Identifier: Apache-2.0
+
 /*
   Copyright (c) 2022-present, IO Visor Project
   All rights reserved.
@@ -10,9 +13,9 @@
 
 #include <Winsock2.h>
 
-#define htole16(value) (value)
+#define htole16(value) (uint16_t)(value)
 
-#define htole32(value) (value)
+#define htole32(value) (uint32_t)(value)
 
 #define htole64(value) (value)
 

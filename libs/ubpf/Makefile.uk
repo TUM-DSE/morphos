@@ -101,5 +101,6 @@ LIBUBPF_SRCS-y += $(LIBUBPF_SRC)/vm/ubpf_vm.c
 LIBUBPF_SRCS-y += $(LIBUBPF_SRC)/vm/ubpf_loader.c
 LIBUBPF_SRCS-y += $(LIBUBPF_SRC)/vm/ubpf_jit.c
 LIBUBPF_SRCS-y += $(LIBUBPF_SRC)/vm/ubpf_jit_x86_64.c
+LIBUBPF_SRCS-y += $(LIBUBPF_SRC)/vm/ubpf_jit_support.c
 
 LIBUBPF_SRCS-y += $(LIBUBPF_SRC)/helper/bpf_helpers.cc
