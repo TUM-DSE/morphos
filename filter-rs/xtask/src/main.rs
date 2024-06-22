@@ -12,7 +12,8 @@ pub struct Options {
 
 #[derive(Debug, Parser)]
 enum Command {
-    BuildEbpf(build_ebpf::Options),
+    BuildFilterEbpf(build_ebpf::Options),
+    BuildDnsFilterEbpf(build_ebpf::Options),
 }
 
 fn main() {
@@ -20,7 +21,8 @@ fn main() {
 
     use Command::*;
     let ret = match opts.command {
-        BuildEbpf(opts) => build_ebpf::build_ebpf(opts),
+        BuildFilterEbpf(opts) => build_ebpf::build_ebpf("filter-rs-ebpf", opts),
+        BuildDnsFilterEbpf(opts) => build_ebpf::build_ebpf("dns-filter-ebpf", opts),
     };
 
     if let Err(e) = ret {

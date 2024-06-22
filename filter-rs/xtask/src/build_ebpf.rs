@@ -39,8 +39,8 @@ pub struct Options {
     pub release: bool,
 }
 
-pub fn build_ebpf(opts: Options) -> Result<(), anyhow::Error> {
-    let dir = PathBuf::from("filter-rs-ebpf");
+pub fn build_ebpf(program: &str, opts: Options) -> Result<(), anyhow::Error> {
+    let dir = PathBuf::from(program);
     let target = format!("--target={}", opts.target);
     let mut args = vec![
         "build",

@@ -43,16 +43,26 @@ Returns the number of filtered packets.
 When written, it resets both the C<count> & C<filtered> counters.
 
  */
-class BPFilter : public Element { public:
+class BPFilter : public Element {
+public:
 
-    BPFilter() CLICK_COLD;
+    BPFilter()
 
-    const char *class_name() const override		{ return "BPFilter"; }
-    const char *port_count() const override		{ return PORTS_1_1; }
-    bool can_live_reconfigure() const override   { return true; }
+    CLICK_COLD;
 
-    int configure(Vector<String> &conf, ErrorHandler *errh) override CLICK_COLD;
-    void add_handlers() override CLICK_COLD;
+    const char *class_name() const override { return "BPFilter"; }
+
+    const char *port_count() const override { return PORTS_1_1; }
+
+    bool can_live_reconfigure() const override { return true; }
+
+    int configure(Vector <String> &conf, ErrorHandler *errh) override
+
+    CLICK_COLD;
+
+    void add_handlers() override
+
+    CLICK_COLD;
 
     void push(int, Packet *) override;
 
@@ -66,11 +76,15 @@ private:
     uint64_t _filtered;
     struct uk_rwlock _lock = UK_RWLOCK_INITIALIZER(_lock, 0);
 
-    struct ubpf_vm* _ubpf_vm;
+    struct ubpf_vm *_ubpf_vm;
     ubpf_jit_fn _ubpf_jit_fn;
 
-    ubpf_vm* init_ubpf_vm();
-    static int write_handler(const String &, Element *, void *, ErrorHandler *) CLICK_COLD;
+    ubpf_vm *init_ubpf_vm();
+
+    static int write_handler(const String &, Element *, void *, ErrorHandler *)
+
+    CLICK_COLD;
+
     int exec_filter(Packet *p);
 
 };
