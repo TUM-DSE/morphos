@@ -72,10 +72,12 @@ ubpf_vm *BPFilter::init_ubpf_vm() {
     ubpf_toggle_bounds_check(vm, false);
 
     // register bpf helpers
-    ubpf_register(vm, 0, "bpf_trace_printk", as_external_function_t((void *) bpf_trace_printk));
-    ubpf_register(vm, 1, "bpf_map_lookup_elem", as_external_function_t((void *) bpf_map_lookup_elem));
-    ubpf_register(vm, 2, "bpf_map_update_elem", as_external_function_t((void *) bpf_map_update_elem));
-    ubpf_register(vm, 3, "bpf_map_delete_elem", as_external_function_t((void *) bpf_map_delete_elem));
+    ubpf_register(vm, 1, "bpf_trace", as_external_function_t((void *) bpf_trace));
+    ubpf_register(vm, 2, "bpf_map_lookup_elem", as_external_function_t((void *) bpf_map_lookup_elem));
+    ubpf_register(vm, 3, "bpf_map_update_elem", as_external_function_t((void *) bpf_map_update_elem));
+    ubpf_register(vm, 4, "bpf_map_delete_elem", as_external_function_t((void *) bpf_map_delete_elem));
+    ubpf_register(vm, 5, "unwind", as_external_function_t((void *) unwind));
+    ubpf_set_unwind_function_index(vm, 5);
 
     return vm;
 }

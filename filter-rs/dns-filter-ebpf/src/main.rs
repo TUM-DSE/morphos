@@ -8,7 +8,7 @@ use network_types::eth::{EtherType, EthHdr};
 use network_types::ip::{IpProto, Ipv4Hdr};
 use network_types::tcp::TcpHdr;
 use network_types::udp::UdpHdr;
-use crate::helpers::trace_printk;
+use crate::helpers::trace;
 
 const DROP: u32 = 1;
 const PASS: u32 = 0;
@@ -17,7 +17,7 @@ const PASS: u32 = 0;
 pub extern "C" fn filter(data: *const u8, data_len: usize) -> u32 {
     let data = unsafe { core::slice::from_raw_parts(data, data_len) };
 
-    trace_printk(c"abv\n");
+    trace(1);
 
     match try_filter(data) {
         Ok(ret) => ret,

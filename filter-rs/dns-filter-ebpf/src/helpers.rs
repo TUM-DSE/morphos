@@ -1,12 +1,17 @@
-use core::ffi::{c_char, c_void, CStr};
+use core::ffi::c_long;
 
-extern "C" {
-    fn bpf_trace_printk(fmt: *const c_char, fmt_size: i32, ...) -> i64;
+pub unsafe fn bpf_trace(
+    num: c_long
+) {
+    let fun: unsafe extern "C" fn(
+        num: c_long
+    ) = core::mem::transmute(1usize);
+    fun(num)
 }
 
-pub fn trace_printk(fmt: &CStr) {
+#[inline(always)]
+pub fn trace(num: i64) {
     unsafe {
-        let len = fmt.to_bytes().len() as i32;
-        bpf_trace_printk(fmt.as_ptr(), len);
+        bpf_trace(num);
     }
 }

@@ -36,6 +36,7 @@
                 python3Packages.matplotlib
                 python3Packages.scipy
                 gnuplot
+                llvmPackages_15.bintools
               ];
             in
             {
