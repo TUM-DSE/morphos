@@ -4,6 +4,7 @@
 #include <cstdint>
 #include <unordered_map>
 #include <vector>
+#include <string>
 
 void bpf_trace(long num);
 
@@ -53,7 +54,7 @@ struct bpf_map {
 };
 
 struct bpf_map_ctx {
-    std::vector<struct bpf_map *> maps;
+    std::unordered_map<std::string, struct bpf_map *> map_by_name;
 };
 
 uint64_t do_map_relocation(

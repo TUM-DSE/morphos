@@ -88,21 +88,42 @@ uint64_t do_map_relocation(
         return 0;
     }
 
-    if (map_definition.type != BPF_MAP_TYPE_ARRAY) {
-        fprintf(stderr, "Unsupported map type %d\n", map_definition.type);
-        return 0;
+    auto it = ctx->map_by_name.find(symbol_name);
+    if (it != ctx->map_by_name.end()) {
+        // check if the map definition is the same
+        if (it->second->def.type != map_definition.type ||
+            it->second->def.key_size != map_definition.key_size ||
+            it->second->def.value_size != map_definition.value_size ||
+            it->second->def.max_entries != map_definition.max_entries) {
+            fprintf(stderr, "Map %s already exists with different definition\n", symbol_name);
+            return 0;
+        }
+
+        return reinterpret_cast<uint64_t>(it->second);
     }
 
-    if (map_definition.key_size != sizeof(uint32_t)) {
-        fprintf(stderr, "Unsupported key size %d\n", map_definition.key_size);
-        return 0;
+    void* data = nullptr;
+    switch (map_definition.type) {
+        case BPF_MAP_TYPE_ARRAY: {
+            if (map_definition.key_size != sizeof(uint32_t)) {
+                fprintf(stderr, "Unsupported key size %d\n", map_definition.key_size);
+                return 0;
+            }
+
+            data = std::calloc(map_definition.max_entries, map_definition.value_size);
+            break;
+        }
+        default: {
+            fprintf(stderr, "Unsupported map type %d\n", map_definition.type);
+            return 0;
+        }
     }
 
     auto *map = new bpf_map();
     map->def = map_definition;
-    map->data = std::malloc(map_definition.value_size * map_definition.max_entries);
+    map->data = data;
 
-    ctx->maps.push_back(map);
+    ctx->map_by_name[symbol_name] = map;
 
     return reinterpret_cast<uint64_t>(map);
 }
