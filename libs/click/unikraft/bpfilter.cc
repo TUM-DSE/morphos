@@ -69,13 +69,17 @@ ubpf_vm *BPFilter::init_ubpf_vm() {
         return NULL;
     }
 
+    this->_bpf_map_ctx = new bpf_map_ctx();
+
     ubpf_toggle_bounds_check(vm, false);
+    ubpf_toggle_undefined_behavior_check(vm, false);
+    ubpf_register_data_relocation(vm, this->_bpf_map_ctx, do_map_relocation);
 
     // register bpf helpers
-    ubpf_register(vm, 1, "bpf_trace", as_external_function_t((void *) bpf_trace));
-    ubpf_register(vm, 2, "bpf_map_lookup_elem", as_external_function_t((void *) bpf_map_lookup_elem));
-    ubpf_register(vm, 3, "bpf_map_update_elem", as_external_function_t((void *) bpf_map_update_elem));
-    ubpf_register(vm, 4, "bpf_map_delete_elem", as_external_function_t((void *) bpf_map_delete_elem));
+    ubpf_register(vm, 1, "bpf_map_lookup_elem", as_external_function_t((void *) bpf_map_lookup_elem));
+    ubpf_register(vm, 2, "bpf_map_update_elem", as_external_function_t((void *) bpf_map_update_elem));
+    ubpf_register(vm, 3, "bpf_map_delete_elem", as_external_function_t((void *) bpf_map_delete_elem));
+    ubpf_register(vm, 4, "bpf_trace", as_external_function_t((void *) bpf_trace));
     ubpf_register(vm, 5, "unwind", as_external_function_t((void *) unwind));
     ubpf_set_unwind_function_index(vm, 5);
 

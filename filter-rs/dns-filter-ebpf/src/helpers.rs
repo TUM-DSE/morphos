@@ -5,7 +5,7 @@ pub unsafe fn bpf_trace(
 ) {
     let fun: unsafe extern "C" fn(
         num: c_long
-    ) = core::mem::transmute(1usize);
+    ) = core::mem::transmute(4usize);
     fun(num)
 }
 

@@ -4,6 +4,8 @@
 mod helpers;
 
 use core::mem;
+use aya_ebpf::macros::map;
+use aya_ebpf::maps::Array;
 use network_types::eth::{EtherType, EthHdr};
 use network_types::ip::{IpProto, Ipv4Hdr};
 use network_types::tcp::TcpHdr;
@@ -13,11 +15,20 @@ use crate::helpers::trace;
 const DROP: u32 = 1;
 const PASS: u32 = 0;
 
+#[map(name = "PKTCNTARRAY")]
+static PACKETCOUNTER: Array<i64> = Array::with_max_entries(1, 0);
+
 #[no_mangle]
 pub extern "C" fn filter(data: *const u8, data_len: usize) -> u32 {
     let data = unsafe { core::slice::from_raw_parts(data, data_len) };
 
-    trace(1);
+    let count = unsafe {
+        let ptr = PACKETCOUNTER.get_ptr_mut(0).unwrap_or(&mut 0);
+        &mut *ptr
+    };
+
+    trace(*count);
+    *count += 1;
 
     match try_filter(data) {
         Ok(ret) => ret,

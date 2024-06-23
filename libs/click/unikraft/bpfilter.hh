@@ -77,6 +77,7 @@ private:
     struct uk_rwlock _lock = UK_RWLOCK_INITIALIZER(_lock, 0);
 
     struct ubpf_vm *_ubpf_vm;
+    struct bpf_map_ctx *_bpf_map_ctx;
     ubpf_jit_fn _ubpf_jit_fn;
 
     ubpf_vm *init_ubpf_vm();
