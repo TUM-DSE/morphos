@@ -14,6 +14,17 @@ void *bpf_map_lookup_elem(void *raw_map, void *key) {
 
     bpf_map &map = *reinterpret_cast<bpf_map *>(raw_map);
     switch (map.def.type) {
+        case BPF_MAP_TYPE_HASH: {
+            auto *hash_map = static_cast<std::unordered_map <KeyType, ValueType, VectorHash, VectorEqual> *>(map.data);
+            KeyType key_value(map.def.key_size);
+            std::memcpy(key_value.data(), key, map.def.key_size);
+
+            auto it = hash_map->find(key_value);
+            if (it == hash_map->end()) {
+                return nullptr;
+            }
+            return it->second.data();
+        }
         case BPF_MAP_TYPE_ARRAY: {
             auto index = *(uint32_t *) key;
             char *data = static_cast<char *>(map.data);
@@ -31,6 +42,18 @@ long bpf_map_update_elem(void *raw_map, void *key, const void *value, uint64_t f
 
     bpf_map &map = *reinterpret_cast<bpf_map *>(raw_map);
     switch (map.def.type) {
+        case BPF_MAP_TYPE_HASH: {
+            auto *hash_map = static_cast<std::unordered_map <KeyType, ValueType, VectorHash, VectorEqual> *>(map.data);
+
+            KeyType key_value(map.def.key_size);
+            std::memcpy(key_value.data(), key, map.def.key_size);
+
+            ValueType value_value(map.def.value_size);
+            std::memcpy(value_value.data(), value, map.def.value_size);
+
+            (*hash_map)[key_value] = value_value;
+            break;
+        }
         case BPF_MAP_TYPE_ARRAY: {
             auto index = *(uint32_t *) key;
             char *data = static_cast<char *>(map.data);
@@ -52,9 +75,17 @@ long bpf_map_delete_elem(void *raw_map, void *key) {
 
     bpf_map &map = *reinterpret_cast<bpf_map *>(raw_map);
     switch (map.def.type) {
-        default:
+        case BPF_MAP_TYPE_HASH: {
+            auto *hash_map = static_cast<std::unordered_map <KeyType, ValueType, VectorHash, VectorEqual> *>(map.data);
+            KeyType key_value(map.def.key_size);
+            std::memcpy(key_value.data(), key, map.def.key_size);
+            hash_map->erase(key_value);
+            return 0;
+        }
+        default: {
             fprintf(stderr, "bpf_map_delete_elem: unsupported map type %d\n", map.def.type);
             return 0;
+        }
     }
 }
 
@@ -102,8 +133,13 @@ uint64_t do_map_relocation(
         return reinterpret_cast<uint64_t>(it->second);
     }
 
-    void* data = nullptr;
+    void *data = nullptr;
     switch (map_definition.type) {
+        case BPF_MAP_TYPE_HASH: {
+            auto *hash_map = new std::unordered_map<KeyType, ValueType, VectorHash, VectorEqual>();
+            data = reinterpret_cast<void *>(hash_map);
+            break;
+        }
         case BPF_MAP_TYPE_ARRAY: {
             if (map_definition.key_size != sizeof(uint32_t)) {
                 fprintf(stderr, "Unsupported key size %d\n", map_definition.key_size);

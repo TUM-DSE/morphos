@@ -5,7 +5,7 @@ mod helpers;
 
 use core::mem;
 use aya_ebpf::macros::map;
-use aya_ebpf::maps::Array;
+use aya_ebpf::maps::{Array, HashMap};
 use network_types::eth::{EtherType, EthHdr};
 use network_types::ip::{IpProto, Ipv4Hdr};
 use network_types::tcp::TcpHdr;
@@ -14,6 +14,9 @@ use crate::helpers::trace;
 
 const DROP: u32 = 1;
 const PASS: u32 = 0;
+
+#[map(name = "PKTHASHMAP")]
+static PKTHASHMAP: HashMap<u32, i64> = HashMap::with_max_entries(1, 0);
 
 #[map(name = "PKTCNTARRAY")]
 static PACKETCOUNTER: Array<i64> = Array::with_max_entries(1, 0);
@@ -29,6 +32,19 @@ pub extern "C" fn filter(data: *const u8, data_len: usize) -> u32 {
 
     trace(*count);
     *count += 1;
+
+    trace(-1000);
+
+    let key = 1;
+    let value = 1;
+    let val = unsafe { PKTHASHMAP.get(&key) };
+    if let Some(val) = val {
+        trace(*val);
+        PKTHASHMAP.remove(&key);
+    } else {
+        trace(-1);
+        PKTHASHMAP.insert(&key, &value, 0);
+    }
 
     match try_filter(data) {
         Ok(ret) => ret,
