@@ -92,13 +92,13 @@ long bpf_map_delete_elem(void *raw_map, void *key) {
     }
 }
 
-uint64_t get_ktime_ns() {
+uint64_t bpf_ktime_get_ns() {
     struct timespec ts;
     clock_gettime(CLOCK_MONOTONIC, &ts);
     return static_cast<uint64_t>(ts.tv_sec) * 1000000000ull + ts.tv_nsec;
 }
 
-uint32_t get_prandom_u32() {
+uint32_t bpf_get_prandom_u32() {
     std::random_device rd;
     std::mt19937 generator(rd());
 
