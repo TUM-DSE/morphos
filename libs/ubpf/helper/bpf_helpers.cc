@@ -4,6 +4,9 @@
 #include <cstdio>
 #include <cstdint>
 #include <cstdlib>
+#include <chrono>
+#include <ctime>
+#include <random>
 
 void bpf_trace(long num) {
     printf("bpf_trace: %ld\n", num);
@@ -87,6 +90,21 @@ long bpf_map_delete_elem(void *raw_map, void *key) {
             return 0;
         }
     }
+}
+
+uint64_t get_ktime_ns() {
+    struct timespec ts;
+    clock_gettime(CLOCK_MONOTONIC, &ts);
+    return static_cast<uint64_t>(ts.tv_sec) * 1000000000ull + ts.tv_nsec;
+}
+
+uint32_t get_prandom_u32() {
+    std::random_device rd;
+    std::mt19937 generator(rd());
+
+    std::uniform_int_distribution<uint32_t> distribution(0, UINT32_MAX);
+
+    return distribution(generator);
 }
 
 uint64_t unwind(uint64_t i) {

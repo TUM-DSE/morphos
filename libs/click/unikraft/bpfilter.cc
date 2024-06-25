@@ -80,8 +80,10 @@ ubpf_vm *BPFilter::init_ubpf_vm() {
     ubpf_register(vm, 2, "bpf_map_update_elem", as_external_function_t((void *) bpf_map_update_elem));
     ubpf_register(vm, 3, "bpf_map_delete_elem", as_external_function_t((void *) bpf_map_delete_elem));
     ubpf_register(vm, 4, "bpf_trace", as_external_function_t((void *) bpf_trace));
-    ubpf_register(vm, 5, "unwind", as_external_function_t((void *) unwind));
-    ubpf_set_unwind_function_index(vm, 5);
+    ubpf_register(vm, 5, "bpf_ktime_get_ns", as_external_function_t((void *) bpf_ktime_get_ns));
+    ubpf_register(vm, 7, "bpf_get_prandom_u32", as_external_function_t((void *) bpf_get_prandom_u32));
+    ubpf_register(vm, 20, "unwind", as_external_function_t((void *) unwind));
+    ubpf_set_unwind_function_index(vm, 20);
 
     return vm;
 }

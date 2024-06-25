@@ -14,6 +14,10 @@ long bpf_map_update_elem(void *map, void *key, const void *value, uint64_t flags
 
 long bpf_map_delete_elem(void *map, void *key);
 
+uint64_t bpf_ktime_get_ns(void);
+
+uint32_t bpf_get_prandom_u32(void);
+
 uint64_t unwind(uint64_t i);
 
 enum bpf_map_type {
