@@ -3,16 +3,13 @@
 
 use core::mem;
 use core::net::Ipv4Addr;
+use aya_ebpf::bpf_printk;
 
 use aya_ebpf::helpers::bpf_ktime_get_ns;
 use aya_ebpf::macros::map;
 use aya_ebpf::maps::HashMap;
 use network_types::eth::{EtherType, EthHdr};
 use network_types::ip::Ipv4Hdr;
-
-use crate::helpers::trace;
-
-mod helpers;
 
 const DROP: u32 = 1;
 const PASS: u32 = 0;
@@ -69,7 +66,6 @@ impl RateLimit {
     }
 
     pub fn spend_token(&mut self) -> bool {
-        trace(self.tokens as i64);
         if self.tokens >= 2 {
             self.tokens -= 2;
             true
@@ -105,6 +101,8 @@ fn try_filter(data: &[u8]) -> Result<u32, ()> {
             rate_limit
         }
     };
+
+    unsafe { bpf_printk!(b"Currently have %d tokens\n", rate_limit.tokens); }
 
     if rate_limit.spend_token() {
         Ok(PASS)

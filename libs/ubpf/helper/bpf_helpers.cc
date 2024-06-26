@@ -8,10 +8,6 @@
 #include <ctime>
 #include <random>
 
-void bpf_trace(long num) {
-    printf("bpf_trace: %ld\n", num);
-}
-
 void *bpf_map_lookup_elem(void *raw_map, void *key) {
     printf("bpf_map_lookup_elem\n");
 
@@ -92,6 +88,16 @@ long bpf_map_delete_elem(void *raw_map, void *key) {
     }
 }
 
+void bpf_trace_printk(const char *fmt, int fmt_size, ...) {
+    va_list args;
+    va_start(args, fmt_size);
+
+    printf("bpf_trace_printk: ");
+    vprintf(fmt, args);
+
+    va_end(args);
+}
+
 uint64_t bpf_ktime_get_ns() {
     struct timespec ts;
     clock_gettime(CLOCK_MONOTONIC, &ts);
@@ -102,7 +108,7 @@ uint32_t bpf_get_prandom_u32() {
     std::random_device rd;
     std::mt19937 generator(rd());
 
-    std::uniform_int_distribution<uint32_t> distribution(0, UINT32_MAX);
+    std::uniform_int_distribution <uint32_t> distribution(0, UINT32_MAX);
 
     return distribution(generator);
 }
@@ -111,13 +117,20 @@ uint64_t unwind(uint64_t i) {
     return i;
 }
 
-typedef struct _map_entry {
-    struct bpf_map_def map_definition;
-    const char *map_name;
-    union {
-        uint8_t *array;
-    };
-} map_entry_t;
+uint64_t do_data_relocation(
+        void *user_context,
+        const uint8_t *data,
+        uint64_t data_size
+) {
+    auto *ctx = static_cast<bpf_map_ctx *>(user_context);
+
+    auto mem = calloc(data_size, sizeof(uint8_t));
+    memcpy(mem, data, data_size);
+
+    ctx->global_data.push_back(mem);
+
+    return reinterpret_cast<uint64_t>(mem);
+}
 
 uint64_t do_map_relocation(
         void *user_context,
@@ -126,6 +139,11 @@ uint64_t do_map_relocation(
         const char *symbol_name,
         uint64_t symbol_offset,
         uint64_t symbol_size) {
+    // hack to support .rodata section
+    if (symbol_size == 0) {
+        return do_data_relocation(user_context, map_data, map_data_size);
+    }
+
     auto *ctx = static_cast<bpf_map_ctx *>(user_context);
     auto map_definition = *reinterpret_cast<const bpf_map_def *>(map_data + symbol_offset);
 

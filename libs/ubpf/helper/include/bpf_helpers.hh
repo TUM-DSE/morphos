@@ -6,7 +6,7 @@
 #include <vector>
 #include <string>
 
-void bpf_trace(long num);
+void bpf_trace_printk(const char *fmt, int fmt_size, ...);
 
 void *bpf_map_lookup_elem(void *map, void *key);
 
@@ -59,6 +59,7 @@ struct bpf_map {
 
 struct bpf_map_ctx {
     std::unordered_map<std::string, struct bpf_map *> map_by_name;
+    std::vector<void*> global_data;
 };
 
 // Type alias for convenience
