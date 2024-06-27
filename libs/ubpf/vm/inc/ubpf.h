@@ -481,6 +481,7 @@ extern "C"
      * @param[in] symbol_name Name of the symbol that is referenced.
      * @param[in] symbol_offset Offset of the symbol relative to the start of the map section.
      * @param[in] symbol_size Size of the symbol.
+     * @param[in] imm Immediate value that is part of the relocation.
      * @return uint64_t The value to insert into the BPF program.
      */
     typedef uint64_t (*ubpf_data_relocation)(
@@ -489,7 +490,9 @@ extern "C"
         uint64_t data_size,
         const char* symbol_name,
         uint64_t symbol_offset,
-        uint64_t symbol_size);
+        uint64_t symbol_size,
+        uint64_t imm
+    );
 
     /**
      * @brief Set a relocation function for the VM.

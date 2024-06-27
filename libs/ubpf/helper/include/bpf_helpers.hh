@@ -59,7 +59,7 @@ struct bpf_map {
 
 struct bpf_map_ctx {
     std::unordered_map<std::string, struct bpf_map *> map_by_name;
-    std::vector<void*> global_data;
+    std::unordered_map<uint64_t, void *> global_data;
 };
 
 // Type alias for convenience
@@ -68,9 +68,9 @@ using ValueType = std::vector<uint8_t>;
 
 // Hash function for vector<uint8_t>
 struct VectorHash {
-    std::size_t operator()(const std::vector<uint8_t>& v) const {
+    std::size_t operator()(const std::vector <uint8_t> &v) const {
         std::size_t hash = 0;
-        for (auto byte : v) {
+        for (auto byte: v) {
             hash ^= std::hash<uint8_t>()(byte) + 0x9e3779b9 + (hash << 6) + (hash >> 2);
         }
         return hash;
@@ -79,7 +79,7 @@ struct VectorHash {
 
 // Equality function for vector<uint8_t>
 struct VectorEqual {
-    bool operator()(const std::vector<uint8_t>& lhs, const std::vector<uint8_t>& rhs) const {
+    bool operator()(const std::vector <uint8_t> &lhs, const std::vector <uint8_t> &rhs) const {
         return lhs == rhs;
     }
 };
@@ -90,6 +90,8 @@ uint64_t do_map_relocation(
         uint64_t map_data_size,
         const char *symbol_name,
         uint64_t symbol_offset,
-        uint64_t symbol_size);
+        uint64_t symbol_size,
+        uint64_t relocation_offset
+);
 
 #endif /* UBPF_HELPERS_HH */

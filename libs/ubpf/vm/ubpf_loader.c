@@ -399,7 +399,11 @@ ubpf_load_elf_ex(struct ubpf_vm* vm, const void* elf, size_t elf_size, const cha
                     goto error;
                 }
                 section* map = &sections[relo_sym.st_shndx];
-                if (map->shdr->sh_type != SHT_PROGBITS || (map->shdr->sh_flags != (SHF_ALLOC | SHF_WRITE) && map->shdr->sh_flags != SHF_ALLOC)) {
+                if (map->shdr->sh_type != SHT_PROGBITS
+                        && map->shdr->sh_flags != (SHF_ALLOC | SHF_WRITE)
+                        && map->shdr->sh_flags != SHF_ALLOC
+                        && map->shdr->sh_flags != (SHF_ALLOC | SHF_STRINGS)
+                    ) {
                     *errmsg = ubpf_error("bad R_BPF_64_64 relocation section, sh_type=%d, sh_flags=%d", map->shdr->sh_type, map->shdr->sh_flags);
                     goto error;
                 }
@@ -430,7 +434,8 @@ ubpf_load_elf_ex(struct ubpf_vm* vm, const void* elf, size_t elf_size, const cha
                     map->size,
                     relo_sym_name,
                     relo_sym.st_value,
-                    relo_sym.st_size);
+                    relo_sym.st_size,
+                    applies_to_inst->imm);
                 applies_to_inst->imm = (uint32_t)imm;
                 applies_to_inst2->imm = (uint32_t)(imm >> 32);
                 break;

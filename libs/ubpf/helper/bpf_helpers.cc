@@ -120,16 +120,22 @@ uint64_t unwind(uint64_t i) {
 uint64_t do_data_relocation(
         void *user_context,
         const uint8_t *data,
-        uint64_t data_size
+        uint64_t data_size,
+        uint64_t imm
 ) {
     auto *ctx = static_cast<bpf_map_ctx *>(user_context);
 
-    auto mem = calloc(data_size, sizeof(uint8_t));
-    memcpy(mem, data, data_size);
+    auto data_ptr = reinterpret_cast<uint64_t>(data);
+    void *mem;
+    if (ctx->global_data.find(data_ptr) != ctx->global_data.end()) {
+        mem = ctx->global_data[data_ptr];
+    } else {
+        mem = calloc(data_size, sizeof(uint8_t));
+        memcpy(mem, data, data_size);
+        ctx->global_data[data_ptr] = mem;
+    }
 
-    ctx->global_data.push_back(mem);
-
-    return reinterpret_cast<uint64_t>(mem);
+    return reinterpret_cast<uint64_t>(mem) + imm;
 }
 
 uint64_t do_map_relocation(
@@ -138,10 +144,12 @@ uint64_t do_map_relocation(
         uint64_t map_data_size,
         const char *symbol_name,
         uint64_t symbol_offset,
-        uint64_t symbol_size) {
+        uint64_t symbol_size,
+        uint64_t imm
+) {
     // hack to support .rodata section
     if (symbol_size == 0) {
-        return do_data_relocation(user_context, map_data, map_data_size);
+        return do_data_relocation(user_context, map_data, map_data_size, imm);
     }
 
     auto *ctx = static_cast<bpf_map_ctx *>(user_context);
