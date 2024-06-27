@@ -7,6 +7,12 @@ build:
 run:
 	./run.sh
 
+dns-filter:
+	cd filter-rs && cargo xtask build-dns-filter-ebpf --release && (cp target/bpfel-unknown-none/release/dns-filter ../rootfs/dns-filter || true)
+
+disassemble-bpf:
+	llvm-objdump -d @(BPF)
+
 disassemble-jit-dump:
 	objdump -D -b binary -mi386 -Maddr16,data16 rootfs/jit_dump.bin -Mintel
 
