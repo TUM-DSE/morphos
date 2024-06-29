@@ -3,6 +3,7 @@
 
 use aya_ebpf::bpf_printk;
 use core::mem;
+use network_types::eth::{EtherType, EthHdr};
 
 use crate::helper::bpf_packet_add_space;
 
@@ -34,8 +35,18 @@ unsafe fn ptr_at<T>(data: &mut [u8], offset: usize) -> Result<*mut T, ()> {
 }
 
 fn try_rewrite(data: &mut [u8]) -> Result<(), ()> {
-    if data.len() > 14 {
-        unsafe { bpf_packet_add_space(data, -14, 0); }
+    let ether_type_ptr: *const u16 = unsafe { ptr_at(data, 12)? };
+    let ether_type = u16::from_be(unsafe { *ether_type_ptr });
+
+    const ETHERTYPE_8021Q: u16 = 0x8100;
+    if ether_type == ETHERTYPE_8021Q {
+        if data.len() > 18 {
+            unsafe { bpf_packet_add_space(data, -18, 0); }
+        }
+    } else {
+        if data.len() > 14 {
+            unsafe { bpf_packet_add_space(data, -14, 0); }
+        }
     }
 
     Ok(())
