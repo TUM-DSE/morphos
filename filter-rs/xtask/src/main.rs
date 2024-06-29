@@ -17,6 +17,7 @@ enum Command {
     BuildDnsFilterEbpf(build_ebpf::Options),
     BuildUdpTcpClassifierEbpf(build_ebpf::Options),
     BuildEtherMirrorEbpf(build_ebpf::Options),
+    BuildStripEtherVlanHeaderEbpf(build_ebpf::Options),
 }
 
 fn main() {
@@ -29,6 +30,7 @@ fn main() {
         BuildDnsFilterEbpf(opts) => build_ebpf::build_ebpf("dns-filter-ebpf", opts),
         BuildUdpTcpClassifierEbpf(opts) => build_ebpf::build_ebpf("udp-tcp-classifier-ebpf", opts),
         BuildEtherMirrorEbpf(opts) => build_ebpf::build_ebpf("ether-mirror-ebpf", opts),
+        BuildStripEtherVlanHeaderEbpf(opts) => build_ebpf::build_ebpf("strip-ether-vlan-header-ebpf", opts),
     };
 
     if let Err(e) = ret {

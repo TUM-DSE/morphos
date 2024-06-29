@@ -47,10 +47,10 @@ char write_file(const std::string& filename, const std::vector<uint8_t>& buffer)
     return 0;
 }
 
-ubpf_vm *BPFElement::init_ubpf_vm() {
+void BPFElement::init_ubpf_vm() {
     ubpf_vm *vm = ubpf_create();
     if (vm == NULL) {
-        return NULL;
+        return;
     }
 
     this->_bpf_map_ctx = new bpf_map_ctx();
@@ -69,9 +69,9 @@ ubpf_vm *BPFElement::init_ubpf_vm() {
     ubpf_register(vm, 20, "unwind", as_external_function_t((void *) unwind));
     ubpf_set_unwind_function_index(vm, 20);
 
-    register_additional_bpf_helpers();
+    this->_ubpf_vm = vm;
 
-    return vm;
+    register_additional_bpf_helpers();
 }
 
 void handle_jit_dump(ErrorHandler* errh, ubpf_vm* _ubpf_vm, uint64_t _bpfelement_id) {
@@ -129,7 +129,7 @@ int BPFElement::configure(Vector <String> &conf, ErrorHandler *errh) {
     }
 
     if (!reconfigure) {
-        _ubpf_vm = this->init_ubpf_vm();
+        this->init_ubpf_vm();
         if (_ubpf_vm == NULL) {
             return errh->error("Error initializing ubpf vm\n");
         }

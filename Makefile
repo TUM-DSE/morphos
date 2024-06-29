@@ -16,6 +16,9 @@ udp-tcp-classifier:
 ether-mirror:
 	cd filter-rs && cargo xtask build-ether-mirror-ebpf --release && (cp target/bpfel-unknown-none/release/ether-mirror ../rootfs/ether-mirror || true)
 
+strip-ether-vlan-header:
+	cd filter-rs && cargo xtask build-strip-ether-vlan-header-ebpf --release && (cp target/bpfel-unknown-none/release/strip-ether-vlan-header ../rootfs/strip-ether-vlan-header || true)
+
 disassemble-bpf:
 	llvm-objdump -d @(BPF)
 

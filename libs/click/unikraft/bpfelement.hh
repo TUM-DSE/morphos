@@ -38,7 +38,7 @@ private:
     struct bpf_map_ctx *_bpf_map_ctx;
     ubpf_jit_fn _ubpf_jit_fn;
 
-    ubpf_vm *init_ubpf_vm();
+    void init_ubpf_vm();
 
     CLICK_COLD;
 };
