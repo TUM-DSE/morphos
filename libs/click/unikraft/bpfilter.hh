@@ -9,6 +9,7 @@
 #include <uk/rwlock.h>
 #include <bpf_helpers.hh>
 #include <ubpf.h>
+#include "bpfelement.hh"
 
 CLICK_DECLS
 
@@ -43,51 +44,25 @@ Returns the number of filtered packets.
 When written, it resets both the C<count> & C<filtered> counters.
 
  */
-class BPFilter : public Element {
+class BPFilter : public BPFElement {
 public:
 
-    BPFilter()
-
-    CLICK_COLD;
+    BPFilter() CLICK_COLD;
 
     const char *class_name() const override { return "BPFilter"; }
 
     const char *port_count() const override { return PORTS_1_1; }
 
-    bool can_live_reconfigure() const override { return true; }
-
-    int configure(Vector <String> &conf, ErrorHandler *errh) override
-
-    CLICK_COLD;
-
-    void add_handlers() override
-
-    CLICK_COLD;
+    void add_handlers() override CLICK_COLD;
 
     void push(int, Packet *) override;
 
-    uint64_t bpfilter_id() const { return _bpfilter_id; }
-
 private:
 
-    uint64_t _bpfilter_id;
-    bool _jit;
     uint64_t _count;
     uint64_t _filtered;
-    struct uk_rwlock _lock = UK_RWLOCK_INITIALIZER(_lock, 0);
 
-    struct ubpf_vm *_ubpf_vm;
-    struct bpf_map_ctx *_bpf_map_ctx;
-    ubpf_jit_fn _ubpf_jit_fn;
-
-    ubpf_vm *init_ubpf_vm();
-
-    static int write_handler(const String &, Element *, void *, ErrorHandler *)
-
-    CLICK_COLD;
-
-    int exec_filter(Packet *p);
-
+    static int write_handler(const String &, Element *, void *, ErrorHandler *) CLICK_COLD;
 };
 
 CLICK_ENDDECLS

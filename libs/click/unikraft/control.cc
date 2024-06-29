@@ -8,7 +8,7 @@
 #include <click/standard/scheduleinfo.hh>
 #include <click/router.hh>
 #include <clicknet/udp.h>
-#include "bpfilter.hh"
+#include "bpfelement.hh"
 
 #include <uk/print.h>
 
@@ -24,7 +24,7 @@ void Control::push(int, Packet *p) {
 
     // control packet format:
     // - "control"
-    // - uint64_t bpfilter_id
+    // - uint64_t bpfelement_id
     // - uint64_t program_name_len
     // - char[program_name_len] program_name
 
@@ -43,8 +43,8 @@ void Control::push(int, Packet *p) {
 
     offset += 7;
 
-    // parse bpfilter_id
-    uint64_t bpfilter_id = *(uint64_t * )(udp_data_ptr + offset);
+    // parse bpfelement_id
+    uint64_t bpfelement_id = *(uint64_t * )(udp_data_ptr + offset);
     offset += sizeof(uint64_t);
 
     // parse program_name_len
@@ -59,7 +59,7 @@ void Control::push(int, Packet *p) {
     // parse program_name
     String program_name((const char *) (udp_data_ptr + offset), program_name_len);
 
-    uk_pr_info("Received control packet for bpfilter_id %lu with program_name %s \n", bpfilter_id,
+    uk_pr_info("Received control packet for bpfelement_id %lu with program_name %s \n", bpfelement_id,
                program_name.c_str());
 
     for (int i = 0; i < router()->nelements(); i++) {
@@ -68,21 +68,21 @@ void Control::push(int, Packet *p) {
             continue;
         }
 
-        BPFilter *bpfilter = (BPFilter *) element;
-        if (bpfilter->bpfilter_id() != bpfilter_id) {
+        BPFElement* bpfelement = static_cast<BPFElement*>(element);
+        if (bpfelement->bpfelement_id() != bpfelement_id) {
             continue;
         }
 
         const Handler *h = Router::handler(element, "config");
         if (!h || !h->write_visible() || !h->writable()) {
-            uk_pr_err("Control: BPFilter found but no config handler\n");
+            uk_pr_err("Control: %s found but no config handler\n", element->class_name());
             continue;
         }
 
-        uk_pr_info("Control: BPFilter with ID %lu found - calling config handler\n", bpfilter_id);
+        uk_pr_info("Control: %s with ID %lu found - calling config handler\n", element->class_name(), bpfelement_id);
 
         char* config;
-        asprintf(&config, "ID %lu, FILE %s", bpfilter_id, program_name.c_str());
+        asprintf(&config, "ID %lu, FILE %s", bpfelement_id, program_name.c_str());
 
         h->call_write(config, element, ErrorHandler::default_handler());
         free(config);

@@ -178,6 +178,8 @@ LIBCLICK_SRCS-y += $(LIBCLICK_EXTRACTED)/lib/ip6address.cc
 LIBCLICK_SRCS-y += $(LIBCLICK_EXTRACTED)/lib/ip6flowid.cc
 LIBCLICK_SRCS-y += $(LIBCLICK_EXTRACTED)/lib/selectset.cc
 
+LIBCLICK_SRCS-y += $(LIBCLICK_BASE)/unikraft/bpfelement.cc
+
 ################################################################################
 # Click elements
 ################################################################################
