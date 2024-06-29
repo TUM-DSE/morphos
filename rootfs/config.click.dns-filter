@@ -34,14 +34,15 @@ c1[0] -> ARPResponder(172.44.0.2 $MAC0)
       -> ToDevice(0);
 
 // Handle IP Packets
-c1[1] -> bpf_classifier :: BPFClassifier(FILE udp-tcp-classifier);
-bpf_classifier[0] -> Print('UDP packet received')
-                  -> ToDevice(0);
-
-bpf_classifier[1] -> Print('TCP packet received')
-                  -> ToDevice(0);
-
-bpf_classifier[2] -> Print('Packet received, but not UDP or TCP')
-                  -> ToDevice(0);
+c1[1] -> StripEtherVLANHeader
+ -> CheckIPHeader
+ -> IPReassembler
+ -> SetUDPChecksum
+ -> CheckUDPHeader
+ -> IPFilter(allow src ip 172.44.0.1 and dest ip 172.44.0.2, deny all)
+ -> Print('Received packet (pre-filtering)')
+ -> BPFilter(ID 1, FILE dns-filter, JIT true, DUMP_JIT true)
+ -> Print('Received packet (post-filtering)')
+ -> ToDevice(0);
 
 c1[2] -> Discard;

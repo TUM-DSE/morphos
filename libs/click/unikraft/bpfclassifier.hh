@@ -1,5 +1,5 @@
-#ifndef CLICK_BPFILTER_HH
-#define CLICK_BPFILTER_HH
+#ifndef CLICK_BPFCLASSIFIER_HH
+#define CLICK_BPFCLASSIFIER_HH
 
 #include <click/config.h>
 #include <click/deque.hh>
@@ -16,7 +16,7 @@ CLICK_DECLS
 /*
 =c
 
-BPFilter([I<keywords> PROGRAM])
+BPFClassifier([I<keywords> PROGRAM])
 
 =s basicsources
 
@@ -24,45 +24,31 @@ filters packets based on an ebpf program
 
 =d
 
-Drops all packets received on its single input for which the specified ebpf program returns `1`.
+Classify packets based on an ebpf program. The output port is determined by the return value of the ebpf program.
+The ebpf program is loaded from a file.
 
 Keyword arguments are:
 
 =over 8
 
-=item PROGRAM
+=item FILE
 
-String. Required. File name of the ebpf program defining the filter rules.
-
-=h count read-only
-Returns the number of processed packets.
-
-=h filtered read-only
-Returns the number of filtered packets.
-
-=h reset_count write-only
-When written, it resets both the C<count> & C<filtered> counters.
+String. Required. File name of the ebpf program defining the classifier.
 
  */
-class BPFilter : public BPFElement {
+class BPFClassifier : public BPFElement {
 public:
 
-    BPFilter() CLICK_COLD;
+    BPFClassifier() CLICK_COLD;
 
     const char *class_name() const override { return "BPFClassifier"; }
 
-    const char *port_count() const override { return PORTS_1_1; }
+    const char *port_count() const override { return "1/-"; }
 
-    void add_handlers() override CLICK_COLD;
+    const char *processing() const override { return PUSH; }
 
     void push(int, Packet *) override;
 
-private:
-
-    uint64_t _count;
-    uint64_t _filtered;
-
-    static int write_handler(const String &, Element *, void *, ErrorHandler *) CLICK_COLD;
 };
 
 CLICK_ENDDECLS

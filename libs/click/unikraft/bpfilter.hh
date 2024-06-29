@@ -30,7 +30,7 @@ Keyword arguments are:
 
 =over 8
 
-=item PROGRAM
+=item FILE
 
 String. Required. File name of the ebpf program defining the filter rules.
 

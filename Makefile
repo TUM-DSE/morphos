@@ -10,6 +10,9 @@ run:
 dns-filter:
 	cd filter-rs && cargo xtask build-dns-filter-ebpf --release && (cp target/bpfel-unknown-none/release/dns-filter ../rootfs/dns-filter || true)
 
+udp-tcp-classifier:
+	cd filter-rs && cargo xtask build-udp-tcp-classifier-ebpf --release && (cp target/bpfel-unknown-none/release/udp-tcp-classifier ../rootfs/udp-tcp-classifier || true)
+
 disassemble-bpf:
 	llvm-objdump -d @(BPF)
 

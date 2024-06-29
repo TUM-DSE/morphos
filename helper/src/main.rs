@@ -1,5 +1,5 @@
 use std::env::args;
-use std::net::UdpSocket;
+use std::net::{TcpStream, UdpSocket};
 use anyhow::{bail, Context};
 
 fn main() -> anyhow::Result<()> {
@@ -10,6 +10,9 @@ fn main() -> anyhow::Result<()> {
         }
         Some("send-packet") => {
             send_packet()?;
+        }
+        Some("send-tcp-packet") => {
+            send_tcp_packet()?;
         }
         _ => bail!("Invalid argument")
     }
@@ -36,6 +39,12 @@ fn reconfigure() -> anyhow::Result<()> {
 
 fn send_packet() -> anyhow::Result<()> {
     socket()?.send_to(b"data", DATA_ADDR).context("couldn't send packet")?;
+
+    Ok(())
+}
+
+fn send_tcp_packet() -> anyhow::Result<()> {
+    let _ = TcpStream::connect(DATA_ADDR);
 
     Ok(())
 }

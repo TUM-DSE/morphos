@@ -64,7 +64,7 @@ void Control::push(int, Packet *p) {
 
     for (int i = 0; i < router()->nelements(); i++) {
         Element *element = router()->element(i);
-        if (strcmp(element->class_name(), "BPFilter")) {
+        if (strcmp(element->class_name(), "BPFilter") && strcmp(element->class_name(), "BPFClassifier")) {
             continue;
         }
 
