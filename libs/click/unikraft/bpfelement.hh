@@ -24,6 +24,9 @@ public:
 protected:
 
     struct uk_rwlock _lock = UK_RWLOCK_INITIALIZER(_lock, 0);
+    struct ubpf_vm *_ubpf_vm;
+
+    virtual void register_additional_bpf_helpers(void) { }
 
     int exec(Packet *p);
 
@@ -32,7 +35,6 @@ private:
     uint64_t _bpfelement_id;
     bool _jit;
 
-    struct ubpf_vm *_ubpf_vm;
     struct bpf_map_ctx *_bpf_map_ctx;
     ubpf_jit_fn _ubpf_jit_fn;
 

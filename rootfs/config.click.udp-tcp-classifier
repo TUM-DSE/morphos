@@ -34,10 +34,14 @@ c1[0] -> ARPResponder(172.44.0.2 $MAC0)
       -> ToDevice(0);
 
 // Handle IP Packets
-c1[1] -> Print('Prior to rewrite')
-      -> BPFRewriter(FILE ether-mirror)
-      -> Print('After rewrite')
-      -> ToDevice(0);
+c1[1] -> bpf_classifier :: BPFClassifier(FILE udp-tcp-classifier);
+bpf_classifier[0] -> Print('UDP packet received')
+                  -> ToDevice(0);
 
+bpf_classifier[1] -> Print('TCP packet received')
+                  -> ToDevice(0);
+
+bpf_classifier[2] -> Print('Packet received, but not UDP or TCP')
+                  -> ToDevice(0);
 
 c1[2] -> Discard;

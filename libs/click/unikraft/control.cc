@@ -64,11 +64,13 @@ void Control::push(int, Packet *p) {
 
     for (int i = 0; i < router()->nelements(); i++) {
         Element *element = router()->element(i);
-        if (strcmp(element->class_name(), "BPFilter") && strcmp(element->class_name(), "BPFClassifier")) {
+        if (strcmp(element->class_name(), "BPFilter")
+            && strcmp(element->class_name(), "BPFClassifier")
+            && strcmp(element->class_name(), "BPFRewriter")) {
             continue;
         }
 
-        BPFElement* bpfelement = static_cast<BPFElement*>(element);
+        BPFElement *bpfelement = static_cast<BPFElement *>(element);
         if (bpfelement->bpfelement_id() != bpfelement_id) {
             continue;
         }
@@ -81,7 +83,7 @@ void Control::push(int, Packet *p) {
 
         uk_pr_info("Control: %s with ID %lu found - calling config handler\n", element->class_name(), bpfelement_id);
 
-        char* config;
+        char *config;
         asprintf(&config, "ID %lu, FILE %s", bpfelement_id, program_name.c_str());
 
         h->call_write(config, element, ErrorHandler::default_handler());

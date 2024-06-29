@@ -69,6 +69,8 @@ ubpf_vm *BPFElement::init_ubpf_vm() {
     ubpf_register(vm, 20, "unwind", as_external_function_t((void *) unwind));
     ubpf_set_unwind_function_index(vm, 20);
 
+    register_additional_bpf_helpers();
+
     return vm;
 }
 
@@ -175,7 +177,7 @@ int BPFElement::exec(Packet *p) {
     } else {
         uint64_t ret;
         if (ubpf_exec(_ubpf_vm, (void *) p->buffer(), p->buffer_length(), &ret) != 0) {
-            uk_pr_err("Error executing filter\n");
+            uk_pr_err("Error executing bpf program\n");
             return -1;
         }
 

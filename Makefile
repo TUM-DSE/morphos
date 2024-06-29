@@ -13,6 +13,9 @@ dns-filter:
 udp-tcp-classifier:
 	cd filter-rs && cargo xtask build-udp-tcp-classifier-ebpf --release && (cp target/bpfel-unknown-none/release/udp-tcp-classifier ../rootfs/udp-tcp-classifier || true)
 
+ether-mirror:
+	cd filter-rs && cargo xtask build-ether-mirror-ebpf --release && (cp target/bpfel-unknown-none/release/ether-mirror ../rootfs/ether-mirror || true)
+
 disassemble-bpf:
 	llvm-objdump -d @(BPF)
 
