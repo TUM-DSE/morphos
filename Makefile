@@ -7,17 +7,31 @@ build:
 run:
 	./run.sh
 
-dns-filter:
-	cd filter-rs && cargo xtask build-dns-filter-ebpf --release && (cp target/bpfel-unknown-none/release/dns-filter ../rootfs/dns-filter || true)
+bpf: dns-filter drop ether-mirror pass rate-limiter strip-ether-vlan-header target-port udp-tcp-classifier
 
-udp-tcp-classifier:
-	cd filter-rs && cargo xtask build-udp-tcp-classifier-ebpf --release && (cp target/bpfel-unknown-none/release/udp-tcp-classifier ../rootfs/udp-tcp-classifier || true)
+dns-filter:
+	cd ebpf && cargo xtask build-dns-filter-ebpf --release && (cp target/bpfel-unknown-none/release/dns-filter ../rootfs/dns-filter || true)
+
+drop:
+	cd ebpf && cargo xtask build-drop-ebpf --release && (cp target/bpfel-unknown-none/release/drop ../rootfs/drop || true)
 
 ether-mirror:
-	cd filter-rs && cargo xtask build-ether-mirror-ebpf --release && (cp target/bpfel-unknown-none/release/ether-mirror ../rootfs/ether-mirror || true)
+	cd ebpf && cargo xtask build-ether-mirror-ebpf --release && (cp target/bpfel-unknown-none/release/ether-mirror ../rootfs/ether-mirror || true)
+
+pass:
+	cd ebpf && cargo xtask build-pass-ebpf --release && (cp target/bpfel-unknown-none/release/pass ../rootfs/pass || true)
+
+rate-limiter:
+	cd ebpf && cargo xtask build-rate-limiter-ebpf --release && (cp target/bpfel-unknown-none/release/rate-limiter ../rootfs/pass || true)
 
 strip-ether-vlan-header:
-	cd filter-rs && cargo xtask build-strip-ether-vlan-header-ebpf --release && (cp target/bpfel-unknown-none/release/strip-ether-vlan-header ../rootfs/strip-ether-vlan-header || true)
+	cd ebpf && cargo xtask build-strip-ether-vlan-header-ebpf --release && (cp target/bpfel-unknown-none/release/strip-ether-vlan-header ../rootfs/strip-ether-vlan-header || true)
+
+target-port:
+	cd ebpf && cargo xtask build-target-port-ebpf --release && (cp target/bpfel-unknown-none/release/target-port ../rootfs/target-port || true)
+
+udp-tcp-classifier:
+	cd ebpf && cargo xtask build-udp-tcp-classifier-ebpf --release && (cp target/bpfel-unknown-none/release/udp-tcp-classifier ../rootfs/udp-tcp-classifier || true)
 
 disassemble-bpf:
 	llvm-objdump -d @(BPF)
