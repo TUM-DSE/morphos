@@ -39,6 +39,9 @@ void BPFRewriter::register_additional_bpf_helpers(void) {
     ubpf_register(_ubpf_vm, 60, "bpf_packet_add_space", as_external_function_t((void *) bpf_packet_add_space));
 }
 
+#define REWRITER_ABORT 0
+#define REWRITER_SUCCESS 1
+
 void BPFRewriter::push(int, Packet *p) {
     uk_pr_debug("BPFRewriter: Received packet\n");
 
@@ -55,12 +58,15 @@ void BPFRewriter::push(int, Packet *p) {
 
     _current_packet = nullptr;
 
-    if (ret == -1) {
+    if (ret == REWRITER_SUCCESS) {
+        output(0).push(p_out);
+    } else if (ret == REWRITER_ABORT) {
+        uk_pr_err("BPFRewriter: Rewriter aborted\n");
         p_out->kill();
-        return;
+    } else {
+        uk_pr_err("BPFRewriter: Unsupported action: %u\n", ret);
+        p->kill();
     }
-
-    output(0).push(p_out);
 }
 
 CLICK_ENDDECLS

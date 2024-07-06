@@ -1,21 +1,17 @@
 #![no_std]
 #![no_main]
 
-use aya_ebpf::bpf_printk;
-use bpf_element::rewriter::bpf_packet_add_space;
+use bpf_element::rewriter::{bpf_packet_add_space, RewriterResult};
 use bpf_element::BpfContext;
 
 #[no_mangle]
-pub extern "C" fn rewrite(ctx: *mut BpfContext) -> i32 {
+pub extern "C" fn rewrite(ctx: *mut BpfContext) -> RewriterResult {
     let mut ctx = unsafe { *ctx };
 
-    if let Err(_) = try_rewrite(&mut ctx) {
-        unsafe {
-            bpf_printk!(b"error processing packet\n");
-        }
+    match try_rewrite(&mut ctx) {
+        Ok(_) => RewriterResult::Success,
+        Err(_) => RewriterResult::Abort,
     }
-
-    0
 }
 
 #[inline(always)]

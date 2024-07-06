@@ -12,6 +12,13 @@ pub mod rewriter {
     use crate::BpfContext;
     use core::mem;
 
+    #[derive(Copy, Clone)]
+    #[repr(u32)]
+    pub enum RewriterResult {
+        Abort = 0,
+        Success = 1,
+    }
+
     unsafe fn bpf_packet_add_space_impl(head_len: i32, tail_len: i32) -> *mut u8 {
         let fun: unsafe extern "C" fn(head: i32, tail: i32) -> *mut u8 = mem::transmute(60usize);
         unsafe { fun(head_len, tail_len) }
