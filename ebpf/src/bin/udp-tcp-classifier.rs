@@ -1,8 +1,6 @@
 #![no_std]
 #![no_main]
 
-use aya_ebpf::bpf_printk;
-
 use bpf_element::BpfContext;
 use network_types::eth::{EthHdr, EtherType};
 use network_types::ip::{IpProto, Ipv4Hdr};
@@ -20,10 +18,6 @@ pub enum ClassifyResult {
 pub extern "C" fn classify(ctx: *mut BpfContext) -> ClassifyResult {
     let ctx = unsafe { *ctx };
     try_classify(&ctx).unwrap_or_else(|_| {
-        unsafe {
-            bpf_printk!(b"error processing packet\n");
-        }
-
         ClassifyResult::Rest
     })
 }
@@ -33,7 +27,6 @@ fn try_classify(ctx: &BpfContext) -> Result<ClassifyResult, ()> {
     let ethhdr: *const EthHdr = unsafe { ctx.get_ptr(0)? };
     let ether_type = unsafe { *ethhdr }.ether_type;
     if ether_type != EtherType::Ipv4 {
-        unsafe { bpf_printk!(b"not ipv4\n") };
         return Ok(ClassifyResult::Rest);
     }
 
@@ -41,7 +34,6 @@ fn try_classify(ctx: &BpfContext) -> Result<ClassifyResult, ()> {
     let proto = unsafe { *ipv4hdr }.proto;
     let ipv4hdr_len = unsafe { *ipv4hdr }.ihl() as usize * 4;
     if ipv4hdr_len < Ipv4Hdr::LEN {
-        unsafe { bpf_printk!(b"invalid ipv4 header length\n") };
         return Ok(ClassifyResult::Rest);
     }
 
