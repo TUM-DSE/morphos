@@ -46,6 +46,11 @@ impl BpfContext {
         let start = self.data as usize;
         let end = self.data_end as usize;
 
+        // Limit the size of the slice to 50KB so the verifier doesn't complain
+        if len > 50_000 {
+            return Err(());
+        }
+
         if start + offset + len > end {
             return Err(());
         }

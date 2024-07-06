@@ -1,7 +1,6 @@
 #![no_std]
 #![no_main]
 
-use aya_ebpf::bpf_printk;
 use flex_dns::name::DnsName;
 use flex_dns::{dns_name, DnsMessage};
 
@@ -23,7 +22,6 @@ fn try_filter(ctx: &BpfContext) -> Result<FilterResult, ()> {
     let ethhdr: *const EthHdr = unsafe { ctx.get_ptr(0)? };
     let ether_type = unsafe { *ethhdr }.ether_type;
     if ether_type != EtherType::Ipv4 {
-        unsafe { bpf_printk!(b"not ipv4\n") };
         return Ok(FilterResult::Pass);
     }
 
@@ -31,13 +29,11 @@ fn try_filter(ctx: &BpfContext) -> Result<FilterResult, ()> {
     let proto = unsafe { *ipv4hdr }.proto;
     let ipv4hdr_len = unsafe { *ipv4hdr }.ihl() as usize * 4;
     if ipv4hdr_len < Ipv4Hdr::LEN {
-        unsafe { bpf_printk!(b"invalid ipv4 header length\n") };
         return Ok(FilterResult::Pass);
     }
 
     // check UDP
     if proto != IpProto::Udp {
-        unsafe { bpf_printk!(b"not udp\n") };
         return Ok(FilterResult::Pass);
     }
 
@@ -46,7 +42,6 @@ fn try_filter(ctx: &BpfContext) -> Result<FilterResult, ()> {
     let udphdr: *const UdpHdr = unsafe { ctx.get_ptr(EthHdr::LEN + ipv4hdr_len)? };
     let dst_port = u16::from_be(unsafe { *udphdr }.dest);
     if dst_port != DNS_PORT {
-        unsafe { bpf_printk!(b"ports don't match - dst: %u\n", dst_port as u64) };
         return Ok(FilterResult::Pass);
     }
 
@@ -59,30 +54,19 @@ fn try_filter(ctx: &BpfContext) -> Result<FilterResult, ()> {
 
     let mut questions = dns_message.questions();
     let Ok(questions) = questions.iter() else {
-        unsafe {
-            bpf_printk!(b"error parsing dns questions\n");
-        }
         return Ok(FilterResult::Drop);
     };
 
     for question in questions {
         let Ok(question) = question else {
-            unsafe {
-                bpf_printk!(b"error parsing dns question\n");
-            }
             return Ok(FilterResult::Drop);
         };
 
         const BLOCKED: DnsName = dns_name!(b"lmu.de");
         if question.name == BLOCKED {
-            unsafe {
-                bpf_printk!(b"matched disallowed dns name - reject\n");
-            }
             return Ok(FilterResult::Drop);
         }
     }
-
-    unsafe { bpf_printk!(b"dns filtering pass\n") };
 
     Ok(FilterResult::Pass)
 }
