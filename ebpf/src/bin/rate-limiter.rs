@@ -1,46 +1,23 @@
 #![no_std]
 #![no_main]
 
-use core::mem;
-use core::net::Ipv4Addr;
-use aya_ebpf::bindings::xdp_action::{XDP_ABORTED, XDP_DROP, XDP_PASS};
 use aya_ebpf::bpf_printk;
+use core::net::Ipv4Addr;
 
 use aya_ebpf::helpers::bpf_ktime_get_ns;
 use aya_ebpf::macros::map;
 use aya_ebpf::maps::HashMap;
-use network_types::eth::{EtherType, EthHdr};
+use bpf_element::filter::FilterResult;
+use bpf_element::BpfContext;
+use network_types::eth::{EthHdr, EtherType};
 use network_types::ip::Ipv4Hdr;
-
-#[repr(C)]
-#[derive(Copy, Clone)]
-pub struct BPFilterContext {
-    data: *const u8,
-    data_end: *const u8,
-}
 
 #[no_mangle]
 #[link_section = "bpffilter"]
-pub extern "C" fn filter(ctx: *mut BPFilterContext) -> u32 {
+pub extern "C" fn filter(ctx: *mut BpfContext) -> FilterResult {
     let ctx = unsafe { *ctx };
 
-    match try_filter(&ctx) {
-        Ok(ret) => ret,
-        Err(_) => XDP_ABORTED,
-    }
-}
-
-#[inline(always)]
-unsafe fn ptr_at<T>(ctx: &BPFilterContext, offset: usize) -> Result<*const T, ()> {
-    let start = ctx.data as usize;
-    let end = ctx.data_end as usize;
-    let len = mem::size_of::<T>();
-
-    if start + offset + len > end {
-        return Err(());
-    }
-
-    Ok((start + offset) as *const T)
+    try_filter(&ctx).unwrap_or_else(|_| FilterResult::Abort)
 }
 
 struct RateLimit {
@@ -89,21 +66,23 @@ impl RateLimit {
 static PKTCOUNTHASHMAP: HashMap<Ipv4Addr, RateLimit> = HashMap::with_max_entries(1024, 0);
 
 #[inline(always)]
-fn try_filter(ctx: &BPFilterContext) -> Result<u32, ()> {
-    let ethhdr: *const EthHdr = unsafe { ptr_at(ctx, 0)? };
+fn try_filter(ctx: &BpfContext) -> Result<FilterResult, ()> {
+    let ethhdr: *const EthHdr = unsafe { ctx.get_ptr(0)? };
     match unsafe { *ethhdr }.ether_type {
         EtherType::Ipv4 => {}
-        _ => return Ok(XDP_DROP),
+        _ => return Ok(FilterResult::Drop),
     }
 
-    let ipv4hdr: *const Ipv4Hdr = unsafe { ptr_at(ctx, EthHdr::LEN)? };
+    let ipv4hdr: *const Ipv4Hdr = unsafe { ctx.get_ptr(EthHdr::LEN)? };
     let src_addr = unsafe { *ipv4hdr }.src_addr();
 
     let rate_limit = match PKTCOUNTHASHMAP.get_ptr_mut(&src_addr) {
         None => {
             let rate_limit = RateLimit::default();
 
-            PKTCOUNTHASHMAP.insert(&src_addr, &rate_limit, 0).map_err(|_| ())?;
+            PKTCOUNTHASHMAP
+                .insert(&src_addr, &rate_limit, 0)
+                .map_err(|_| ())?;
             unsafe { &mut *PKTCOUNTHASHMAP.get_ptr_mut(&src_addr).unwrap() }
         }
         Some(rate_limit) => {
@@ -113,12 +92,14 @@ fn try_filter(ctx: &BPFilterContext) -> Result<u32, ()> {
         }
     };
 
-    unsafe { bpf_printk!(b"Currently have %d tokens\n", rate_limit.tokens); }
+    unsafe {
+        bpf_printk!(b"Currently have %d tokens\n", rate_limit.tokens);
+    }
 
     if rate_limit.spend_token() {
-        Ok(XDP_PASS)
+        Ok(FilterResult::Pass)
     } else {
-        Ok(XDP_DROP)
+        Ok(FilterResult::Drop)
     }
 }
 

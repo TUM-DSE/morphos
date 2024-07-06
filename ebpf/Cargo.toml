@@ -1,4 +1,44 @@
-[workspace]
-members = ["xtask"]
+[package]
+name = "bpf-element"
+version = "0.1.0"
+edition = "2021"
 
-resolver = "2"
+[[bin]]
+name = "dns-filter"
+path = "src/bin/dns-filter.rs"
+
+[[bin]]
+name = "drop"
+path = "src/bin/drop.rs"
+
+[[bin]]
+name = "pass"
+path = "src/bin/pass.rs"
+
+[[bin]]
+name = "ether-mirror"
+path = "src/bin/ether-mirror.rs"
+
+[[bin]]
+name = "rate-limiter"
+path = "src/bin/rate-limiter.rs"
+
+[[bin]]
+name = "strip-ether-vlan-header"
+path = "src/bin/strip-ether-vlan-header.rs"
+
+[[bin]]
+name = "target-port"
+path = "src/bin/target-port.rs"
+
+[[bin]]
+name = "udp-tcp-classifier"
+path = "src/bin/udp-tcp-classifier.rs"
+
+[dependencies]
+network-types = "0.0.6"
+aya-ebpf = "0.1.0"
+flex-dns = "1.0.1"
+
+[workspace]
+members = []

@@ -1,9 +1,11 @@
 #![no_std]
 #![no_main]
 
+use bpf_element::filter::FilterResult;
+
 #[no_mangle]
-pub extern "C" fn filter() -> u32 {
-    return 0;
+pub extern "C" fn filter() -> FilterResult {
+    FilterResult::Pass
 }
 
 #[panic_handler]
