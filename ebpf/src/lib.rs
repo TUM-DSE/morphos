@@ -54,3 +54,8 @@ impl BpfContext {
         Ok(core::slice::from_raw_parts(slice_start, len))
     }
 }
+
+#[panic_handler]
+fn panic(_info: &core::panic::PanicInfo) -> ! {
+    unsafe { core::hint::unreachable_unchecked() }
+}

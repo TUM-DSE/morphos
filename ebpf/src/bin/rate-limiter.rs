@@ -102,8 +102,3 @@ fn try_filter(ctx: &BpfContext) -> Result<FilterResult, ()> {
         Ok(FilterResult::Drop)
     }
 }
-
-#[panic_handler]
-fn panic(_info: &core::panic::PanicInfo) -> ! {
-    unsafe { core::hint::unreachable_unchecked() }
-}

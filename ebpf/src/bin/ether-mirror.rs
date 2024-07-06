@@ -27,8 +27,3 @@ fn try_rewrite(ctx: &mut BpfContext) -> Result<(), ()> {
 
     Ok(())
 }
-
-#[panic_handler]
-fn panic(_info: &core::panic::PanicInfo) -> ! {
-    unsafe { core::hint::unreachable_unchecked() }
-}

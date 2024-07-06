@@ -8,8 +8,3 @@ use bpf_element::filter::FilterResult;
 pub extern "C" fn filter() -> FilterResult {
     FilterResult::Pass
 }
-
-#[panic_handler]
-fn panic(_info: &core::panic::PanicInfo) -> ! {
-    unsafe { core::hint::unreachable_unchecked() }
-}
