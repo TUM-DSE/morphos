@@ -4,6 +4,7 @@
 use bpf_element::filter::FilterResult;
 
 #[no_mangle]
+#[link_section = "bpffilter"]
 pub extern "C" fn filter() -> FilterResult {
     FilterResult::Pass
 }
