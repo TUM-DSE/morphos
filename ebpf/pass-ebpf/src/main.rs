@@ -2,7 +2,7 @@
 #![no_main]
 
 #[no_mangle]
-pub extern "C" fn filter(_: *const u8, _: usize) -> u32 {
+pub extern "C" fn filter() -> u32 {
     return 0;
 }
 

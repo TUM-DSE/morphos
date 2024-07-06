@@ -6,11 +6,19 @@ use core::mem;
 
 use network_types::eth::EthHdr;
 
-#[no_mangle]
-pub extern "C" fn rewrite(data: *mut u8, data_len: usize) -> i32 {
-    let data = unsafe { core::slice::from_raw_parts_mut(data, data_len) };
+#[repr(C)]
+#[derive(Copy, Clone)]
+pub struct RewriterContext {
+    data: *mut u8,
+    data_end: *mut u8,
+}
 
-    if let Err(_) = try_rewrite(data) {
+#[no_mangle]
+#[link_section = "bpffilter"]
+pub extern "C" fn rewrite(ctx: *mut RewriterContext) -> u32 {
+    let ctx = unsafe { *ctx };
+
+    if let Err(_) = try_rewrite(&ctx) {
         unsafe {
             bpf_printk!(b"error processing packet\n");
         }
@@ -20,19 +28,21 @@ pub extern "C" fn rewrite(data: *mut u8, data_len: usize) -> i32 {
 }
 
 #[inline(always)]
-unsafe fn ptr_at<T>(data: &mut [u8], offset: usize) -> Result<*mut T, ()> {
-    let start = data.as_ptr();
+unsafe fn ptr_at<T>(ctx: &RewriterContext, offset: usize) -> Result<*mut T, ()> {
+    let start = ctx.data as usize;
+    let end = ctx.data_end as usize;
     let len = mem::size_of::<T>();
 
-    if offset + len > data.len() {
+    if start + offset + len > end {
         return Err(());
     }
 
-    Ok(start.add(offset) as *mut T)
+    Ok((start + offset) as *mut T)
 }
 
-fn try_rewrite(data: &mut [u8]) -> Result<(), ()> {
-    let ethhdr: *mut EthHdr = unsafe { ptr_at(data, 0)? };
+#[inline(always)]
+fn try_rewrite(ctx: &RewriterContext) -> Result<(), ()> {
+    let ethhdr: *mut EthHdr = unsafe { ptr_at(ctx, 0)? };
 
     // mirror ethernet source and destination addresses
     unsafe {

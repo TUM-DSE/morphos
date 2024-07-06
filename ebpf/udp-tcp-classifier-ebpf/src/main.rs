@@ -7,6 +7,13 @@ use core::mem;
 use network_types::eth::{EthHdr, EtherType};
 use network_types::ip::{IpProto, Ipv4Hdr};
 
+#[repr(C)]
+#[derive(Copy, Clone)]
+pub struct ClassifierContext {
+    data: *const u8,
+    data_end: *const u8,
+}
+
 #[derive(Copy, Clone)]
 enum ClassifyResult {
     Udp,
@@ -15,6 +22,7 @@ enum ClassifyResult {
 }
 
 impl ClassifyResult {
+    #[inline(always)]
     pub fn output_port(self) -> u32 {
         match self {
             ClassifyResult::Udp => 0,
@@ -25,10 +33,10 @@ impl ClassifyResult {
 }
 
 #[no_mangle]
-pub extern "C" fn classify(data: *const u8, data_len: usize) -> u32 {
-    let data = unsafe { core::slice::from_raw_parts(data, data_len) };
-
-    match try_classify(data) {
+#[link_section = "bpffilter"]
+pub extern "C" fn classify(ctx: *mut ClassifierContext) -> u32 {
+    let ctx = unsafe { *ctx };
+    match try_classify(&ctx) {
         Ok(ret) => ret.output_port(),
         Err(_) => {
             unsafe {
@@ -41,18 +49,20 @@ pub extern "C" fn classify(data: *const u8, data_len: usize) -> u32 {
 }
 
 #[inline(always)]
-unsafe fn ptr_at<T>(data: &[u8], offset: usize) -> Result<*const T, ()> {
-    let start = data.as_ptr();
+unsafe fn ptr_at<T>(ctx: &ClassifierContext, offset: usize) -> Result<*const T, ()> {
+    let start = ctx.data as usize;
+    let end = ctx.data_end as usize;
     let len = mem::size_of::<T>();
 
-    if offset + len > data.len() {
+    if start + offset + len > end {
         return Err(());
     }
 
-    Ok(start.add(offset) as *const T)
+    Ok((start + offset) as *const T)
 }
 
-fn try_classify(data: &[u8]) -> Result<ClassifyResult, ()> {
+#[inline(always)]
+fn try_classify(data: &ClassifierContext) -> Result<ClassifyResult, ()> {
     let ethhdr: *const EthHdr = unsafe { ptr_at(data, 0)? };
     let ether_type = unsafe { *ethhdr }.ether_type;
     if ether_type != EtherType::Ipv4 {

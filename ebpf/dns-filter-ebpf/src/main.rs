@@ -3,6 +3,7 @@
 
 use aya_ebpf::bpf_printk;
 use core::mem;
+use aya_ebpf::bindings::xdp_action::{XDP_ABORTED, XDP_DROP, XDP_PASS};
 use flex_dns::name::DnsName;
 use flex_dns::{dns_name, DnsMessage};
 
@@ -10,42 +11,56 @@ use network_types::eth::{EthHdr, EtherType};
 use network_types::ip::{IpProto, Ipv4Hdr};
 use network_types::udp::UdpHdr;
 
-const DROP: u32 = 1;
-const PASS: u32 = 0;
+#[repr(C)]
+#[derive(Copy, Clone)]
+pub struct BPFilterContext {
+    data: *const u8,
+    data_end: *const u8,
+}
 
 #[no_mangle]
-pub extern "C" fn filter(data: *const u8, data_len: usize) -> u32 {
-    let data = unsafe { core::slice::from_raw_parts(data, data_len) };
-
-    match try_filter(data) {
+#[link_section = "bpffilter"]
+pub extern "C" fn filter(ctx: *mut BPFilterContext) -> u32 {
+    let ctx = unsafe { *ctx };
+    match try_filter(&ctx) {
         Ok(ret) => ret,
-        Err(_) => {
-            unsafe {
-                bpf_printk!(b"error processing packet\n");
-            }
-            DROP
-        }
+        Err(_) => XDP_ABORTED,
     }
 }
 
 #[inline(always)]
-unsafe fn ptr_at<T>(data: &[u8], offset: usize) -> Result<*const T, ()> {
-    let start = data.as_ptr();
+unsafe fn ptr_at<T>(ctx: &BPFilterContext, offset: usize) -> Result<*const T, ()> {
+    let start = ctx.data as usize;
+    let end = ctx.data_end as usize;
     let len = mem::size_of::<T>();
 
-    if offset + len > data.len() {
+    if start + offset + len > end {
         return Err(());
     }
 
-    Ok(start.add(offset) as *const T)
+    Ok((start + offset) as *const T)
 }
 
-fn try_filter(data: &[u8]) -> Result<u32, ()> {
+#[inline(always)]
+unsafe fn slice_at(ctx: &BPFilterContext, len: usize, offset: usize) -> Result<&[u8], ()> {
+    let start = ctx.data as usize;
+    let end = ctx.data_end as usize;
+
+    if start + offset + len > end {
+        return Err(());
+    }
+
+    let slice_start = (start + offset) as *const u8;
+    Ok(core::slice::from_raw_parts(slice_start, len))
+}
+
+#[inline(always)]
+fn try_filter(data: &BPFilterContext) -> Result<u32, ()> {
     let ethhdr: *const EthHdr = unsafe { ptr_at(data, 0)? };
     let ether_type = unsafe { *ethhdr }.ether_type;
     if ether_type != EtherType::Ipv4 {
         unsafe { bpf_printk!(b"not ipv4\n") };
-        return Ok(PASS);
+        return Ok(XDP_PASS);
     }
 
     let ipv4hdr: *const Ipv4Hdr = unsafe { ptr_at(data, EthHdr::LEN)? };
@@ -53,13 +68,13 @@ fn try_filter(data: &[u8]) -> Result<u32, ()> {
     let ipv4hdr_len = unsafe { *ipv4hdr }.ihl() as usize * 4;
     if ipv4hdr_len < Ipv4Hdr::LEN {
         unsafe { bpf_printk!(b"invalid ipv4 header length\n") };
-        return Ok(PASS);
+        return Ok(XDP_PASS);
     }
 
     // check UDP
     if proto != IpProto::Udp {
         unsafe { bpf_printk!(b"not udp\n") };
-        return Ok(PASS);
+        return Ok(XDP_PASS);
     }
 
     // check src & dst port equal to 53
@@ -68,18 +83,13 @@ fn try_filter(data: &[u8]) -> Result<u32, ()> {
     let dst_port = u16::from_be(unsafe { *udphdr }.dest);
     if dst_port != DNS_PORT {
         unsafe { bpf_printk!(b"ports don't match - dst: %u\n", dst_port as u64) };
-        return Ok(PASS);
+        return Ok(XDP_PASS);
     }
 
     // parse DNS query
-    let Some(udp_data) = ({
-        let udp_data_len = u16::from_be(unsafe { *udphdr }.len);
-        let udp_data_offset = EthHdr::LEN + ipv4hdr_len + UdpHdr::LEN;
-        data.get(udp_data_offset..udp_data_offset + udp_data_len as usize)
-    }) else {
-        unsafe { bpf_printk!(b"invalid udp data length\n") };
-        return Ok(DROP);
-    };
+    let udp_data_len = u16::from_be(unsafe { *udphdr }.len);
+    let udp_data_offset = EthHdr::LEN + ipv4hdr_len + UdpHdr::LEN;
+    let udp_data = unsafe { slice_at(data, udp_data_len as usize, udp_data_offset)? };
 
     let dns_message: DnsMessage<8, 0, _> = DnsMessage::new(udp_data).unwrap();
 
@@ -88,7 +98,7 @@ fn try_filter(data: &[u8]) -> Result<u32, ()> {
         unsafe {
             bpf_printk!(b"error parsing dns questions\n");
         }
-        return Ok(DROP);
+        return Ok(XDP_DROP);
     };
 
     for question in questions {
@@ -96,7 +106,7 @@ fn try_filter(data: &[u8]) -> Result<u32, ()> {
             unsafe {
                 bpf_printk!(b"error parsing dns question\n");
             }
-            return Ok(DROP);
+            return Ok(XDP_DROP);
         };
 
         const BLOCKED: DnsName = dns_name!(b"lmu.de");
@@ -104,13 +114,13 @@ fn try_filter(data: &[u8]) -> Result<u32, ()> {
             unsafe {
                 bpf_printk!(b"matched disallowed dns name - reject\n");
             }
-            return Ok(DROP);
+            return Ok(XDP_DROP);
         }
     }
 
     unsafe { bpf_printk!(b"dns filtering pass\n") };
 
-    Ok(PASS)
+    Ok(XDP_PASS)
 }
 
 #[panic_handler]

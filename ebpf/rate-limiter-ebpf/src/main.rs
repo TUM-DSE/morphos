@@ -3,6 +3,7 @@
 
 use core::mem;
 use core::net::Ipv4Addr;
+use aya_ebpf::bindings::xdp_action::{XDP_ABORTED, XDP_DROP, XDP_PASS};
 use aya_ebpf::bpf_printk;
 
 use aya_ebpf::helpers::bpf_ktime_get_ns;
@@ -11,29 +12,35 @@ use aya_ebpf::maps::HashMap;
 use network_types::eth::{EtherType, EthHdr};
 use network_types::ip::Ipv4Hdr;
 
-const DROP: u32 = 1;
-const PASS: u32 = 0;
+#[repr(C)]
+#[derive(Copy, Clone)]
+pub struct BPFilterContext {
+    data: *const u8,
+    data_end: *const u8,
+}
 
 #[no_mangle]
-pub extern "C" fn filter(data: *const u8, data_len: usize) -> u32 {
-    let data = unsafe { core::slice::from_raw_parts(data, data_len) };
+#[link_section = "bpffilter"]
+pub extern "C" fn filter(ctx: *mut BPFilterContext) -> u32 {
+    let ctx = unsafe { *ctx };
 
-    match try_filter(data) {
+    match try_filter(&ctx) {
         Ok(ret) => ret,
-        Err(_) => DROP,
+        Err(_) => XDP_ABORTED,
     }
 }
 
 #[inline(always)]
-unsafe fn ptr_at<T>(data: &[u8], offset: usize) -> Result<*const T, ()> {
-    let start = data.as_ptr();
+unsafe fn ptr_at<T>(ctx: &BPFilterContext, offset: usize) -> Result<*const T, ()> {
+    let start = ctx.data as usize;
+    let end = ctx.data_end as usize;
     let len = mem::size_of::<T>();
 
-    if offset + len > data.len() {
+    if start + offset + len > end {
         return Err(());
     }
 
-    Ok(start.add(offset) as *const T)
+    Ok((start + offset) as *const T)
 }
 
 struct RateLimit {
@@ -42,6 +49,7 @@ struct RateLimit {
 }
 
 impl Default for RateLimit {
+    #[inline(always)]
     fn default() -> Self {
         Self {
             tokens: 3,
@@ -51,6 +59,7 @@ impl Default for RateLimit {
 }
 
 impl RateLimit {
+    #[inline(always)]
     pub fn grant_tokens_if_needed(&mut self) {
         let now = unsafe { bpf_ktime_get_ns() };
         let elapsed = now - self.last_token_grant;
@@ -65,6 +74,7 @@ impl RateLimit {
         }
     }
 
+    #[inline(always)]
     pub fn spend_token(&mut self) -> bool {
         if self.tokens >= 2 {
             self.tokens -= 2;
@@ -78,14 +88,15 @@ impl RateLimit {
 #[map(name = "PKTCOUNTHASHMAP")]
 static PKTCOUNTHASHMAP: HashMap<Ipv4Addr, RateLimit> = HashMap::with_max_entries(1024, 0);
 
-fn try_filter(data: &[u8]) -> Result<u32, ()> {
-    let ethhdr: *const EthHdr = unsafe { ptr_at(data, 0)? };
+#[inline(always)]
+fn try_filter(ctx: &BPFilterContext) -> Result<u32, ()> {
+    let ethhdr: *const EthHdr = unsafe { ptr_at(ctx, 0)? };
     match unsafe { *ethhdr }.ether_type {
         EtherType::Ipv4 => {}
-        _ => return Ok(DROP),
+        _ => return Ok(XDP_DROP),
     }
 
-    let ipv4hdr: *const Ipv4Hdr = unsafe { ptr_at(data, EthHdr::LEN)? };
+    let ipv4hdr: *const Ipv4Hdr = unsafe { ptr_at(ctx, EthHdr::LEN)? };
     let src_addr = unsafe { *ipv4hdr }.src_addr();
 
     let rate_limit = match PKTCOUNTHASHMAP.get_ptr_mut(&src_addr) {
@@ -105,9 +116,9 @@ fn try_filter(data: &[u8]) -> Result<u32, ()> {
     unsafe { bpf_printk!(b"Currently have %d tokens\n", rate_limit.tokens); }
 
     if rate_limit.spend_token() {
-        Ok(PASS)
+        Ok(XDP_PASS)
     } else {
-        Ok(DROP)
+        Ok(XDP_DROP)
     }
 }
 
