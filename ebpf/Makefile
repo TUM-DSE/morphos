@@ -14,7 +14,7 @@ $(1):
 	@echo ""
 	@if [ "$(VERIFY)" = "1" ]; then \
 		echo -e "${GRAY_BOLD}Verification Results:${RESET}"; \
-	 	$(DIR)/../ebpf-verifier/check $(DIR)/../rootfs/$(1) bpffilter $(if $(VERIFY_VERBOSE),-v); \
+	 	$(DIR)/../ebpf-verifier/check $(DIR)/../rootfs/$(1) bpffilter $(if $(VERIFY_ARGS),$(VERIFY_ARGS)); \
 	 fi
 endef
 

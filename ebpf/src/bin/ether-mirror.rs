@@ -23,13 +23,12 @@ pub extern "C" fn rewrite(ctx: *mut BpfContext) -> u32 {
 
 #[inline(always)]
 fn try_rewrite(ctx: &mut BpfContext) -> Result<(), ()> {
-    let ethhdr: *mut EthHdr = unsafe { ctx.get_ptr_mut(0)? };
+    let ethhdr: &mut EthHdr = unsafe { &mut *ctx.get_ptr_mut(0)? };
 
     // mirror ethernet source and destination addresses
-    unsafe {
-        let ethhdr = &mut *ethhdr;
-        mem::swap(&mut ethhdr.src_addr, &mut ethhdr.dst_addr);
-    }
+    let tmp = ethhdr.src_addr;
+    ethhdr.src_addr = ethhdr.dst_addr;
+    ethhdr.dst_addr = tmp;
 
     Ok(())
 }
