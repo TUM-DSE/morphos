@@ -18,7 +18,7 @@ make all
 | drop                    | BPFFilter     | Drops all packets                                            | ✅                   |
 | ether-mirror            | BPFRewriter   | Mirrors ethernet destination & source addresses              | ✅                   |
 | pass                    | BPFFilter     | Allows all packets                                           | ✅                   |
-| rate-limiter            | BPFFilter     | Rate-limits incoming packets                                 |                     |
+| rate-limiter            | BPFFilter     | Rate-limits incoming packets                                 | ✅                   |
 | strip-ether-vlan-header | BPFRewriter   | Removes the Ethernet header                                  |                     |
 | target-port             | BPFFilter     | Drops all IPv4 packets with target port `12345`              | ✅                   |
 | udp-tcp-classifier      | BPFClassifier | Classifies packets based on whether they're UDP, TCP or else | ✅                   |
