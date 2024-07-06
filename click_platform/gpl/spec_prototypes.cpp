@@ -83,6 +83,16 @@ static const struct EbpfHelperPrototype bpf_get_prandom_u32_proto = {
 };
 
 
+static const struct EbpfHelperPrototype bpf_packet_add_space_proto = {
+        .name = "packet_add_space",
+        .return_type = EBPF_RETURN_TYPE_INTEGER,
+        .argument_type = {
+                EBPF_ARGUMENT_TYPE_ANYTHING,
+                EBPF_ARGUMENT_TYPE_ANYTHING,
+        },
+        .reallocate_packet = true,
+}
+
 #define FN(x) bpf_##x##_proto
 // keep this on a round line
 const struct EbpfHelperPrototype prototypes[] = {
@@ -92,6 +102,7 @@ const struct EbpfHelperPrototype prototypes[] = {
         FN(ktime_get_ns),
         FN(trace_printk),
         FN(get_prandom_u32),
+        FN(packet_add_space),
 };
 
 EbpfHelperPrototype get_helper_prototype_unchecked(int32_t n) {
@@ -108,6 +119,8 @@ EbpfHelperPrototype get_helper_prototype_unchecked(int32_t n) {
             return FN(trace_printk);
         case 7:
             return FN(get_prandom_u32);
+        case 60:
+            return FN(packet_add_space);
         default:
             throw std::exception();
     }

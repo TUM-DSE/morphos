@@ -5,6 +5,7 @@ use bpf_element::rewriter::{bpf_packet_add_space, RewriterResult};
 use bpf_element::BpfContext;
 
 #[no_mangle]
+#[link_section = "bpffilter"]
 pub extern "C" fn rewrite(ctx: *mut BpfContext) -> RewriterResult {
     let mut ctx = unsafe { *ctx };
 
