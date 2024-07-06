@@ -1,7 +1,6 @@
 #![no_std]
 #![no_main]
 
-use aya_ebpf::bpf_printk;
 use core::net::Ipv4Addr;
 
 use aya_ebpf::helpers::bpf_ktime_get_ns;
@@ -22,7 +21,7 @@ pub extern "C" fn filter(ctx: *mut BpfContext) -> FilterResult {
 
 struct RateLimit {
     tokens: u32,
-    last_token_grant: u64,
+    last_token_grant: u32,
 }
 
 impl Default for RateLimit {
@@ -30,7 +29,7 @@ impl Default for RateLimit {
     fn default() -> Self {
         Self {
             tokens: 3,
-            last_token_grant: unsafe { bpf_ktime_get_ns() },
+            last_token_grant: (unsafe { bpf_ktime_get_ns() } / 1_000_000_000) as u32,
         }
     }
 }
@@ -39,15 +38,15 @@ impl RateLimit {
     #[inline(always)]
     pub fn grant_tokens_if_needed(&mut self) {
         let now = unsafe { bpf_ktime_get_ns() };
-        let elapsed = now - self.last_token_grant;
+        let elapsed = now - self.last_token_grant as u64;
 
         // grant 1 token per second
-        let new_tokens = elapsed / 1_000_000_000;
+        let new_tokens = elapsed;
 
         if new_tokens > 0 {
             self.tokens += new_tokens as u32;
             self.tokens = self.tokens.min(3);
-            self.last_token_grant = now;
+            self.last_token_grant = (now / 1_000_000_000u64) as u32;
         }
     }
 
@@ -73,17 +72,16 @@ fn try_filter(ctx: &BpfContext) -> Result<FilterResult, ()> {
         _ => return Ok(FilterResult::Drop),
     }
 
-    let ipv4hdr: *const Ipv4Hdr = unsafe { ctx.get_ptr(EthHdr::LEN)? };
-    let src_addr = unsafe { *ipv4hdr }.src_addr();
+    let eth_hdr: *const Ipv4Hdr = unsafe { ctx.get_ptr(EthHdr::LEN)? };
+    let src_addr = unsafe { (*eth_hdr).src_addr() };
 
     let rate_limit = match PKTCOUNTHASHMAP.get_ptr_mut(&src_addr) {
         None => {
             let rate_limit = RateLimit::default();
-
             PKTCOUNTHASHMAP
                 .insert(&src_addr, &rate_limit, 0)
                 .map_err(|_| ())?;
-            unsafe { &mut *PKTCOUNTHASHMAP.get_ptr_mut(&src_addr).unwrap() }
+            unsafe { &mut *PKTCOUNTHASHMAP.get_ptr_mut(&src_addr).ok_or(())? }
         }
         Some(rate_limit) => {
             let rate_limit = unsafe { &mut *rate_limit };
@@ -91,10 +89,6 @@ fn try_filter(ctx: &BpfContext) -> Result<FilterResult, ()> {
             rate_limit
         }
     };
-
-    unsafe {
-        bpf_printk!(b"Currently have %d tokens\n", rate_limit.tokens);
-    }
 
     if rate_limit.spend_token() {
         Ok(FilterResult::Pass)

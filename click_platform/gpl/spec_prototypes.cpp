@@ -86,21 +86,39 @@ static const struct EbpfHelperPrototype bpf_get_prandom_u32_proto = {
 #define FN(x) bpf_##x##_proto
 // keep this on a round line
 const struct EbpfHelperPrototype prototypes[] = {
-    FN(map_lookup_elem),
-    FN(map_update_elem),
-    FN(map_delete_elem),
-    FN(ktime_get_ns),
-    FN(trace_printk),
-    FN(get_prandom_u32),
+        FN(map_lookup_elem),
+        FN(map_update_elem),
+        FN(map_delete_elem),
+        FN(ktime_get_ns),
+        FN(trace_printk),
+        FN(get_prandom_u32),
 };
 
+EbpfHelperPrototype get_helper_prototype_unchecked(int32_t n) {
+    switch (n) {
+        case 1:
+            return FN(map_lookup_elem);
+        case 2:
+            return FN(map_update_elem);
+        case 3:
+            return FN(map_delete_elem);
+        case 5:
+            return FN(ktime_get_ns);
+        case 6:
+            return FN(trace_printk);
+        case 7:
+            return FN(get_prandom_u32);
+        default:
+            throw std::exception();
+    }
+}
+
 bool is_helper_usable_linux(int32_t n) {
-    if (n >= (int)(sizeof(prototypes) / sizeof(prototypes[0])) || n < 0)
-        return false;
+    EbpfHelperPrototype prototype = get_helper_prototype_unchecked(n);
 
     // If the helper has a context_descriptor, it must match the hook's context_descriptor.
-    if ((prototypes[n].context_descriptor != nullptr) &&
-        (prototypes[n].context_descriptor != global_program_info->type.context_descriptor))
+    if ((prototype.context_descriptor != nullptr) &&
+        (prototype.context_descriptor != global_program_info->type.context_descriptor))
         return false;
 
     return true;
@@ -109,5 +127,6 @@ bool is_helper_usable_linux(int32_t n) {
 EbpfHelperPrototype get_helper_prototype_linux(int32_t n) {
     if (!is_helper_usable_linux(n))
         throw std::exception();
-    return prototypes[n];
+
+    return get_helper_prototype_unchecked(n);
 }
