@@ -38,11 +38,18 @@
                 gnuplot
                 llvmPackages_15.bintools
               ];
+              prevailDeps = with pkgs; [
+                gcc
+                git
+                cmake
+                boost
+                yaml-cpp
+              ];
             in
             {
               devShells.default = pkgs.mkShell {
                 name = "devShell";
-                buildInputs = buildDeps ++ [
+                buildInputs = buildDeps ++ prevailDeps ++ [
                     unstable.kraft
                     unstable.rustup
                     unstable.bmon

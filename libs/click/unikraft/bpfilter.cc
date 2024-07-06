@@ -16,22 +16,32 @@ CLICK_DECLS
 BPFilter::BPFilter() {
 }
 
+#define XDP_ABORTED 0
+#define XDP_DROP 1
+#define XDP_PASS 2
+
 void BPFilter::push(int, Packet *p) {
     _count++;
 
     uk_pr_debug("BPFilter: Received packet\n");
 
     uk_rwlock_rlock(&_lock);
-    uint64_t ret = this->exec(p);
+    uint32_t ret = this->exec(p);
     uk_rwlock_runlock(&_lock);
 
-    if (ret == 1) {
+    if (ret == XDP_DROP) {
         uk_pr_debug("BPFilter: Dropped packet\n");
         _filtered++;
         p->kill();
-    } else {
+    } else if (ret == XDP_PASS) {
         uk_pr_debug("BPFilter: Didn't drop packet\n");
         output(0).push(p);
+    } else if (ret == XDP_ABORTED) {
+        uk_pr_err("BPFilter: Filter aborted\n");
+        p->kill();
+    } else {
+        uk_pr_err("BPFilter: Unsupported action: %u\n", ret);
+        p->kill();
     }
 }
 

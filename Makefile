@@ -22,7 +22,7 @@ pass:
 	cd ebpf && cargo xtask build-pass-ebpf --release && (cp target/bpfel-unknown-none/release/pass ../rootfs/pass || true)
 
 rate-limiter:
-	cd ebpf && cargo xtask build-rate-limiter-ebpf --release && (cp target/bpfel-unknown-none/release/rate-limiter ../rootfs/pass || true)
+	cd ebpf && cargo xtask build-rate-limiter-ebpf --release && (cp target/bpfel-unknown-none/release/rate-limiter ../rootfs/rate-limiter || true)
 
 strip-ether-vlan-header:
 	cd ebpf && cargo xtask build-strip-ether-vlan-header-ebpf --release && (cp target/bpfel-unknown-none/release/strip-ether-vlan-header ../rootfs/strip-ether-vlan-header || true)

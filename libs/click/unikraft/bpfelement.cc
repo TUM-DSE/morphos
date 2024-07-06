@@ -171,17 +171,25 @@ int BPFElement::configure(Vector <String> &conf, ErrorHandler *errh) {
     return 0;
 }
 
-int BPFElement::exec(Packet *p) {
+uint32_t BPFElement::exec(Packet *p) {
+    auto ctx = (bpfelement_md) {
+        .data = (void*) p->data(),
+        .data_end = (void*) p->end_data()
+    };
+
+    uk_pr_info("packet data start: %p\n", p->data());
+    uk_pr_info("packet data end: %p\n", p->end_data());
+
     if (_jit) {
-        return _ubpf_jit_fn((void *) p->buffer(), p->buffer_length());
+        return (uint32_t) _ubpf_jit_fn(&ctx, sizeof(ctx));
     } else {
         uint64_t ret;
-        if (ubpf_exec(_ubpf_vm, (void *) p->buffer(), p->buffer_length(), &ret) != 0) {
+        if (ubpf_exec(_ubpf_vm, &ctx, sizeof(ctx), &ret) != 0) {
             uk_pr_err("Error executing bpf program\n");
             return -1;
         }
 
-        return ret;
+        return (uint32_t) ret;
     }
 }
 
