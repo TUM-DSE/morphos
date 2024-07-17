@@ -91,7 +91,7 @@ static const struct EbpfHelperPrototype bpf_packet_add_space_proto = {
                 EBPF_ARGUMENT_TYPE_ANYTHING,
         },
         .reallocate_packet = true,
-}
+};
 
 #define FN(x) bpf_##x##_proto
 // keep this on a round line
@@ -126,7 +126,7 @@ EbpfHelperPrototype get_helper_prototype_unchecked(int32_t n) {
     }
 }
 
-bool is_helper_usable_linux(int32_t n) {
+bool is_helper_usable_click(int32_t n) {
     EbpfHelperPrototype prototype = get_helper_prototype_unchecked(n);
 
     // If the helper has a context_descriptor, it must match the hook's context_descriptor.
@@ -137,8 +137,8 @@ bool is_helper_usable_linux(int32_t n) {
     return true;
 }
 
-EbpfHelperPrototype get_helper_prototype_linux(int32_t n) {
-    if (!is_helper_usable_linux(n))
+EbpfHelperPrototype get_helper_prototype_click(int32_t n) {
+    if (!is_helper_usable_click(n))
         throw std::exception();
 
     return get_helper_prototype_unchecked(n);

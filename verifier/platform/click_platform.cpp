@@ -1,8 +1,8 @@
 // Copyright (c) Prevail Verifier contributors.
 // SPDX-License-Identifier: MIT
 #include <stdexcept>
-#if __linux__
-#include <linux/bpf.h>
+#if __click__
+#include <click/bpf.h>
 #define PTYPE(name, descr, native_type, prefixes) \
              {name, descr, native_type, prefixes}
 #define PTYPE_PRIVILEGED(name, descr, native_type, prefixes) \
@@ -16,8 +16,8 @@
 #include "crab_verifier.hpp"
 #include "helpers.hpp"
 #include "platform.hpp"
-#include "linux_platform.hpp"
-#include "linux/gpl/spec_type_descriptors.hpp"
+#include "click_platform.hpp"
+#include "gpl/spec_type_descriptors.hpp"
 
 // Map definitions as they appear in an ELF file, so field width matters.
 struct bpf_load_map_def {
@@ -30,7 +30,7 @@ struct bpf_load_map_def {
     uint32_t numa_node;
 };
 
-static int create_map_linux(uint32_t map_type, uint32_t key_size, uint32_t value_size, uint32_t max_entries,
+static int create_map_click(uint32_t map_type, uint32_t key_size, uint32_t value_size, uint32_t max_entries,
                             ebpf_verifier_options_t options);
 
 // Allow for comma as a separator between multiple prefixes, to make
@@ -44,7 +44,7 @@ const std::vector<EbpfProgramType> program_types = {
     click_bpffilter_program_type,
 };
 
-static EbpfProgramType get_program_type_linux(const std::string& section, const std::string& path) {
+static EbpfProgramType get_program_type_click(const std::string& section, const std::string& path) {
     EbpfProgramType type{};
 
     for (const EbpfProgramType& t : program_types) {
@@ -57,25 +57,25 @@ static EbpfProgramType get_program_type_linux(const std::string& section, const 
     return click_bpffilter_program_type;
 }
 
-#ifdef __linux__
+#ifdef __click__
 #define BPF_MAP_TYPE(x) BPF_MAP_TYPE_##x, #x
 #else
 #define BPF_MAP_TYPE(x) 0, #x
 #endif
 
-static const EbpfMapType linux_map_types[] = {
+static const EbpfMapType click_map_types[] = {
     {BPF_MAP_TYPE(HASH)},
     {BPF_MAP_TYPE(ARRAY), true},
 };
 
-EbpfMapType get_map_type_linux(uint32_t platform_specific_type)
+EbpfMapType get_map_type_click(uint32_t platform_specific_type)
 {
     uint32_t index = platform_specific_type;
-    if ((index == 0) || (index >= sizeof(linux_map_types) / sizeof(linux_map_types[0]))) {
-        return linux_map_types[0];
+    if ((index == 0) || (index >= sizeof(click_map_types) / sizeof(click_map_types[0]))) {
+        return click_map_types[0];
     }
-    EbpfMapType type = linux_map_types[index];
-#ifdef __linux__
+    EbpfMapType type = click_map_types[index];
+#ifdef __click__
     assert(type.platform_specific_type == platform_specific_type);
 #else
     type.platform_specific_type = platform_specific_type;
@@ -83,7 +83,7 @@ EbpfMapType get_map_type_linux(uint32_t platform_specific_type)
     return type;
 }
 
-void parse_maps_section_linux(std::vector<EbpfMapDescriptor>& map_descriptors, const char* data, size_t map_def_size,
+void parse_maps_section_click(std::vector<EbpfMapDescriptor>& map_descriptors, const char* data, size_t map_def_size,
                               int map_count, const ebpf_platform_t* platform, ebpf_verifier_options_t options) {
     // Copy map definitions from the ELF section into a local list.
     auto mapdefs = std::vector<bpf_load_map_def>();
@@ -95,9 +95,9 @@ void parse_maps_section_linux(std::vector<EbpfMapDescriptor>& map_descriptors, c
 
     // Add map definitions into the map_descriptors list.
     for (auto const& s : mapdefs) {
-        EbpfMapType type = get_map_type_linux(s.type);
+        EbpfMapType type = get_map_type_click(s.type);
         map_descriptors.emplace_back(EbpfMapDescriptor{
-            .original_fd = create_map_linux(s.type, s.key_size, s.value_size, s.max_entries, options),
+            .original_fd = create_map_click(s.type, s.key_size, s.value_size, s.max_entries, options),
             .type = s.type,
             .key_size = s.key_size,
             .value_size = s.value_size,
@@ -109,7 +109,7 @@ void parse_maps_section_linux(std::vector<EbpfMapDescriptor>& map_descriptors, c
 }
 
 // Initialize the inner_map_fd in each map descriptor.
-void resolve_inner_map_references_linux(std::vector<EbpfMapDescriptor>& map_descriptors) {
+void resolve_inner_map_references_click(std::vector<EbpfMapDescriptor>& map_descriptors) {
     for (size_t i = 0; i < map_descriptors.size(); i++) {
         unsigned int inner = map_descriptors[i].inner_map_fd; // Get the inner_map_idx back.
         if (inner >= map_descriptors.size())
@@ -119,23 +119,23 @@ void resolve_inner_map_references_linux(std::vector<EbpfMapDescriptor>& map_desc
     }
 }
 
-#if __linux__
+#if __click__
 static int do_bpf(bpf_cmd cmd, union bpf_attr& attr) { return syscall(321, cmd, &attr, sizeof(attr)); }
 #endif
 
-/** Try to allocate a Linux map.
+/** Try to allocate a click map.
  *
  *  This function requires admin privileges.
  */
-static int create_map_linux(uint32_t map_type, uint32_t key_size, uint32_t value_size, uint32_t max_entries,
+static int create_map_click(uint32_t map_type, uint32_t key_size, uint32_t value_size, uint32_t max_entries,
                             ebpf_verifier_options_t options)
 {
     if (options.mock_map_fds) {
-        EbpfMapType type = get_map_type_linux(map_type);
+        EbpfMapType type = get_map_type_click(map_type);
         return create_map_crab(type, key_size, value_size, max_entries, options);
     }
 
-#if __linux__
+#if __click__
     union bpf_attr attr {};
     memset(&attr, '\0', sizeof(attr));
     attr.map_type = map_type;
@@ -158,11 +158,11 @@ static int create_map_linux(uint32_t map_type, uint32_t key_size, uint32_t value
     }
     return map_fd;
 #else
-    throw std::runtime_error(std::string("cannot create a Linux map"));
+    throw std::runtime_error(std::string("cannot create a click map"));
 #endif
 }
 
-EbpfMapDescriptor& get_map_descriptor_linux(int map_fd)
+EbpfMapDescriptor& get_map_descriptor_click(int map_fd)
 {
     // First check if we already have the map descriptor cached.
     EbpfMapDescriptor* map = find_map_descriptor(map_fd);
@@ -174,19 +174,19 @@ EbpfMapDescriptor& get_map_descriptor_linux(int map_fd)
     // but it may be an fd created by an app before calling the verifier.
     // In this case, we would like to query the map descriptor info
     // (key size, value size) from the execution context, but this is
-    // not yet supported on Linux.
+    // not yet supported on click.
 
     throw std::runtime_error(std::string("map_fd not found"));
 }
 
-const ebpf_platform_t g_ebpf_platform_linux = {
-    get_program_type_linux,
-    get_helper_prototype_linux,
-    is_helper_usable_linux,
+const ebpf_platform_t g_ebpf_platform_click = {
+    get_program_type_click,
+    get_helper_prototype_click,
+    is_helper_usable_click,
     sizeof(bpf_load_map_def),
-    parse_maps_section_linux,
-    get_map_descriptor_linux,
-    get_map_type_linux,
-    resolve_inner_map_references_linux,
+    parse_maps_section_click,
+    get_map_descriptor_click,
+    get_map_type_click,
+    resolve_inner_map_references_click,
     bpf_conformance_groups_t::default_groups | bpf_conformance_groups_t::packet
 };
