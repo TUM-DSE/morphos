@@ -141,7 +141,7 @@ int BPFElement::configure(Vector <String> &conf, ErrorHandler *errh) {
     }
 
     char *error_msg;
-    ubpf_load_elf(_ubpf_vm, buffer.data(), buffer.size(), &error_msg);
+    ubpf_load_elf_ex(_ubpf_vm, buffer.data(), buffer.size(), "main", &error_msg);
 
     if (error_msg != NULL) {
         return errh->error("Error loading ubpf program: %s\n", error_msg);

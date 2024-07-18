@@ -3,7 +3,8 @@ project(ubpf_verifier)
 
 set(CMAKE_CXX_STANDARD 20)
 
-FIND_PACKAGE(Boost 1.40 COMPONENTS program_options REQUIRED)
+find_package(Boost 1.40 COMPONENTS program_options REQUIRED)
+find_package(OpenSSL REQUIRED)
 
 add_subdirectory(ebpf-verifier)
 
@@ -16,4 +17,4 @@ add_executable(ubpf_verifier main.cpp
         platform/gpl/spec_prototypes.cpp platform/gpl/spec_type_descriptors.hpp
 )
 
-target_link_libraries(ubpf_verifier ${Boost_LIBRARIES} ebpfverifier)
+target_link_libraries(ubpf_verifier ${Boost_LIBRARIES} ebpfverifier OpenSSL::SSL OpenSSL::Crypto)

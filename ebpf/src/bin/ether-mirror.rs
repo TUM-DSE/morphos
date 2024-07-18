@@ -9,7 +9,7 @@ use bpf_element::rewriter::RewriterResult;
 
 #[no_mangle]
 #[link_section = "bpffilter"]
-pub extern "C" fn rewrite(ctx: *mut BpfContext) -> RewriterResult {
+pub extern "C" fn main(ctx: *mut BpfContext) -> RewriterResult {
     let mut ctx = unsafe { *ctx };
 
     match try_rewrite(&mut ctx) {

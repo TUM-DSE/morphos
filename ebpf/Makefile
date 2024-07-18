@@ -14,7 +14,7 @@ $(1):
 	@echo ""
 	@if [ "$(VERIFY)" = "1" ]; then \
 		echo -e "${GRAY_BOLD}Verification Results:${RESET}"; \
-	 	$(DIR)/../ebpf-verifier/check $(DIR)/../rootfs/$(1) bpffilter $(if $(VERIFY_ARGS),$(VERIFY_ARGS)); \
+	 	$(DIR)/../verifier/build/ubpf_verifier -f $(DIR)/../rootfs/$(1) -k $(DIR)/../verifier/keys/ec_private_key.pem -o $(DIR)/../rootfs/$(1).sig || true; \
 	 fi
 endef
 

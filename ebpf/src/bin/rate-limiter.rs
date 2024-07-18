@@ -13,7 +13,7 @@ use network_types::ip::Ipv4Hdr;
 
 #[no_mangle]
 #[link_section = "bpffilter"]
-pub extern "C" fn filter(ctx: *mut BpfContext) -> FilterResult {
+pub extern "C" fn main(ctx: *mut BpfContext) -> FilterResult {
     let ctx = unsafe { *ctx };
 
     try_filter(&ctx).unwrap_or_else(|_| FilterResult::Abort)

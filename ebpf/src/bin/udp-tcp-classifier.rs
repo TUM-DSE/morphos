@@ -15,7 +15,7 @@ pub enum ClassifyResult {
 
 #[no_mangle]
 #[link_section = "bpffilter"]
-pub extern "C" fn classify(ctx: *mut BpfContext) -> ClassifyResult {
+pub extern "C" fn main(ctx: *mut BpfContext) -> ClassifyResult {
     let ctx = unsafe { *ctx };
     try_classify(&ctx).unwrap_or_else(|_| {
         ClassifyResult::Rest
