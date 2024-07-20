@@ -4,6 +4,11 @@
 #include <click/args.hh>
 #include <click/standard/scheduleinfo.hh>
 
+#include <openssl/evp.h>
+#include <openssl/pem.h>
+#include <openssl/sha.h>
+#include <openssl/err.h>
+
 #include <cstdio>
 #include <vector>
 #include <string>
@@ -22,7 +27,7 @@ std::vector <uint8_t> read_file(const std::string &filename) {
     size_t file_size = ftell(file);
     fseek(file, 0, SEEK_SET);
 
-    std::vector <uint8_t> buffer(file_size);
+    std::vector <uint8_t> buffer((file_size));
     if (fread(buffer.data(), 1, file_size, file) != file_size) {
         fclose(file);
         return {};
@@ -96,17 +101,71 @@ void handle_jit_dump(ErrorHandler *errh, ubpf_vm *_ubpf_vm, uint64_t _bpfelement
     uk_pr_info("Dumped JIT code to %s\n", jit_dump_filename.c_str());
 }
 
+const std::string pub_key_str = R"(
+-----BEGIN PUBLIC KEY-----
+MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEK3AvjjQR+NrRqhcadKOqjkUY/OHj
+RmAU5ua9+XLW8RomQQtgubMBciF2BRlzGKH6LOAxgt4RwRI6qlhVOEEegg==
+-----END PUBLIC KEY-----
+)";
+
 int BPFElement::check_bpf_verification_signature(ErrorHandler *errh) {
-    if (_signature_file.empty()) {
-        errh->error("Signature file not provided\n");
-        return -1;
+    // Create a BIO for the public key
+    BIO *bio = BIO_new_mem_buf(pub_key_str.data(), static_cast<int>(pub_key_str.size()));
+    if (!bio) {
+        return errh->error("Unable to create BIO for public key\n");
     }
 
+    // Read public key from the BIO
+    EVP_PKEY *pkey = PEM_read_bio_PUBKEY(bio, nullptr, nullptr, nullptr);
+    BIO_free(bio);
+    if (!pkey) {
+        return errh->error("Failed to read public key\n");
+    }
+
+    // Read the file to be verified
+    std::vector <uint8_t> file_contents = read_file(_bpf_file.c_str());
+    if (file_contents.empty()) {
+        EVP_PKEY_free(pkey);
+        return errh->error("Failed to read file to be verified\n");
+    }
+
+    // Read the signature
     std::vector <uint8_t> signature = read_file(_signature_file.c_str());
     if (signature.empty()) {
-        errh->error("Error reading signature file %s\n", _signature_file.c_str());
-        return -1;
+        EVP_PKEY_free(pkey);
+        return errh->error("Failed to read signature file\n");
     }
+
+    // Compute SHA-256 hash of the file
+    unsigned char hash[SHA256_DIGEST_LENGTH];
+    if (!EVP_Digest(file_contents.data(), file_contents.size(), hash, nullptr, EVP_sha256(), nullptr)) {
+        EVP_PKEY_free(pkey);
+        return errh->error("Failed to compute SHA-256 hash\n");
+    }
+
+    // Create context for verification
+    EVP_MD_CTX *mdctx = EVP_MD_CTX_new();
+    if (!mdctx) {
+        EVP_PKEY_free(pkey);
+        return errh->error("Failed to create EVP_MD_CTX\n");
+    }
+
+    if (EVP_DigestVerifyInit(mdctx, nullptr, EVP_sha256(), nullptr, pkey) <= 0) {
+        EVP_MD_CTX_free(mdctx);
+        EVP_PKEY_free(pkey);
+        return errh->error("Failed to initialize digest verify context\n");
+    }
+
+    // Perform verification
+    if (EVP_DigestVerify(mdctx, signature.data(), signature.size(), hash, SHA256_DIGEST_LENGTH) != 1) {
+        EVP_MD_CTX_free(mdctx);
+        EVP_PKEY_free(pkey);
+        return errh->error("Signature verification failed\n");
+    }
+
+    // Clean up
+    EVP_MD_CTX_free(mdctx);
+    EVP_PKEY_free(pkey);
 
     uk_pr_info("Signature of BPF bytecode '%s' verified successfully with signature file '%s'\n", _bpf_file.c_str(),
                _signature_file.c_str());

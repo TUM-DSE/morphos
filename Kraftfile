@@ -18,7 +18,6 @@ unikraft:
     CONFIG_LIBUKCPIO: 'y'
     CONFIG_LIBRAMFS: 'y'
     CONFIG_LIBUK9P: 'y'
-    CONFIG_LIBOPENSSL: 'y'
 targets:
   - architecture: x86_64
     platform: kvm
@@ -36,6 +35,11 @@ libraries:
     version: stable
   libcxx:
     version: stable
+  openssl:
+    version: stable
+    kconfig:
+     - CONFIG_OPENSSL=y
+     - CONFIG_LIBCRYPTO=y
   compiler-rt:
     version: stable
   click:
