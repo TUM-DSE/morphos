@@ -12,7 +12,7 @@
 
 CLICK_DECLS
 
-std::vector<uint8_t> read_file(const std::string &filename) {
+std::vector <uint8_t> read_file(const std::string &filename) {
     FILE *file = fopen(filename.c_str(), "rb");
     if (!file) {
         return {};
@@ -22,7 +22,7 @@ std::vector<uint8_t> read_file(const std::string &filename) {
     size_t file_size = ftell(file);
     fseek(file, 0, SEEK_SET);
 
-    std::vector<uint8_t> buffer(file_size);
+    std::vector <uint8_t> buffer(file_size);
     if (fread(buffer.data(), 1, file_size, file) != file_size) {
         fclose(file);
         return {};
@@ -32,7 +32,7 @@ std::vector<uint8_t> read_file(const std::string &filename) {
     return buffer;
 }
 
-char write_file(const std::string& filename, const std::vector<uint8_t>& buffer) {
+char write_file(const std::string &filename, const std::vector <uint8_t> &buffer) {
     FILE *file = fopen(filename.c_str(), "wb");
     if (!file) {
         return -1;
@@ -74,10 +74,10 @@ void BPFElement::init_ubpf_vm() {
     register_additional_bpf_helpers();
 }
 
-void handle_jit_dump(ErrorHandler* errh, ubpf_vm* _ubpf_vm, uint64_t _bpfelement_id) {
-    std::vector<uint8_t> buffer(65536);
+void handle_jit_dump(ErrorHandler *errh, ubpf_vm *_ubpf_vm, uint64_t _bpfelement_id) {
+    std::vector <uint8_t> buffer(65536);
     size_t jitted_size;
-    char* error_msg = nullptr;
+    char *error_msg = nullptr;
 
     if (ubpf_translate(_ubpf_vm, buffer.data(), &jitted_size, &error_msg) < 0) {
         errh->error("Error translating ubpf program: %s\n", error_msg);
@@ -96,23 +96,39 @@ void handle_jit_dump(ErrorHandler* errh, ubpf_vm* _ubpf_vm, uint64_t _bpfelement
     uk_pr_info("Dumped JIT code to %s\n", jit_dump_filename.c_str());
 }
 
+int BPFElement::check_bpf_verification_signature(ErrorHandler *errh) {
+    if (_signature_file.empty()) {
+        errh->error("Signature file not provided\n");
+        return -1;
+    }
+
+    std::vector <uint8_t> signature = read_file(_signature_file.c_str());
+    if (signature.empty()) {
+        errh->error("Error reading signature file %s\n", _signature_file.c_str());
+        return -1;
+    }
+
+    uk_pr_info("Signature of BPF bytecode '%s' verified successfully with signature file '%s'\n", _bpf_file.c_str(),
+               _signature_file.c_str());
+    return 0;
+}
+
 int BPFElement::configure(Vector <String> &conf, ErrorHandler *errh) {
     if (conf.empty()) {
         return -1;
     }
 
-    bool dump_jit;
-    String program_string = String();
     if (Args(conf, this, errh)
                 .read("ID", _bpfelement_id)
                 .read("JIT", _jit)
-                .read("FILE", AnyArg(), program_string)
-                .read("DUMP_JIT", dump_jit)
+                .read("DUMP_JIT", _dump_jit)
+                .read("FILE", AnyArg(), _bpf_file)
+                .read("SIGNATURE", AnyArg(), _signature_file)
                 .complete() < 0) {
         return -1;
     }
 
-    const char *filename = program_string.c_str();
+    const char *filename = _bpf_file.c_str();
 
     bool reconfigure = _ubpf_vm != NULL;
     if (reconfigure) {
@@ -123,7 +139,7 @@ int BPFElement::configure(Vector <String> &conf, ErrorHandler *errh) {
                    filename);
     }
 
-    std::vector<uint8_t> buffer = read_file(filename);
+    std::vector <uint8_t> buffer = read_file(filename);
     if (buffer.empty()) {
         return errh->error("Error reading file %s\n", filename);
     }
@@ -147,6 +163,13 @@ int BPFElement::configure(Vector <String> &conf, ErrorHandler *errh) {
         return errh->error("Error loading ubpf program: %s\n", error_msg);
     }
 
+    if (CONFIG_LIBCLICK_UBPF_VERIFY_SIGNATURE) {
+        auto return_code = check_bpf_verification_signature(errh);
+        if (return_code < 0) {
+            return return_code;
+        }
+    }
+
     if (_jit) {
         _ubpf_jit_fn = ubpf_compile(_ubpf_vm, &error_msg);
         if (_ubpf_jit_fn == NULL) {
@@ -154,7 +177,7 @@ int BPFElement::configure(Vector <String> &conf, ErrorHandler *errh) {
         }
     }
 
-    if (dump_jit) {
+    if (_dump_jit) {
         handle_jit_dump(errh, _ubpf_vm, _bpfelement_id);
     }
 
@@ -173,8 +196,8 @@ int BPFElement::configure(Vector <String> &conf, ErrorHandler *errh) {
 
 uint32_t BPFElement::exec(Packet *p) {
     auto ctx = (bpfelement_md) {
-        .data = (void*) p->data(),
-        .data_end = (void*) p->end_data()
+            .data = (void *) p->data(),
+            .data_end = (void *) p->end_data()
     };
 
     uk_pr_info("packet data start: %p\n", p->data());

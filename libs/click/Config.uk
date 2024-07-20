@@ -91,10 +91,9 @@ config LIBCLICK_ELEMS_USERLEVEL
 	  Build with Click userlevel elements.
 	  Be aware this currently doesn't compile.
 
-config LIBCLICK_UBPF
-    bool "Enable ubpf element"
+config LIBCLICK_UBPF_VERIFY_SIGNATURE
+    bool "Enable verification of BPF signatures"
     default y
-    select LIBUBPF
     help
       Build with Click ubpf elements.
 

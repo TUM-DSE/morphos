@@ -41,7 +41,7 @@ c1[1] -> StripEtherVLANHeader
  -> CheckUDPHeader
  -> IPFilter(allow src ip 172.44.0.1 and dest ip 172.44.0.2, deny all)
  -> Print('Received packet (pre-filtering)')
- -> BPFilter(ID 1, FILE target-port, JIT true, DUMP_JIT true)
+ -> BPFilter(ID 1, FILE target-port, SIGNATURE target-port.sig, JIT true, DUMP_JIT true)
  -> Print('Received packet (post-filtering)')
  -> ToDevice(0);
 

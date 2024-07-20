@@ -34,11 +34,15 @@ private:
 
     uint64_t _bpfelement_id;
     bool _jit;
+    bool _dump_jit;
+    String _bpf_file;
+    String _signature_file;
 
     struct bpf_map_ctx *_bpf_map_ctx;
     ubpf_jit_fn _ubpf_jit_fn;
 
     void init_ubpf_vm();
+    int check_bpf_verification_signature(ErrorHandler *errh);
 
     CLICK_COLD;
 };
