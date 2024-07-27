@@ -9,8 +9,6 @@
 #include <random>
 
 void *bpf_map_lookup_elem(void *raw_map, void *key) {
-    printf("bpf_map_lookup_elem\n");
-
     bpf_map &map = *reinterpret_cast<bpf_map *>(raw_map);
     switch (map.def.type) {
         case BPF_MAP_TYPE_HASH: {
@@ -37,8 +35,6 @@ void *bpf_map_lookup_elem(void *raw_map, void *key) {
 }
 
 long bpf_map_update_elem(void *raw_map, void *key, const void *value, uint64_t flags) {
-    printf("bpf_map_update_elem\n");
-
     bpf_map &map = *reinterpret_cast<bpf_map *>(raw_map);
     switch (map.def.type) {
         case BPF_MAP_TYPE_HASH: {
@@ -70,8 +66,6 @@ long bpf_map_update_elem(void *raw_map, void *key, const void *value, uint64_t f
 }
 
 long bpf_map_delete_elem(void *raw_map, void *key) {
-    printf("bpf_map_delete_elem\n");
-
     bpf_map &map = *reinterpret_cast<bpf_map *>(raw_map);
     switch (map.def.type) {
         case BPF_MAP_TYPE_HASH: {

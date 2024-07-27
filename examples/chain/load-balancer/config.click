@@ -39,6 +39,15 @@ arp_q :: ARPQuerier(172.44.0.3, $MAC0)
 
 c1[1] -> [1]arp_q;
 
+lb :: BPFClassifier(ID 1, FILE round-robin, SIGNATURE round-robin.sig, JIT true);
+lb[0] -> SetIPAddress(172.44.0.4)
+      -> Print('Sending to output 0', MAXLENGTH 6)
+      -> [0]arp_q;
+
+lb[1] -> SetIPAddress(172.44.0.5)
+      -> Print('Sending to output 1', MAXLENGTH 6)
+      -> [0]arp_q;
+
 // Handle IP Packets
 c1[2] -> processing :: Strip(14)
  -> CheckIPHeader
@@ -48,9 +57,7 @@ c1[2] -> processing :: Strip(14)
  -> ttl :: DecIPTTL
  -> frag :: IPFragmenter(1500)
  -> Print('Received packet (load-balancer)')
- // -> BPFilter(ID 1, FILE target-port, SIGNATURE target-port.sig, JIT true)
- -> SetIPAddress(172.44.0.4)
- -> Discard;
+ -> lb;
 
 ipgw[1] -> arp_q[0];
 ttl[1] -> processing;

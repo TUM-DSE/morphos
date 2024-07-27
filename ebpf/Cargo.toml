@@ -24,6 +24,10 @@ name = "rate-limiter"
 path = "src/bin/rate-limiter.rs"
 
 [[bin]]
+name = "round-robin"
+path = "src/bin/round-robin.rs"
+
+[[bin]]
 name = "strip-ether-vlan-header"
 path = "src/bin/strip-ether-vlan-header.rs"
 

@@ -12,7 +12,7 @@ up:
 	  -kernel ../../.unikraft/build/click_qemu-x86_64 \
 	  -nographic'
 
-	tmux new-window -t click_examples_chain:1 -n firewall 'sudo qemu-system-x86_64 \
+	tmux new-window -t click_examples_chain:2 -n load-balancer 'sudo qemu-system-x86_64 \
 	  -accel kvm \
 	  -cpu max \
 	  -netdev bridge,id=en0,br=clicknet -device virtio-net-pci,netdev=en0,mac=00:10:FA:A2:7D:34 \
@@ -22,15 +22,23 @@ up:
 	  -kernel ../../.unikraft/build/click_qemu-x86_64 \
 	  -nographic'
 
-    # Start webserver
-	tmux new-window -t click_examples_chain:2 -n webserver 'sudo kraft run \
-  	 	--rm \
-  	 	--rootfs ./webserver \
-  	 	--plat qemu \
-  	 	--arch x86_64 \
-  	 	--network webserver \
-  	 	-M 256M \
-  	 	caddy:2.7'
+	tmux new-window -t click_examples_chain:3 -n app-1 'sudo qemu-system-x86_64 \
+	  -accel kvm \
+	  -cpu max \
+	  -netdev bridge,id=en0,br=clicknet -device virtio-net-pci,netdev=en0,mac=00:10:FA:D7:BC:C4 \
+	  -fsdev local,security_model=passthrough,id=hvirtio1,path=app-1 -device virtio-9p-pci,fsdev=hvirtio1,mount_tag=fs1 \
+	  -append "vfs.fstab=[\"fs1:/:9pfs\"] --" \
+	  -kernel ../../.unikraft/build/click_qemu-x86_64 \
+	  -nographic'
+
+	tmux new-window -t click_examples_chain:4 -n app-2 'sudo qemu-system-x86_64 \
+	  -accel kvm \
+	  -cpu max \
+	  -netdev bridge,id=en0,br=clicknet -device virtio-net-pci,netdev=en0,mac=00:10:FA:39:EA:2C \
+	  -fsdev local,security_model=passthrough,id=hvirtio1,path=app-2 -device virtio-9p-pci,fsdev=hvirtio1,mount_tag=fs1 \
+	  -append "vfs.fstab=[\"fs1:/:9pfs\"] --" \
+	  -kernel ../../.unikraft/build/click_qemu-x86_64 \
+	  -nographic'
 
 	tmux attach-session -t click_examples_chain
 
