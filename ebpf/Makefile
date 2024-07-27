@@ -10,11 +10,11 @@ define BUILD_TARGET
 $(1):
 	@echo -e "${GRAY_BOLD}Building ${RESET}$(1)..."
 	@cd $(DIR) && cargo build --bin $(1) --target bpfel-unknown-none --release -Z build-std=core
-	@-cp $(DIR)/target/bpfel-unknown-none/release/$(1) $(DIR)/../rootfs/$(1)
+	@-cp $(DIR)/target/bpfel-unknown-none/release/$(1) $(DIR)/../examples/$(1)/rootfs/$(1)
 	@echo ""
 	@if [ "$(VERIFY)" = "1" ]; then \
 		echo -e "${GRAY_BOLD}Verification Results:${RESET}"; \
-	 	$(DIR)/../verifier/build/ubpf_verifier -f $(DIR)/../rootfs/$(1) -k $(DIR)/../verifier/keys/ec_private_key.pem -o $(DIR)/../rootfs/$(1).sig || true; \
+	 	$(DIR)/../verifier/build/ubpf_verifier -f $(DIR)/../examples/$(1)/rootfs/$(1) -k $(DIR)/../verifier/keys/ec_private_key.pem -o $(DIR)/../examples/$(1)/rootfs/$(1).sig || true; \
 	 fi
 endef
 

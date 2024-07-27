@@ -27,11 +27,13 @@ void Control::push(int, Packet *p) {
     // - uint64_t bpfelement_id
     // - uint64_t program_name_len
     // - char[program_name_len] program_name
+    // - uint64_t signature_len
+    // - char[signature_len] signature
 
     uint64_t offset = 0;
 
     // check for "control" prefix
-    if (p->udp_header()->uh_ulen < 7 + sizeof(uint64_t) + sizeof(uint64_t)) {
+    if (p->udp_header()->uh_ulen < 7 + sizeof(uint64_t) + sizeof(uint64_t) + sizeof(uint64_t)) {
         uk_pr_err("Received control packet with invalid length\n");
         return;
     }
@@ -58,9 +60,23 @@ void Control::push(int, Packet *p) {
 
     // parse program_name
     String program_name((const char *) (udp_data_ptr + offset), program_name_len);
+    offset += program_name_len;
 
-    uk_pr_info("Received control packet for bpfelement_id %lu with program_name %s \n", bpfelement_id,
-               program_name.c_str());
+    // parse signature_len
+    uint64_t signature_len = *(uint64_t * )(udp_data_ptr + offset);
+    offset += sizeof(uint64_t);
+
+    if (udp_data_ptr + offset + signature_len > p->end_data()) {
+        uk_pr_err("Received control packet with invalid signature_len\n");
+        return;
+    }
+
+    // parse signature
+    String signature((const char *) (udp_data_ptr + offset), signature_len);
+    offset += signature_len;
+
+    uk_pr_info("Received control packet for bpfelement_id %lu with program_name %s and signature %s \n", bpfelement_id,
+               program_name.c_str(), signature.c_str());
 
     for (int i = 0; i < router()->nelements(); i++) {
         Element *element = router()->element(i);
@@ -84,7 +100,7 @@ void Control::push(int, Packet *p) {
         uk_pr_info("Control: %s with ID %lu found - calling config handler\n", element->class_name(), bpfelement_id);
 
         char *config;
-        asprintf(&config, "ID %lu, FILE %s", bpfelement_id, program_name.c_str());
+        asprintf(&config, "ID %lu, FILE %s, SIGNATURE %s", bpfelement_id, program_name.c_str(), signature.c_str());
 
         h->call_write(config, element, ErrorHandler::default_handler());
         free(config);

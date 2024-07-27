@@ -10,6 +10,7 @@
 // 3. Waits until "Reconfigured BPFilter" is printed = ends measurement from here (from here on, the router is available again)
 
 use std::cell::RefCell;
+use std::fmt::format;
 use std::io::{BufRead, BufReader, Lines};
 use std::net::UdpSocket;
 use std::path::PathBuf;
@@ -120,11 +121,15 @@ fn run_benchmark(config: &Configuration, lines: &mut Lines<BufReader<ChildStdout
 }
 
 fn trigger_reconfiguration(program: &str) -> anyhow::Result<()> {
+    let signature = format!("{program}.sig");
+
     let mut data = Vec::new();
     data.extend_from_slice(b"control");
     data.extend_from_slice(&1u64.to_le_bytes());
     data.extend_from_slice(&(program.len() as u64).to_le_bytes());
     data.extend_from_slice(program.as_bytes());
+    data.extend_from_slice(&(signature.len() as u64).to_le_bytes());
+    data.extend_from_slice(signature.as_bytes());
 
     let socket = UdpSocket::bind("0.0.0.0:0").context("couldn't bind to control addr")?;
     socket

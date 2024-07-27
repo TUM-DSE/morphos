@@ -25,12 +25,15 @@ const DATA_ADDR: &str = "172.44.0.2:4444";
 
 fn reconfigure() -> anyhow::Result<()> {
     let new_program = args().nth(2).context("new program needs to be passed")?;
+    let signature = args().nth(3).context("signature needs to be passed")?;
 
     let mut data = Vec::new();
     data.extend_from_slice(b"control");
     data.extend_from_slice(&1u64.to_le_bytes());
     data.extend_from_slice(&(new_program.len() as u64).to_le_bytes());
     data.extend_from_slice(new_program.as_bytes());
+    data.extend_from_slice(&(signature.len() as u64).to_le_bytes());
+    data.extend_from_slice(signature.as_bytes());
 
     socket()?.send_to(&data, CONTROL_ADDR).context("couldn't send packet")?;
 

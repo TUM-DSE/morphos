@@ -191,11 +191,11 @@ int BPFElement::configure(Vector <String> &conf, ErrorHandler *errh) {
 
     bool reconfigure = _ubpf_vm != NULL;
     if (reconfigure) {
-        uk_pr_info("Reconfiguring %s (ID: %lu - JIT: %d) with program %s..\n", this->class_name(), _bpfelement_id, _jit,
-                   filename);
+        uk_pr_info("Reconfiguring %s (ID: %lu - JIT: %d) with program %s (signature: %s)...\n", this->class_name(), _bpfelement_id, _jit,
+                   filename, _signature_file.c_str());
     } else {
-        uk_pr_info("Configuring %s (ID: %lu - JIT: %d) with program %s...\n", this->class_name(), _bpfelement_id, _jit,
-                   filename);
+        uk_pr_info("Configuring %s (ID: %lu - JIT: %d) with program %s (signature: %s)...\n", this->class_name(), _bpfelement_id, _jit,
+                   filename, _signature_file.c_str());
     }
 
     std::vector <uint8_t> buffer = read_file(filename);
@@ -258,9 +258,6 @@ uint32_t BPFElement::exec(Packet *p) {
             .data = (void *) p->data(),
             .data_end = (void *) p->end_data()
     };
-
-    uk_pr_info("packet data start: %p\n", p->data());
-    uk_pr_info("packet data end: %p\n", p->end_data());
 
     if (_jit) {
         return (uint32_t) _ubpf_jit_fn(&ctx, sizeof(ctx));

@@ -3,8 +3,8 @@ pub mod filter {
     #[repr(u32)]
     pub enum FilterResult {
         Abort = 0,
-        Pass = 1,
-        Drop = 2,
+        Drop = 1,
+        Pass = 2,
     }
 }
 
