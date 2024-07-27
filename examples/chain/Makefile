@@ -5,10 +5,19 @@ up:
 	tmux new-window -t click_examples_chain:1 -n firewall 'sudo qemu-system-x86_64 \
 	  -accel kvm \
 	  -cpu max \
-	  -netdev bridge,id=en0,br=clicknet -device virtio-net-pci,netdev=en0 \
-	  -netdev bridge,id=en1,br=webserver -device virtio-net-pci,netdev=en1 \
-	  -netdev bridge,id=en2,br=controlnet -device virtio-net-pci,netdev=en2 \
+	  -netdev bridge,id=en0,br=clicknet -device virtio-net-pci,netdev=en0,mac=00:10:FA:B3:49:39 \
+	  -netdev bridge,id=en1,br=controlnet -device virtio-net-pci,netdev=en1,mac=00:10:FA:47:DF:2C \
 	  -fsdev local,security_model=passthrough,id=hvirtio1,path=firewall -device virtio-9p-pci,fsdev=hvirtio1,mount_tag=fs1 \
+	  -append "vfs.fstab=[\"fs1:/:9pfs\"] --" \
+	  -kernel ../../.unikraft/build/click_qemu-x86_64 \
+	  -nographic'
+
+	tmux new-window -t click_examples_chain:1 -n firewall 'sudo qemu-system-x86_64 \
+	  -accel kvm \
+	  -cpu max \
+	  -netdev bridge,id=en0,br=clicknet -device virtio-net-pci,netdev=en0,mac=00:10:FA:A2:7D:34 \
+	  -netdev bridge,id=en1,br=controlnet -device virtio-net-pci,netdev=en1,mac=00:10:FA:CC:FD:59 \
+	  -fsdev local,security_model=passthrough,id=hvirtio1,path=load-balancer -device virtio-9p-pci,fsdev=hvirtio1,mount_tag=fs1 \
 	  -append "vfs.fstab=[\"fs1:/:9pfs\"] --" \
 	  -kernel ../../.unikraft/build/click_qemu-x86_64 \
 	  -nographic'

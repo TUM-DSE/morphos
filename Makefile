@@ -14,3 +14,6 @@ disassemble-jit-dump:
 
 benchmark:
 	cd benchmarks && cargo bench
+
+sniff:
+	sudo tcpdump -i clicknet -e

@@ -30,11 +30,11 @@ FromDevice(0)
                      12/0800);
 
 // Answer ARP requests
-c1[0] -> ARPResponder(172.44.0.2 $MAC0)
+c1[0] -> ARPResponder(172.44.0.3 $MAC0)
       -> ToDevice(0);
 
 // Handle IP packets
-arp_q :: ARPQuerier(172.44.0.2, $MAC0)
+arp_q :: ARPQuerier(172.44.0.3, $MAC0)
       -> ToDevice(0);
 
 c1[1] -> [1]arp_q;
@@ -43,16 +43,15 @@ c1[1] -> [1]arp_q;
 c1[2] -> processing :: Strip(14)
  -> CheckIPHeader
  -> DropBroadcasts
- -> ipgw :: IPGWOptions(172.44.0.2)
- -> FixIPSrc(172.44.0.2)
+ -> ipgw :: IPGWOptions(172.44.0.3)
+ -> FixIPSrc(172.44.0.3)
  -> ttl :: DecIPTTL
  -> frag :: IPFragmenter(1500)
- -> Print('Received packet (firewall)')
- -> BPFilter(ID 1, FILE target-port, SIGNATURE target-port.sig, JIT true)
- -> BPFilter(ID 2, FILE rate-limiter, SIGNATURE rate-limiter.sig, JIT true)
- -> SetIPAddress(172.44.0.3)
- -> [0]arp_q;
+ -> Print('Received packet (load-balancer)')
+ // -> BPFilter(ID 1, FILE target-port, SIGNATURE target-port.sig, JIT true)
+ -> SetIPAddress(172.44.0.4)
+ -> Discard;
 
-ipgw[1] -> processing;
+ipgw[1] -> arp_q[0];
 ttl[1] -> processing;
 frag[1] -> processing;
