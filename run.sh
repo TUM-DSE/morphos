@@ -1,7 +1,5 @@
 #!/bin/sh
 
-.unikraft/unikraft/support/scripts/mkcpio .unikraft/build/initramfs-x86_64.cpio rootfs
-
 sudo ip link set dev clicknet down 2> /dev/null
 sudo ip link del dev clicknet 2> /dev/null
 sudo ip link add dev clicknet type bridge
@@ -22,5 +20,4 @@ sudo qemu-system-x86_64 \
   -fsdev local,security_model=passthrough,id=hvirtio1,path=rootfs -device virtio-9p-pci,fsdev=hvirtio1,mount_tag=fs1 \
   -append "vfs.fstab=[\"fs1:/:9pfs\"] --" \
   -kernel .unikraft/build/click_qemu-x86_64 \
-  -initrd .unikraft/build/initramfs-x86_64.cpio \
   -nographic
