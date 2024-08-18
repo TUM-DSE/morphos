@@ -10,7 +10,6 @@
 // 3. Waits until "Reconfigured BPFilter" is printed = ends measurement from here (from here on, the router is available again)
 
 use std::cell::RefCell;
-use std::fmt::format;
 use std::io::{BufRead, BufReader, Lines};
 use std::net::UdpSocket;
 use std::path::PathBuf;
@@ -71,8 +70,9 @@ pub fn live_reconfigure(c: &mut Criterion) {
         let cpio = prepare_cpio_archive(
             &create_click_configuration(config.bpfilter_program, config.jit),
             Some(&PathBuf::from(BPFILTER_BASE_PATH).join(config.bpfilter_program)),
+            None::<PathBuf>,
         )
-            .expect("couldn't prepare cpio archive");
+        .expect("couldn't prepare cpio archive");
 
         let mut click_vm = vm::start_click(
             FileSystem::CpioArchive(&cpio.path.to_string_lossy()),
@@ -83,7 +83,7 @@ pub fn live_reconfigure(c: &mut Criterion) {
                 "virtio-net-pci,netdev=en1".to_string(),
             ],
         )
-            .expect("couldn't start click");
+        .expect("couldn't start click");
 
         // wait until the router is ready
         let mut lines = click_vm.stdout.take().unwrap().lines();
@@ -181,7 +181,8 @@ ControlReceiver(1);
 
 // === Data network ===
 FromDevice(0) -> Print('Received packet') -> BPFilter(ID 1, FILE {bpfilter_program}, JIT {jit_arg}) -> Discard;
-"#, jit_arg = if jit { "true" } else { "false" }
+"#,
+        jit_arg = if jit { "true" } else { "false" }
     )
 }
 

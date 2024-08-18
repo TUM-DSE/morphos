@@ -16,6 +16,7 @@ serde_json = "1.0.117"
 statrs = "0.16.0"
 criterion-plot = "0.5.0"
 itertools = "0.13.0"
+libc = "0.2.155"
 
 [[bench]]
 name = "live_reconfigure"
@@ -27,4 +28,8 @@ harness = false
 
 [[bench]]
 name = "throughput"
+harness = false
+
+[[bench]]
+name = "memory"
 harness = false

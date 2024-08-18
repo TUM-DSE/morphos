@@ -12,6 +12,37 @@ pub struct ClickVm {
     pub stdout: Option<BufReader<ChildStdout>>,
 }
 
+impl ClickVm {
+    /**
+    Returns the PID of the QEMU process running the Click VM.
+    The direct child is sudo, so we need to find the grandchild.
+     */
+    pub fn qemu_pid(&self) -> u32 {
+        let mut parent_pid = self.child.id();
+
+        loop {
+            match ClickVm::get_child_pid(parent_pid) {
+                Some(child_pid) => {
+                    parent_pid = child_pid;
+                }
+                None => return parent_pid,
+            }
+        }
+    }
+
+    fn get_child_pid(parent_pid: u32) -> Option<u32> {
+        let output = Command::new("pgrep")
+            .arg("-P")
+            .arg(parent_pid.to_string())
+            .output()
+            .expect("failed to run pgrep");
+
+        let pid =
+            String::from_utf8(output.stdout).expect("failed to convert pgrep output to string");
+        pid.trim().parse().ok()
+    }
+}
+
 impl Drop for ClickVm {
     fn drop(&mut self) {
         self.child.kill().expect("failed to kill click child");
@@ -64,7 +95,10 @@ pub fn start_click(fs: FileSystem, extra_args: &[String]) -> anyhow::Result<Clic
 
     let stdout = BufReader::new(child.stdout.take().expect("cannot get stdout of click vm"));
 
-    Ok(ClickVm { child, stdout: Some(stdout) })
+    Ok(ClickVm {
+        child,
+        stdout: Some(stdout),
+    })
 }
 
 pub fn wait_until_ready(lines: &mut Lines<BufReader<ChildStdout>>) {

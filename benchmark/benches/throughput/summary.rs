@@ -1,8 +1,8 @@
+use crate::statistics::{calculate_statistics, derivative, Distribution};
+use crate::Datapoint;
+use serde::{Deserialize, Serialize};
 use std::fmt;
 use std::fmt::Display;
-use serde::{Deserialize, Serialize};
-use crate::Datapoint;
-use crate::statistics::{calculate_statistics, derivative, Distribution};
 
 #[derive(Serialize, Deserialize)]
 pub struct Summary<'a> {
@@ -33,7 +33,13 @@ impl Display for Summary<'_> {
 
 impl Display for SummaryEntry<'_> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{:24}: {:.2} packets/s, {:.2} bytes/s", self.name, self.packets_per_time_unit_statistics.median, self.bytes_per_time_unit_statistics.median)
+        write!(
+            f,
+            "{:24}: {:.2} packets/s, {:.2} bytes/s",
+            self.name,
+            self.packets_per_time_unit_statistics.median,
+            self.bytes_per_time_unit_statistics.median
+        )
     }
 }
 
@@ -58,7 +64,5 @@ pub fn calculate_summary<'a>(results: &[(&'a str, Vec<Datapoint>)]) -> Summary<'
         summary.push(entry);
     }
 
-    Summary {
-        results: summary,
-    }
+    Summary { results: summary }
 }

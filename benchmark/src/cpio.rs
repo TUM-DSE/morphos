@@ -14,6 +14,7 @@ pub struct CpioArchive {
 pub fn prepare_cpio_archive(
     click_configuration: &str,
     bpfilter_path: Option<impl AsRef<Path>>,
+    bpfilter_signature_path: Option<impl AsRef<Path>>,
 ) -> anyhow::Result<CpioArchive> {
     let tmpdir = tempfile::tempdir()?;
 
@@ -29,6 +30,16 @@ pub fn prepare_cpio_archive(
             .expect("couldn't find bpfilter file name");
         let filter_binary_path = tmpdir.path().join(bpfilter_file_name);
         std::fs::copy(bpfilter_path, &filter_binary_path)?;
+    }
+
+    // copy filter signature
+    if let Some(bpfilter_signature_path) = bpfilter_signature_path {
+        let bpfilter_signature_path = bpfilter_signature_path.as_ref();
+        let bpfilter_signature_file_name = bpfilter_signature_path
+            .file_name()
+            .expect("couldn't find bpfilter signature file name");
+        let filter_signature_path = tmpdir.path().join(bpfilter_signature_file_name);
+        std::fs::copy(bpfilter_signature_path, &filter_signature_path)?;
     }
 
     // create cpio archive

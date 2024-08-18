@@ -56,3 +56,20 @@ c1[2] -> processing :: Strip(14)
 ipgw[1] -> processing;
 ttl[1] -> processing;
 frag[1] -> processing;
+
+FromDevice(0)
+ -> c0 :: Classifier(12/0806 20/0001, // ARP
+                     12/0800,         // IP
+                     -);              // Everything else
+
+// Answer ARP requests
+c0[0] -> ARPResponder(173.44.0.2 $MAC1)
+      -> ToDevice(0);
+
+// Print IP packets
+c0[1] -> StripEtherVLANHeader
+ -> CheckIPHeader
+ -> Print('Received packet')
+ -> Discard;
+
+c0[2] -> Discard;

@@ -11,6 +11,7 @@ pub fn measure_throughput(config: &Configuration) -> Vec<Datapoint> {
     let cpio = prepare_cpio_archive(
         &create_click_configuration(config),
         config.bpfilter_program.map(PathBuf::from),
+        None::<PathBuf>,
     )
     .expect("couldn't prepare cpio archive");
 

@@ -1,9 +1,9 @@
 use std::process::{Child, Command};
 
 pub fn whisker() -> Child {
-    const PLOT_WHISKER_PATH: &str = "benches/throughput/plots/plot_whisker.py";
-    const SUMMARY_PATH: &str = "target/throughput/summary.json";
-    const OUTPUT_PATH: &str = "target/throughput/summary.png";
+    const PLOT_WHISKER_PATH: &str = "benches/memory/plots/plot_whisker.py";
+    const SUMMARY_PATH: &str = "target/memory/summary.json";
+    const OUTPUT_PATH: &str = "target/memory/summary.png";
 
     Command::new("python3")
         .args(&[

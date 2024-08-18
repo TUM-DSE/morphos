@@ -3,6 +3,7 @@ GRAY_BOLD:=\033[1;37m
 RESET:=\033[0m
 TARGET_DIR:=$(DIR)/target/bpfel-unknown-none/release
 EXAMPLES_DIR:=$(DIR)/../examples
+BENCHMARK_DIR:=$(DIR)/../benchmark/bpfilters
 
 BINS := dns-filter drop ether-mirror pass rate-limiter round-robin strip-ether-vlan-header target-port udp-tcp-classifier
 
@@ -51,3 +52,10 @@ sync:
 	@-cp $(TARGET_DIR)/pass.sig $(EXAMPLES_DIR)/showcase/rootfs/pass.sig
 	@-cp $(TARGET_DIR)/drop $(EXAMPLES_DIR)/showcase/rootfs/drop
 	@-cp $(TARGET_DIR)/drop.sig $(EXAMPLES_DIR)/showcase/rootfs/drop.sig
+
+	@-cp $(TARGET_DIR)/pass $(BENCHMARK_DIR)/pass
+	@-cp $(TARGET_DIR)/pass.sig $(BENCHMARK_DIR)/pass.sig
+	@-cp $(TARGET_DIR)/drop $(BENCHMARK_DIR)/drop
+	@-cp $(TARGET_DIR)/drop.sig $(BENCHMARK_DIR)/drop.sig
+	@-cp $(TARGET_DIR)/target-port $(BENCHMARK_DIR)/target-port
+	@-cp $(TARGET_DIR)/target-port.sig $(BENCHMARK_DIR)/target-port.sig

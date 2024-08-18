@@ -9,15 +9,9 @@ mod whisker;
 pub use whisker::whisker;
 
 static DEFAULT_FONT: &str = "Helvetica";
-static KDE_POINTS: usize = 500;
 static SIZE: Size = Size(1280, 720);
 
-const LINEWIDTH: LineWidth = LineWidth(2.);
-const POINT_SIZE: PointSize = PointSize(0.75);
-
 const DARK_BLUE: Color = Color::Rgb(31, 120, 180);
-const DARK_ORANGE: Color = Color::Rgb(255, 127, 0);
-const DARK_RED: Color = Color::Rgb(227, 26, 28);
 
 pub fn create_plots(name: &str, datapoints: &[Datapoint]) {
     let packets_points = datapoints.iter().map(|d| d.rx_packets).collect::<Vec<_>>();

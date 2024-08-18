@@ -140,6 +140,7 @@ dependencies = [
  "criterion",
  "criterion-plot",
  "itertools 0.13.0",
+ "libc",
  "mac_address",
  "serde",
  "serde_json",

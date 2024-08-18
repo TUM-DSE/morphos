@@ -1,16 +1,15 @@
 use crate::statistics::Statistics;
 use crate::summary::Summary;
-use crate::Datapoint;
 use std::path::PathBuf;
 
-pub fn dump_measurement(name: &str, datapoints: &[Datapoint]) {
+pub fn dump_measurement(name: &str, data_points: &Vec<u64>) {
     let path = base_dir(name).join("measurement.json");
 
-    let json = serde_json::to_string_pretty(&datapoints).expect("couldn't serialize datapoints");
+    let json = serde_json::to_string_pretty(&data_points).expect("couldn't serialize datapoints");
     std::fs::write(path, json).expect("couldn't write datapoints");
 }
 
-pub fn restore_measurement(name: &str) -> Vec<Datapoint> {
+pub fn restore_measurement(name: &str) -> Vec<u64> {
     let path = base_dir(name).join("measurement.json");
 
     let json = std::fs::read_to_string(path).expect("couldn't read datapoints");
@@ -27,7 +26,7 @@ pub fn dump_statistics(name: &str, statistics: &Statistics) {
 pub fn dump_summary(summary: &Summary) {
     let dir = std::env::current_dir()
         .expect("couldn't get current dir")
-        .join("target/throughput");
+        .join("target/memory");
     std::fs::create_dir_all(&dir).expect("couldn't create dir");
 
     let path = dir.join("summary.json");
@@ -43,7 +42,7 @@ pub fn plot_path(name: &str, plot_name: &str) -> PathBuf {
 fn base_dir(name: &str) -> PathBuf {
     let dir = std::env::current_dir()
         .expect("couldn't get current dir")
-        .join("target/throughput")
+        .join("target/memory")
         .join(name);
     std::fs::create_dir_all(&dir).expect("couldn't create dir");
 

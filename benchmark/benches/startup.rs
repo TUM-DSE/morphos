@@ -7,7 +7,7 @@
 
 use click_benchmark::vm::{self, wait_until_ready, FileSystem, DATA_ADDR};
 use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion};
-use std::io::{BufRead, BufReader};
+use std::io::BufRead;
 use std::net::{SocketAddrV4, UdpSocket};
 use std::thread;
 use std::thread::sleep;
