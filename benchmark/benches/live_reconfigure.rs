@@ -24,53 +24,108 @@ use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion};
 struct Configuration<'a> {
     name: &'a str,
     bpfilter_program: &'a str,
-    jit: bool,
+    signature_file: &'a str,
+    click_config: &'a str,
 }
 
 const CONFIGURATIONS: &[Configuration] = &[
     Configuration {
         name: "pass",
         bpfilter_program: "pass",
-        jit: false,
+        signature_file: "pass.sig",
+        click_config: "-> BPFilter(ID 1, FILE pass, SIGNATURE pass.sig, JIT false)",
     },
     Configuration {
         name: "pass-jit",
         bpfilter_program: "pass",
-        jit: true,
+        signature_file: "pass.sig",
+        click_config: "-> BPFilter(ID 1, FILE pass, SIGNATURE pass.sig, JIT true)",
     },
     Configuration {
         name: "drop",
         bpfilter_program: "drop",
-        jit: false,
+        signature_file: "drop.sig",
+        click_config: "-> BPFilter(ID 1, FILE drop, SIGNATURE drop.sig, JIT false)",
     },
     Configuration {
         name: "drop-jit",
         bpfilter_program: "drop",
-        jit: true,
+        signature_file: "drop.sig",
+        click_config: "-> BPFilter(ID 1, FILE drop, SIGNATURE drop.sig, JIT true)",
     },
     Configuration {
         name: "target-port",
         bpfilter_program: "target-port",
-        jit: false,
+        signature_file: "target-port.sig",
+        click_config: "-> BPFilter(ID 1, FILE target-port, SIGNATURE target-port.sig, JIT false)",
     },
     Configuration {
         name: "target-port-jit",
         bpfilter_program: "target-port",
-        jit: true,
+        signature_file: "target-port.sig",
+        click_config: "-> BPFilter(ID 1, FILE target-port, SIGNATURE target-port.sig, JIT true)",
+    },
+    Configuration {
+        name: "rate-limiter",
+        bpfilter_program: "rate-limiter",
+        signature_file: "rate-limiter.sig",
+        click_config: "-> BPFilter(ID 1, FILE rate-limiter, SIGNATURE rate-limiter.sig, JIT false)",
+    },
+    Configuration {
+        name: "rate-limiter-jit",
+        bpfilter_program: "rate-limiter",
+        signature_file: "rate-limiter.sig",
+        click_config: "-> BPFilter(ID 1, FILE rate-limiter, SIGNATURE rate-limiter.sig, JIT true)",
+    },
+    Configuration {
+        name: "round-robin",
+        bpfilter_program: "round-robin",
+        signature_file: "round-robin.sig",
+        click_config: "-> BPFClassifier(ID 1, FILE round-robin, SIGNATURE round-robin.sig, JIT false)",
+    },
+    Configuration {
+        name: "round-robin-jit",
+        bpfilter_program: "round-robin",
+        signature_file: "round-robin.sig",
+        click_config: "-> BPFClassifier(ID 1, FILE round-robin, SIGNATURE round-robin.sig, JIT true)",
+    },
+    Configuration {
+        name: "udp-tcp-classifier",
+        bpfilter_program: "udp-tcp-classifier",
+        signature_file: "udp-tcp-classifier.sig",
+        click_config: "-> BPFClassifier(ID 1, FILE udp-tcp-classifier, SIGNATURE udp-tcp-classifier.sig, JIT false)",
+    },
+    Configuration {
+        name: "udp-tcp-classifier-jit",
+        bpfilter_program: "udp-tcp-classifier",
+        signature_file: "udp-tcp-classifier.sig",
+        click_config: "-> BPFClassifier(ID 1, FILE udp-tcp-classifier, SIGNATURE udp-tcp-classifier.sig, JIT true)",
+    },
+    Configuration {
+        name: "strip-ether-vlan-header",
+        bpfilter_program: "strip-ether-vlan-header",
+        signature_file: "strip-ether-vlan-header.sig",
+        click_config: "-> BPFRewriter(ID 1, FILE strip-ether-vlan-header, SIGNATURE strip-ether-vlan-header.sig, JIT false)",
+    },
+    Configuration {
+        name: "strip-ether-vlan-header-jit",
+        bpfilter_program: "strip-ether-vlan-header",
+        signature_file: "strip-ether-vlan-header.sig",
+        click_config: "-> BPFRewriter(ID 1, FILE strip-ether-vlan-header, SIGNATURE strip-ether-vlan-header.sig, JIT true)",
     },
 ];
 
 const BPFILTER_BASE_PATH: &str = "bpfilters";
 
 pub fn live_reconfigure(c: &mut Criterion) {
-    let mut group = c.benchmark_group("Live Reconfigure");
+    let mut group = c.benchmark_group("live-reconfigure");
 
     for config in CONFIGURATIONS {
         // prepare click VM
         let cpio = prepare_cpio_archive(
-            &create_click_configuration(config.bpfilter_program, config.jit),
+            &create_click_configuration(config.click_config),
             Some(&PathBuf::from(BPFILTER_BASE_PATH).join(config.bpfilter_program)),
-            None::<PathBuf>,
+            Some(&PathBuf::from(BPFILTER_BASE_PATH).join(config.signature_file)),
         )
         .expect("couldn't prepare cpio archive");
 
@@ -111,7 +166,8 @@ pub fn live_reconfigure(c: &mut Criterion) {
 }
 
 fn run_benchmark(config: &Configuration, lines: &mut Lines<BufReader<ChildStdout>>) -> Duration {
-    trigger_reconfiguration(config.bpfilter_program).expect("couldn't trigger reconfiguration");
+    trigger_reconfiguration(config.bpfilter_program, config.signature_file)
+        .expect("couldn't trigger reconfiguration");
     wait_until_reconfiguration_start(lines);
 
     let now = Instant::now();
@@ -120,9 +176,7 @@ fn run_benchmark(config: &Configuration, lines: &mut Lines<BufReader<ChildStdout
     now.elapsed()
 }
 
-fn trigger_reconfiguration(program: &str) -> anyhow::Result<()> {
-    let signature = format!("{program}.sig");
-
+fn trigger_reconfiguration(program: &str, signature: &str) -> anyhow::Result<()> {
     let mut data = Vec::new();
     data.extend_from_slice(b"control");
     data.extend_from_slice(&1u64.to_le_bytes());
@@ -142,16 +196,16 @@ fn trigger_reconfiguration(program: &str) -> anyhow::Result<()> {
 fn wait_until_reconfiguration_start(lines: &mut Lines<BufReader<ChildStdout>>) {
     lines
         .filter_map(Result::ok)
-        .find(|line| line.contains("Reconfiguring BPFilter"));
+        .find(|line| line.contains("Reconfiguring "));
 }
 
 fn wait_until_reconfiguration_end(lines: &mut Lines<BufReader<ChildStdout>>) {
     lines
         .filter_map(Result::ok)
-        .find(|line| line.contains("Reconfigured BPFilter"));
+        .find(|line| line.contains("Reconfigured "));
 }
 
-fn create_click_configuration(bpfilter_program: &str, jit: bool) -> String {
+fn create_click_configuration(click_config: &str) -> String {
     format!(
         r#"
 // === Control network ===
@@ -180,9 +234,8 @@ elementclass ControlReceiver {{ $deviceid |
 ControlReceiver(1);
 
 // === Data network ===
-FromDevice(0) -> Print('Received packet') -> BPFilter(ID 1, FILE {bpfilter_program}, JIT {jit_arg}) -> Discard;
-"#,
-        jit_arg = if jit { "true" } else { "false" }
+FromDevice(0) -> Print('Received packet') {click_config} -> Discard;
+"#
     )
 }
 

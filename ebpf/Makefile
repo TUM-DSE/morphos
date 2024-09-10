@@ -59,3 +59,11 @@ sync:
 	@-cp $(TARGET_DIR)/drop.sig $(BENCHMARK_DIR)/drop.sig
 	@-cp $(TARGET_DIR)/target-port $(BENCHMARK_DIR)/target-port
 	@-cp $(TARGET_DIR)/target-port.sig $(BENCHMARK_DIR)/target-port.sig
+	@-cp $(TARGET_DIR)/round-robin $(BENCHMARK_DIR)/round-robin
+	@-cp $(TARGET_DIR)/round-robin.sig $(BENCHMARK_DIR)/round-robin.sig
+	@-cp $(TARGET_DIR)/rate-limiter $(BENCHMARK_DIR)/rate-limiter
+	@-cp $(TARGET_DIR)/rate-limiter.sig $(BENCHMARK_DIR)/rate-limiter.sig
+	@-cp $(TARGET_DIR)/udp-tcp-classifier $(BENCHMARK_DIR)/udp-tcp-classifier
+	@-cp $(TARGET_DIR)/udp-tcp-classifier.sig $(BENCHMARK_DIR)/udp-tcp-classifier.sig
+	@-cp $(TARGET_DIR)/strip-ether-vlan-header $(BENCHMARK_DIR)/strip-ether-vlan-header
+	@-cp $(TARGET_DIR)/strip-ether-vlan-header.sig $(BENCHMARK_DIR)/strip-ether-vlan-header.sig

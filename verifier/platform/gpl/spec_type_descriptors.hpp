@@ -7,6 +7,11 @@
 #include "ebpf_vm_isa.hpp"
 
 // rough estimates:
-constexpr ebpf_context_descriptor_t bpfilter_descr = {16, 0, 8, -1};
+constexpr ebpf_context_descriptor_t bpfilter_descr = {
+    .size = 16,
+    .data = 0,
+    .end = 8,
+    .meta = -1
+};
 
 extern const ebpf_context_descriptor_t bpfilter_descr;

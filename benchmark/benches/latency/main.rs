@@ -15,11 +15,11 @@ mod plots;
 mod statistics;
 mod summary;
 
-use std::time::Duration;
 use crate::measurement::measure_throughput;
 use crate::persistence::{dump_measurement, dump_statistics, dump_summary, restore_measurement};
 use crate::summary::calculate_summary;
 use serde::{Deserialize, Serialize};
+use std::time::Duration;
 
 struct Configuration<'a> {
     name: &'a str,
@@ -46,7 +46,8 @@ const CONFIGURATIONS: &[Configuration] = &[
     Configuration {
         name: "10 elements (no JIT)",
         bpfilter_program: Some(("bpfilters/pass", "bpfilters/pass.sig")),
-        click_config: Some(r#"
+        click_config: Some(
+            r#"
         -> BPFilter(ID 1, FILE pass, SIGNATURE pass.sig, JIT false)
         -> BPFilter(ID 2, FILE pass, SIGNATURE pass.sig, JIT false)
         -> BPFilter(ID 3, FILE pass, SIGNATURE pass.sig, JIT false)
@@ -57,12 +58,14 @@ const CONFIGURATIONS: &[Configuration] = &[
         -> BPFilter(ID 8, FILE pass, SIGNATURE pass.sig, JIT false)
         -> BPFilter(ID 9, FILE pass, SIGNATURE pass.sig, JIT false)
         -> BPFilter(ID 10, FILE pass, SIGNATURE pass.sig, JIT false)
-        "#),
+        "#,
+        ),
     },
     Configuration {
         name: "10 elements (JIT)",
         bpfilter_program: Some(("bpfilters/pass", "bpfilters/pass.sig")),
-        click_config: Some(r#"
+        click_config: Some(
+            r#"
         -> BPFilter(ID 1, FILE pass, SIGNATURE pass.sig, JIT true)
         -> BPFilter(ID 2, FILE pass, SIGNATURE pass.sig, JIT true)
         -> BPFilter(ID 3, FILE pass, SIGNATURE pass.sig, JIT true)
@@ -73,7 +76,8 @@ const CONFIGURATIONS: &[Configuration] = &[
         -> BPFilter(ID 8, FILE pass, SIGNATURE pass.sig, JIT true)
         -> BPFilter(ID 9, FILE pass, SIGNATURE pass.sig, JIT true)
         -> BPFilter(ID 10, FILE pass, SIGNATURE pass.sig, JIT true)
-        "#),
+        "#,
+        ),
     },
 ];
 

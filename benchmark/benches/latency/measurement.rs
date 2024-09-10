@@ -35,7 +35,7 @@ fn measure_datapoints() -> Vec<Datapoint> {
             DATA_IFACE,
             "-i",
             &(READING_INTERVAL_MS as f64 / 1000.0).to_string(),
-            "172.44.0.2"
+            "172.44.0.2",
         ])
         .spawn()
         .expect("couldn't start ping");
@@ -84,8 +84,13 @@ fn measure_datapoints() -> Vec<Datapoint> {
 }
 
 fn parse_ping_output(line: &str) -> Duration {
-    let time_str = line.split_ascii_whitespace().nth_back(1).expect("couldn't get time");
-    let time = time_str.strip_prefix("time=").expect("couldn't strip prefix");
+    let time_str = line
+        .split_ascii_whitespace()
+        .nth_back(1)
+        .expect("couldn't get time");
+    let time = time_str
+        .strip_prefix("time=")
+        .expect("couldn't strip prefix");
     let latency: f64 = time.parse().expect("couldn't parse time");
 
     Duration::try_from_secs_f64(latency / 1000.0).expect("couldn't convert to duration")

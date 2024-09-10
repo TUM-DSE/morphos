@@ -6,7 +6,7 @@
 // 3. In a separate thread, continuously send a lot of UDP packets to qemu (in order to trigger the "Received packet" message).
 
 use click_benchmark::vm::{self, wait_until_ready, FileSystem, DATA_ADDR};
-use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion};
+use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion, SamplingMode};
 use std::io::BufRead;
 use std::net::{SocketAddrV4, UdpSocket};
 use std::thread;
@@ -26,6 +26,11 @@ const CONFIGURATIONS: &[Configuration] = &[
         vm_extra_args: &[],
     },
     Configuration {
+        name: "print-pings",
+        click_configuration: "configurations/print-pings.click",
+        vm_extra_args: &[],
+    },
+    Configuration {
         name: "switch-2ports",
         click_configuration: "configurations/switch-2ports.click",
         vm_extra_args: &[
@@ -34,6 +39,11 @@ const CONFIGURATIONS: &[Configuration] = &[
             "-device",
             "virtio-net-pci,netdev=en1,id=en1",
         ],
+    },
+    Configuration {
+        name: "thomer-nat",
+        click_configuration: "configurations/thomer-nat.click",
+        vm_extra_args: &[],
     },
     Configuration {
         name: "router",
@@ -53,23 +63,14 @@ const CONFIGURATIONS: &[Configuration] = &[
             "virtio-net-pci,netdev=en3,id=en3",
         ],
     },
-    Configuration {
-        name: "print-pings",
-        click_configuration: "configurations/print-pings.click",
-        vm_extra_args: &[],
-    },
-    Configuration {
-        name: "thomer-nat",
-        click_configuration: "configurations/thomer-nat.click",
-        vm_extra_args: &[],
-    },
 ];
 
 pub fn startup(c: &mut Criterion) {
-    let mut group = c.benchmark_group("Startup");
+    let mut group = c.benchmark_group("startup");
 
     group.sample_size(10);
     group.measurement_time(Duration::from_secs(120));
+    group.sampling_mode(SamplingMode::Flat);
 
     thread::spawn(|| {
         send_packet_loop().expect("error in send packet loop");

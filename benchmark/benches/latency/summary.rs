@@ -34,8 +34,7 @@ impl Display for SummaryEntry<'_> {
         write!(
             f,
             "{:24}: {:.2} ns",
-            self.name,
-            self.latency_statistics.median
+            self.name, self.latency_statistics.median
         )
     }
 }

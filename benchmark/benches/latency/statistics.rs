@@ -20,11 +20,7 @@ pub struct Distribution {
 
 impl Display for Statistics {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "=== Latency ===\n{}\n",
-            self.latency
-        )
+        write!(f, "=== Latency ===\n{}\n", self.latency)
     }
 }
 

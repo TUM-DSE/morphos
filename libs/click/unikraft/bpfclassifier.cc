@@ -21,7 +21,7 @@ void BPFClassifier::push(int, Packet *p) {
         return;
     }
 
-    output(ret).push(p);
+    checked_output_push(ret, p);
 }
 
 CLICK_ENDDECLS

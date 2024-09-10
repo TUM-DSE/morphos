@@ -66,6 +66,9 @@ pub fn start_click(fs: FileSystem, extra_args: &[String]) -> anyhow::Result<Clic
     };
 
     let mut args = [
+        "taskset",
+        "-c",
+        "3,4",
         "qemu-system-x86_64",
         "-accel",
         "kvm",
@@ -76,7 +79,7 @@ pub fn start_click(fs: FileSystem, extra_args: &[String]) -> anyhow::Result<Clic
         "-device",
         "virtio-net-pci,netdev=en0",
         "-append",
-        &format!(r#"netdev.ip={DATA_ADDR}/24:172.44.0.1{vfs_fstab} --"#),
+        &format!(r#"{vfs_fstab} --"#),
         "-kernel",
         "../.unikraft/build/click_qemu-x86_64",
         "-initrd",
