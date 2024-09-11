@@ -22,11 +22,6 @@ targets:
   - architecture: x86_64
     platform: kvm
 libraries:
-  lwip:
-    version: stable
-    kconfig:
-      - CONFIG_LWIP=y
-      - CONFIG_LWIP_AUTOIFACE=n
   musl:
     version: stable
   libunwind:
