@@ -23,45 +23,64 @@ use serde::{Deserialize, Serialize};
 
 struct Configuration<'a> {
     name: &'a str,
-    bpfilter_program: Option<&'a str>,
+    files: &'a [&'a str],
     click_config: Option<&'a str>,
 }
 
 const CONFIGURATIONS: &[Configuration] = &[
+    // === baseline ===
     Configuration {
         name: "baseline",
-        bpfilter_program: None,
-        click_config: None,
+        files: &[],
+        click_config: Some("-> encap_then_out; "),
+    },
+    // === target-port ===
+    Configuration {
+        name: "target-port (IPFilter)",
+        files: &[],
+        click_config: Some("-> IPFilter(deny dst port 1234, allow all) -> encap_then_out; "),
     },
     Configuration {
-        name: "pass (IPFilter)",
-        bpfilter_program: None,
-        click_config: Some("-> IPFilter(allow all) "),
+        name: "target-port (BPFFilter)",
+        files: &["bpfilters/target-port", "bpfilters/target-port.sig"],
+        click_config: Some("-> BPFilter(ID 1, FILE target-port, SIGNATURE target-port.sig) -> encap_then_out; "),
     },
     Configuration {
-        name: "pass (bpfilter)",
-        bpfilter_program: Some("bpfilters/pass"),
-        click_config: Some("-> BPFilter(ID 1, FILE pass) "),
+        name: "target-port (BPFFilter - JIT)",
+        files: &["bpfilters/target-port", "bpfilters/target-port.sig"],
+        click_config: Some("-> BPFilter(ID 1, FILE target-port, SIGNATURE target-port.sig, JIT true) -> encap_then_out; "),
+    },
+    // === Round Robin ===
+    Configuration {
+        name: "round-robin (RoundRobinSwitch)",
+        files: &[],
+        click_config: Some("-> rr :: RoundRobinSwitch; rr[0] -> encap_then_out; rr[1] -> encap_then_out; "),
     },
     Configuration {
-        name: "pass (bpfilter - JIT)",
-        bpfilter_program: Some("bpfilters/pass"),
-        click_config: Some("-> BPFilter(ID 1, FILE pass, JIT true) "),
+        name: "round-robin (BPFClassifier)",
+        files: &["bpfilters/round-robin", "bpfilters/round-robin.sig"],
+        click_config: Some("-> rr :: BPFClassifier(ID 1, FILE round-robin, SIGNATURE round-robin.sig); rr[0] -> encap_then_out; rr[1] -> encap_then_out; "),
     },
     Configuration {
-        name: "target port (IPFilter)",
-        bpfilter_program: None,
-        click_config: Some("-> IPFilter(deny dst port 1234, allow all) "),
+        name: "round-robin (BPFClassifier - JIT)",
+        files: &["bpfilters/round-robin", "bpfilters/round-robin.sig"],
+        click_config: Some("-> rr :: BPFClassifier(ID 1, FILE round-robin, SIGNATURE round-robin.sig, JIT true); rr[0] -> encap_then_out; rr[1] -> encap_then_out; "),
+    },
+    // === Strip Ether VLAN Header ===
+    Configuration {
+        name: "strip-ether-vlan-header (StripEtherVLANHeader)",
+        files: &[],
+        click_config: Some("-> EtherEncap(0x800, $MAC0, $MAC0) -> StripEtherVLANHeader -> encap_then_out; "),
     },
     Configuration {
-        name: "target port (bpfilter)",
-        bpfilter_program: Some("bpfilters/target-port"),
-        click_config: Some("-> BPFilter(ID 1, FILE target-port) "),
+        name: "strip-ether-vlan-header (BPFFilter)",
+        files: &["bpfilters/strip-ether-vlan-header", "bpfilters/strip-ether-vlan-header.sig"],
+        click_config: Some("-> EtherEncap(0x800, $MAC0, $MAC0) -> BPFRewriter(ID 1, FILE strip-ether-vlan-header, SIGNATURE strip-ether-vlan-header.sig) -> encap_then_out; "),
     },
     Configuration {
-        name: "target port (bpfilter - JIT)",
-        bpfilter_program: Some("bpfilters/target-port"),
-        click_config: Some("-> BPFilter(ID 1, FILE target-port, JIT true) "),
+        name: "strip-ether-vlan-header (BPFFilter - JIT)",
+        files: &["bpfilters/strip-ether-vlan-header", "bpfilters/strip-ether-vlan-header.sig"],
+        click_config: Some("-> EtherEncap(0x800, $MAC0, $MAC0) -> BPFRewriter(ID 1, FILE strip-ether-vlan-header, SIGNATURE strip-ether-vlan-header.sig, JIT true) -> encap_then_out; "),
     },
 ];
 
@@ -93,7 +112,8 @@ pub fn main() {
     dump_summary(&summary);
     println!("\n=== Summary ===\n{summary}");
 
-    plots::whisker().wait().expect("whisker failed");
+    plots::whisker_pps().wait().expect("whisker pps failed");
+    plots::whisker_bps().wait().expect("whisker bps failed");
 }
 
 fn run_benchmark(

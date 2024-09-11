@@ -41,7 +41,7 @@ if args.sort_by == 'median':
     labels = [labels[i] for i in indices]
     results = [results[i] for i in indices]
 
-datapoints = [b["memory_usages"] for b in results]
+datapoints = [[value / 1048576 for value in b["memory_usages"]] for b in results]
 
 plt.figure(figsize=(10, 6), constrained_layout=True)
 boxplot = plt.boxplot(datapoints, vert=True, patch_artist=True, showfliers=False)
@@ -53,8 +53,8 @@ for patch, color in zip(boxplot["boxes"], colors):
 
 if args.title:
     plt.title(args.title)
-plt.legend(handles=boxplot["boxes"], labels=labels, loc="best", fontsize="medium")
-plt.ylabel("Memory [bytes]")
+plt.ylabel("Memory [MB]")
+plt.ylim(bottom=0)
 plt.xticks(list(range(1, len(labels)+1)), labels, rotation=45)
 if args.output:
     plt.savefig(args.output)

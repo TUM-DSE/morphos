@@ -6,7 +6,8 @@ use criterion_plot::*;
 mod throughput;
 mod whisker;
 
-pub use whisker::whisker;
+pub use whisker::whisker_pps;
+pub use whisker::whisker_bps;
 
 static DEFAULT_FONT: &str = "Helvetica";
 static SIZE: Size = Size(1280, 720);

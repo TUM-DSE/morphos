@@ -7,7 +7,7 @@ Quoting from the matplotlib documentation:
     a line at the median. The whiskers extend from the box to show the range
     of the data. Flier points are those past the end of the whiskers.
 
-Example: python3 benches/latency/plots/plot_whisker.py target/latency/summary.json --sort-by median -o target/latency/summary.png
+Example: python3 benches/throughput/plots/plot_whisker.py target/throughput/summary.json --sort-by median -o target/throughput/summary.png
 """
 
 import argparse
@@ -34,25 +34,25 @@ if args.labels:
     labels = args.labels.split(",")
 else:
     labels = [b["name"] for b in results]
-latency = [b["latency"] for b in results]
+throughput = [[value / 1_000 for value in b["packets_per_time_unit"]] for b in results]
 
 if args.sort_by == 'median':
-    medians = [b["latency_statistics"]["median"] for b in results]
+    medians = [b["packets_per_time_unit_statistics"]["median"] for b in results]
     indices = sorted(range(len(labels)), key=lambda k: medians[k])
     labels = [labels[i] for i in indices]
-    latency = [latency[i] for i in indices]
+    throughput = [throughput[i] for i in indices]
 
 plt.figure(figsize=(10, 6), constrained_layout=True)
-boxplot = plt.boxplot(latency, vert=True, patch_artist=True, showfliers=False)
+boxplot = plt.boxplot(throughput, vert=True, patch_artist=True, showfliers=False)
 cmap = plt.get_cmap("rainbow")
-colors = [cmap(val / len(latency)) for val in range(len(latency))]
+colors = [cmap(val / len(throughput)) for val in range(len(throughput))]
 
 for patch, color in zip(boxplot["boxes"], colors):
     patch.set_facecolor(color)
 
 if args.title:
     plt.title(args.title)
-plt.ylabel("Latency [ns]")
+plt.ylabel("Throughput [Kilo Packets per second]")
 plt.ylim(bottom=0)
 plt.xticks(list(range(1, len(labels)+1)), labels, rotation=45)
 if args.output:

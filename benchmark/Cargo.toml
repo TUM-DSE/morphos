@@ -37,3 +37,6 @@ harness = false
 [[bench]]
 name = "latency"
 harness = false
+
+[features]
+print-output = []

@@ -34,10 +34,10 @@ if args.labels:
     labels = args.labels.split(",")
 else:
     labels = [b["name"] for b in results]
-throughput = [b["packets_per_time_unit"] for b in results]
+throughput = [[t / 1048576 for t in b] for b in [b["bytes_per_time_unit"] for b in results]]
 
 if args.sort_by == 'median':
-    medians = [b["packets_per_time_unit_statistics"]["median"] for b in results]
+    medians = [b["bytes_per_time_unit_statistics"]["median"] for b in results]
     indices = sorted(range(len(labels)), key=lambda k: medians[k])
     labels = [labels[i] for i in indices]
     throughput = [throughput[i] for i in indices]
@@ -52,8 +52,8 @@ for patch, color in zip(boxplot["boxes"], colors):
 
 if args.title:
     plt.title(args.title)
-plt.legend(handles=boxplot["boxes"], labels=labels, loc="best", fontsize="medium")
-plt.ylabel("Throughput [Packets per second]")
+plt.ylabel("Throughput [MB per second]")
+plt.ylim(bottom=0)
 plt.xticks(list(range(1, len(labels)+1)), labels, rotation=45)
 if args.output:
     plt.savefig(args.output)

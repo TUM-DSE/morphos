@@ -10,8 +10,13 @@ pub fn measure_throughput(config: &Configuration) -> Vec<Datapoint> {
     println!("Preparing CPIO archive");
     let cpio = prepare_cpio_archive(
         &create_click_configuration(config),
-        config.bpfilter_program.map(|(x, _)| x).map(PathBuf::from),
-        config.bpfilter_program.map(|(_, x)| x).map(PathBuf::from),
+        &[
+            config.bpfilter_program.map(|(x, _)| x).map(PathBuf::from),
+            config.bpfilter_program.map(|(_, x)| x).map(PathBuf::from),
+        ]
+        .into_iter()
+        .filter_map(|x| x)
+        .collect::<Vec<PathBuf>>(),
     )
     .expect("couldn't prepare cpio archive");
 

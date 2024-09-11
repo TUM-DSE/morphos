@@ -8,12 +8,8 @@ use std::process::{Command, Stdio};
 
 pub fn measure_throughput(config: &Configuration) -> Vec<Datapoint> {
     println!("Preparing CPIO archive");
-    let cpio = prepare_cpio_archive(
-        &create_click_configuration(config),
-        config.bpfilter_program.map(PathBuf::from),
-        None::<PathBuf>,
-    )
-    .expect("couldn't prepare cpio archive");
+    let cpio = prepare_cpio_archive(&create_click_configuration(config), config.files)
+        .expect("couldn't prepare cpio archive");
 
     println!("Starting Click");
     let mut click_vm = start_click(FileSystem::CpioArchive(&cpio.path.to_string_lossy()), &[])
@@ -116,19 +112,17 @@ fn create_click_configuration(config: &Configuration) -> String {
         .expect("couldn't get mac address")
         .expect("no mac address found");
 
-    // enhance the effect of the click element on the benchmarking times by repeating it 50 times
-    let click_element_config = config.click_config.unwrap_or("").repeat(50);
+    let click_element_config = config.click_config.unwrap_or("");
 
     format!(
         r#"
 // need this to initialize the device 0
 FromDevice(0) -> Discard;
+encap_then_out :: EtherEncap(0x0800, $MAC0, {mac_address}) -> ToDevice(0);
 
-InfiniteSource(DATA \<0800>, LENGTH 60, LIMIT -1, BURST 100000)
+InfiniteSource(DATA \<0800>, LENGTH 1460, LIMIT -1, BURST 100000)
 -> UDPIPEncap(172.44.0.2, 5678, 172.44.0.1, 5678)
--> EtherEncap(0x0800, $MAC0, {mac_address})
 {click_element_config}
--> ToDevice(0);
 "#
     )
 }

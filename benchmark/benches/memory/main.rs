@@ -19,50 +19,60 @@ use crate::summary::calculate_summary;
 
 struct Configuration<'a> {
     name: &'a str,
-    bpfilter_program: Option<(&'a str, &'a str)>,
+    files: &'a [&'a str],
     click_config: Option<&'a str>,
 }
 
 const CONFIGURATIONS: &[Configuration] = &[
     Configuration {
         name: "baseline",
-        bpfilter_program: None,
+        files: &[],
         click_config: None,
     },
     Configuration {
         name: "pass (IPFilter)",
-        bpfilter_program: None,
+        files: &[],
         click_config: Some("-> IPFilter(allow all) "),
     },
     Configuration {
-        name: "pass (bpfilter)",
-        bpfilter_program: Some(("bpfilters/pass", "bpfilters/pass.sig")),
+        name: "pass (BPFFilter)",
+        files: &["bpfilters/pass", "bpfilters/pass.sig"],
         click_config: Some("-> BPFilter(ID 1, FILE pass, SIGNATURE pass.sig) "),
     },
     Configuration {
-        name: "pass (bpfilter - JIT)",
-        bpfilter_program: Some(("bpfilters/pass", "bpfilters/pass.sig")),
+        name: "pass (BPFFilter - JIT)",
+        files: &["bpfilters/pass", "bpfilters/pass.sig"],
         click_config: Some("-> BPFilter(ID 1, FILE pass, SIGNATURE pass.sig, JIT true) "),
     },
     Configuration {
-        name: "2x pass (bpfilter)",
-        bpfilter_program: Some(("bpfilters/pass", "bpfilters/pass.sig")),
+        name: "2x pass (BPFFilter)",
+        files: &["bpfilters/pass", "bpfilters/pass.sig"],
         click_config: Some("-> BPFilter(ID 1, FILE pass, SIGNATURE pass.sig) -> BPFilter(ID 2, FILE pass, SIGNATURE pass.sig) "),
     },
     Configuration {
-        name: "2x pass (bpfilter - JIT)",
-        bpfilter_program: Some(("bpfilters/pass", "bpfilters/pass.sig")),
+        name: "2x pass (BPFFilter - JIT)",
+        files: &["bpfilters/pass", "bpfilters/pass.sig"],
         click_config: Some("-> BPFilter(ID 1, FILE pass, SIGNATURE pass.sig, JIT true) -> BPFilter(ID 2, FILE pass, SIGNATURE pass.sig, JIT true) "),
     },
     Configuration {
-        name: "3x pass (bpfilter)",
-        bpfilter_program: Some(("bpfilters/pass", "bpfilters/pass.sig")),
-        click_config: Some("-> BPFilter(ID 1, FILE pass, SIGNATURE pass.sig) -> BPFilter(ID 2, FILE pass, SIGNATURE pass.sig) -> BPFilter(ID 3, FILE pass, SIGNATURE pass.sig) "),
+        name: "pass & drop (BPFFilter)",
+        files: &["bpfilters/pass", "bpfilters/pass.sig", "bpfilters/drop", "bpfilters/drop.sig"],
+        click_config: Some("-> BPFilter(ID 1, FILE pass, SIGNATURE pass.sig) -> BPFilter(ID 2, FILE drop, SIGNATURE drop.sig) "),
     },
     Configuration {
-        name: "3x pass (bpfilter - JIT)",
-        bpfilter_program: Some(("bpfilters/pass", "bpfilters/pass.sig")),
-        click_config: Some("-> BPFilter(ID 1, FILE pass, SIGNATURE pass.sig, JIT true) -> BPFilter(ID 2, FILE pass, SIGNATURE pass.sig, JIT true) -> BPFilter(ID 3, FILE pass, SIGNATURE pass.sig, JIT true) "),
+        name: "pass & drop (BPFFilter - JIT)",
+        files: &["bpfilters/pass", "bpfilters/pass.sig", "bpfilters/drop", "bpfilters/drop.sig"],
+        click_config: Some("-> BPFilter(ID 1, FILE pass, SIGNATURE pass.sig, JIT true) -> BPFilter(ID 2, FILE drop, SIGNATURE drop.sig, JIT true) "),
+    },
+    Configuration {
+        name: "round-robin (BPFClassifier)",
+        files: &["bpfilters/round-robin", "bpfilters/round-robin.sig"],
+        click_config: Some("-> BPFClassifier(ID 1, FILE round-robin, SIGNATURE round-robin.sig, JIT false)"),
+    },
+    Configuration {
+        name: "round-robin (BPFClassifier - JIT)",
+        files: &["bpfilters/round-robin", "bpfilters/round-robin.sig"],
+        click_config: Some("-> BPFClassifier(ID 1, FILE round-robin, SIGNATURE round-robin.sig, JIT true)"),
     },
 ];
 

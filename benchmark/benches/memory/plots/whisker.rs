@@ -9,8 +9,6 @@ pub fn whisker() -> Child {
         .args(&[
             PLOT_WHISKER_PATH,
             SUMMARY_PATH,
-            "--sort-by",
-            "median",
             "-o",
             OUTPUT_PATH,
         ])

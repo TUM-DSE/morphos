@@ -3,14 +3,12 @@ use click_benchmark::cpio::prepare_cpio_archive;
 use click_benchmark::vm::{start_click, wait_until_driver_start, FileSystem};
 use std::fs;
 use std::io::BufRead;
-use std::path::PathBuf;
 
 pub fn measure_memory_usage(config: &Configuration) -> Vec<u64> {
     println!("Preparing CPIO archive");
     let cpio = prepare_cpio_archive(
         &create_click_configuration(config),
-        config.bpfilter_program.map(|(x, _)| x).map(PathBuf::from),
-        config.bpfilter_program.map(|(_, x)| x).map(PathBuf::from),
+        config.files,
     )
     .expect("couldn't prepare cpio archive");
 

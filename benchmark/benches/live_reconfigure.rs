@@ -30,85 +30,85 @@ struct Configuration<'a> {
 
 const CONFIGURATIONS: &[Configuration] = &[
     Configuration {
-        name: "pass",
+        name: "pass (BPFFilter)",
         bpfilter_program: "pass",
         signature_file: "pass.sig",
         click_config: "-> BPFilter(ID 1, FILE pass, SIGNATURE pass.sig, JIT false)",
     },
     Configuration {
-        name: "pass-jit",
+        name: "pass (BPFFilter - JIT)",
         bpfilter_program: "pass",
         signature_file: "pass.sig",
         click_config: "-> BPFilter(ID 1, FILE pass, SIGNATURE pass.sig, JIT true)",
     },
     Configuration {
-        name: "drop",
+        name: "drop (BPFFilter)",
         bpfilter_program: "drop",
         signature_file: "drop.sig",
         click_config: "-> BPFilter(ID 1, FILE drop, SIGNATURE drop.sig, JIT false)",
     },
     Configuration {
-        name: "drop-jit",
+        name: "drop (BPFFilter - JIT)",
         bpfilter_program: "drop",
         signature_file: "drop.sig",
         click_config: "-> BPFilter(ID 1, FILE drop, SIGNATURE drop.sig, JIT true)",
     },
     Configuration {
-        name: "target-port",
+        name: "target-port (BPFFilter)",
         bpfilter_program: "target-port",
         signature_file: "target-port.sig",
         click_config: "-> BPFilter(ID 1, FILE target-port, SIGNATURE target-port.sig, JIT false)",
     },
     Configuration {
-        name: "target-port-jit",
+        name: "target-port (BPFFilter - JIT)",
         bpfilter_program: "target-port",
         signature_file: "target-port.sig",
         click_config: "-> BPFilter(ID 1, FILE target-port, SIGNATURE target-port.sig, JIT true)",
     },
     Configuration {
         name: "rate-limiter",
-        bpfilter_program: "rate-limiter",
+        bpfilter_program: "rate-limiter (BPFFilter)",
         signature_file: "rate-limiter.sig",
         click_config: "-> BPFilter(ID 1, FILE rate-limiter, SIGNATURE rate-limiter.sig, JIT false)",
     },
     Configuration {
-        name: "rate-limiter-jit",
+        name: "rate-limiter (BPFFilter - JIT)",
         bpfilter_program: "rate-limiter",
         signature_file: "rate-limiter.sig",
         click_config: "-> BPFilter(ID 1, FILE rate-limiter, SIGNATURE rate-limiter.sig, JIT true)",
     },
     Configuration {
-        name: "round-robin",
+        name: "round-robin (BPFClassifier)",
         bpfilter_program: "round-robin",
         signature_file: "round-robin.sig",
         click_config: "-> BPFClassifier(ID 1, FILE round-robin, SIGNATURE round-robin.sig, JIT false)",
     },
     Configuration {
-        name: "round-robin-jit",
+        name: "round-robin (BPFClassifier - JIT)",
         bpfilter_program: "round-robin",
         signature_file: "round-robin.sig",
         click_config: "-> BPFClassifier(ID 1, FILE round-robin, SIGNATURE round-robin.sig, JIT true)",
     },
     Configuration {
-        name: "udp-tcp-classifier",
+        name: "udp-tcp-classifier (BPFClassifier)",
         bpfilter_program: "udp-tcp-classifier",
         signature_file: "udp-tcp-classifier.sig",
         click_config: "-> BPFClassifier(ID 1, FILE udp-tcp-classifier, SIGNATURE udp-tcp-classifier.sig, JIT false)",
     },
     Configuration {
-        name: "udp-tcp-classifier-jit",
+        name: "udp-tcp-classifier (BPFClassifier - JIT)",
         bpfilter_program: "udp-tcp-classifier",
         signature_file: "udp-tcp-classifier.sig",
         click_config: "-> BPFClassifier(ID 1, FILE udp-tcp-classifier, SIGNATURE udp-tcp-classifier.sig, JIT true)",
     },
     Configuration {
-        name: "strip-ether-vlan-header",
+        name: "strip-ether-vlan-header (BPFRewriter)",
         bpfilter_program: "strip-ether-vlan-header",
         signature_file: "strip-ether-vlan-header.sig",
         click_config: "-> BPFRewriter(ID 1, FILE strip-ether-vlan-header, SIGNATURE strip-ether-vlan-header.sig, JIT false)",
     },
     Configuration {
-        name: "strip-ether-vlan-header-jit",
+        name: "strip-ether-vlan-header (BPFRewriter - JIT)",
         bpfilter_program: "strip-ether-vlan-header",
         signature_file: "strip-ether-vlan-header.sig",
         click_config: "-> BPFRewriter(ID 1, FILE strip-ether-vlan-header, SIGNATURE strip-ether-vlan-header.sig, JIT true)",
@@ -124,8 +124,7 @@ pub fn live_reconfigure(c: &mut Criterion) {
         // prepare click VM
         let cpio = prepare_cpio_archive(
             &create_click_configuration(config.click_config),
-            Some(&PathBuf::from(BPFILTER_BASE_PATH).join(config.bpfilter_program)),
-            Some(&PathBuf::from(BPFILTER_BASE_PATH).join(config.signature_file)),
+            &[PathBuf::from(BPFILTER_BASE_PATH).join(config.bpfilter_program), PathBuf::from(BPFILTER_BASE_PATH).join(config.signature_file)],
         )
         .expect("couldn't prepare cpio archive");
 

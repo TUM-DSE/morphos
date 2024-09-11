@@ -107,6 +107,10 @@ pub fn start_click(fs: FileSystem, extra_args: &[String]) -> anyhow::Result<Clic
 pub fn wait_until_ready(lines: &mut Lines<BufReader<ChildStdout>>) {
     for line in lines {
         if let Ok(line) = line {
+            if cfg!(feature = "print-output") {
+                println!("{}", line);
+            }
+
             if line.contains("Received packet") && !line.contains("->") {
                 return;
             }
@@ -117,6 +121,10 @@ pub fn wait_until_ready(lines: &mut Lines<BufReader<ChildStdout>>) {
 pub fn wait_until_driver_start(lines: &mut Lines<BufReader<ChildStdout>>) {
     for line in lines {
         if let Ok(line) = line {
+            if cfg!(feature = "print-output") {
+                println!("{}", line);
+            }
+
             if line.contains("Starting driver...") {
                 return;
             }
