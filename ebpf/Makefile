@@ -5,7 +5,7 @@ TARGET_DIR:=$(DIR)/target/bpfel-unknown-none/release
 EXAMPLES_DIR:=$(DIR)/../examples
 BENCHMARK_DIR:=$(DIR)/../benchmark/bpfilters
 
-BINS := dns-filter drop ether-mirror pass rate-limiter round-robin strip-ether-vlan-header target-port udp-tcp-classifier
+BINS := dns-filter drop ether-mirror pass rate-limiter round-robin strip-ether-vlan-header target-port udp-tcp-classifier state-migration-v1 state-migration-v2
 
 VERIFY ?= 0
 
@@ -40,6 +40,10 @@ sync:
 	@-cp $(TARGET_DIR)/target-port.sig $(EXAMPLES_DIR)/target-port/rootfs/target-port.sig
 	@-cp $(TARGET_DIR)/udp-tcp-classifier $(EXAMPLES_DIR)/udp-tcp-classifier/rootfs/udp-tcp-classifier
 	@-cp $(TARGET_DIR)/udp-tcp-classifier.sig $(EXAMPLES_DIR)/udp-tcp-classifier/rootfs/udp-tcp-classifier.sig
+	@-cp $(TARGET_DIR)/state-migration-v1 $(EXAMPLES_DIR)/state-migration/rootfs/state-migration-v1
+	@-cp $(TARGET_DIR)/state-migration-v1.sig $(EXAMPLES_DIR)/state-migration/rootfs/state-migration-v1.sig
+	@-cp $(TARGET_DIR)/state-migration-v2 $(EXAMPLES_DIR)/state-migration/rootfs/state-migration-v2
+	@-cp $(TARGET_DIR)/state-migration-v2.sig $(EXAMPLES_DIR)/state-migration/rootfs/state-migration-v2.sig
 
 	@-cp $(TARGET_DIR)/rate-limiter $(EXAMPLES_DIR)/chain/firewall/rate-limiter
 	@-cp $(TARGET_DIR)/rate-limiter.sig $(EXAMPLES_DIR)/chain/firewall/rate-limiter.sig

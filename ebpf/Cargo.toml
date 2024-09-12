@@ -39,6 +39,14 @@ path = "src/bin/target-port.rs"
 name = "udp-tcp-classifier"
 path = "src/bin/udp-tcp-classifier.rs"
 
+[[bin]]
+name = "state-migration-v1"
+path = "src/bin/state-migration-v1.rs"
+
+[[bin]]
+name = "state-migration-v2"
+path = "src/bin/state-migration-v2.rs"
+
 [dependencies]
 network-types = "0.0.6"
 aya-ebpf = "0.1.0"
