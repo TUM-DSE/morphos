@@ -35,6 +35,7 @@ if args.labels:
 else:
     labels = [b["name"] for b in results]
 latency = [b["latency"] for b in results]
+latency = [[l / 1000 for l in lat] for lat in latency]
 
 if args.sort_by == 'median':
     medians = [b["latency_statistics"]["median"] for b in results]
@@ -52,7 +53,7 @@ for patch, color in zip(boxplot["boxes"], colors):
 
 if args.title:
     plt.title(args.title)
-plt.ylabel("Latency [ns]")
+plt.ylabel("Latency [μs]")
 plt.ylim(bottom=0)
 plt.xticks(list(range(1, len(labels)+1)), labels, rotation=45)
 if args.output:

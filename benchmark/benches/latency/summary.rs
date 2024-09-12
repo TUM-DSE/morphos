@@ -3,7 +3,6 @@ use crate::Datapoint;
 use serde::{Deserialize, Serialize};
 use std::fmt;
 use std::fmt::Display;
-use std::time::Duration;
 
 #[derive(Serialize, Deserialize)]
 pub struct Summary<'a> {
