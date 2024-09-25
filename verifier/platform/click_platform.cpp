@@ -1,5 +1,6 @@
 // Copyright (c) Prevail Verifier contributors.
 // SPDX-License-Identifier: MIT
+// Based on the Linux platform.
 #include <stdexcept>
 #if __click__
 #include <click/bpf.h>

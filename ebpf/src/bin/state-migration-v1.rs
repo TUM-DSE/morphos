@@ -1,8 +1,6 @@
 #![no_std]
 #![no_main]
 
-use core::ffi::{c_char, c_long};
-use aya_ebpf::bpf_printk;
 use aya_ebpf::macros::map;
 use aya_ebpf::maps::Array;
 use bpf_element::filter::FilterResult;

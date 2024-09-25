@@ -1,5 +1,5 @@
 use serde::{Deserialize, Serialize};
-use statrs::statistics::{Distribution as StatsrsDistribution, Max, Median, Min};
+use statrs::statistics::{Distribution as StatsrsDistribution, Max, Median, Min, OrderStatistics};
 use std::fmt::{Display, Formatter};
 
 #[derive(Debug, Serialize, Deserialize, Copy, Clone)]
@@ -15,6 +15,10 @@ pub struct Distribution {
     pub variance: f64,
     pub std_dev: f64,
     pub median: f64,
+    pub q25: f64,
+    pub q75: f64,
+    pub min_without_outliers: f64,
+    pub max_without_outliers: f64,
 }
 
 impl Display for Statistics {
@@ -41,7 +45,7 @@ pub fn calculate_statistics(datapoints: &[u64]) -> Statistics {
 
 fn calculate_distribution(points: &[u64]) -> Distribution {
     let points = points.iter().map(|&x| x as f64).collect::<Vec<f64>>();
-    let data = statrs::statistics::Data::new(points);
+    let mut data = statrs::statistics::Data::new(points);
 
     let min = data.min();
     let max = data.max();
@@ -49,6 +53,23 @@ fn calculate_distribution(points: &[u64]) -> Distribution {
     let variance = data.variance().expect("cannot calculate variance");
     let std_dev = data.std_dev().expect("cannot calculate std dev");
     let median = data.median();
+    let q25 = data.percentile(25);
+    let q75 = data.percentile(75);
+    let iqr = data.interquartile_range();
+
+    let considered_min_without_outliers = q25 - 1.5 * iqr;
+    let considered_max_without_outliers = q75 + 1.5 * iqr;
+
+    let min_without_outliers = *data
+        .iter()
+        .filter(|&x| *x >= considered_min_without_outliers)
+        .min_by(|a, b| a.total_cmp(b))
+        .expect("cannot calculate min without outliers");
+    let max_without_outliers = *data
+        .iter()
+        .filter(|&x| *x <= considered_max_without_outliers)
+        .max_by(|a, b| a.total_cmp(b))
+        .expect("cannot calculate max without outliers");
 
     Distribution {
         min,
@@ -57,5 +78,9 @@ fn calculate_distribution(points: &[u64]) -> Distribution {
         variance,
         std_dev,
         median,
+        min_without_outliers,
+        max_without_outliers,
+        q25,
+        q75,
     }
 }

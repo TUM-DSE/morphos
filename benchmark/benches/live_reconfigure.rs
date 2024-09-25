@@ -42,32 +42,8 @@ const CONFIGURATIONS: &[Configuration] = &[
         click_config: "-> BPFilter(ID 1, FILE pass, SIGNATURE pass.sig, JIT true)",
     },
     Configuration {
-        name: "drop (BPFFilter)",
-        bpfilter_program: "drop",
-        signature_file: "drop.sig",
-        click_config: "-> BPFilter(ID 1, FILE drop, SIGNATURE drop.sig, JIT false)",
-    },
-    Configuration {
-        name: "drop (BPFFilter - JIT)",
-        bpfilter_program: "drop",
-        signature_file: "drop.sig",
-        click_config: "-> BPFilter(ID 1, FILE drop, SIGNATURE drop.sig, JIT true)",
-    },
-    Configuration {
-        name: "target-port (BPFFilter)",
-        bpfilter_program: "target-port",
-        signature_file: "target-port.sig",
-        click_config: "-> BPFilter(ID 1, FILE target-port, SIGNATURE target-port.sig, JIT false)",
-    },
-    Configuration {
-        name: "target-port (BPFFilter - JIT)",
-        bpfilter_program: "target-port",
-        signature_file: "target-port.sig",
-        click_config: "-> BPFilter(ID 1, FILE target-port, SIGNATURE target-port.sig, JIT true)",
-    },
-    Configuration {
         name: "rate-limiter",
-        bpfilter_program: "rate-limiter (BPFFilter)",
+        bpfilter_program: "rate-limiter",
         signature_file: "rate-limiter.sig",
         click_config: "-> BPFilter(ID 1, FILE rate-limiter, SIGNATURE rate-limiter.sig, JIT false)",
     },
@@ -88,18 +64,6 @@ const CONFIGURATIONS: &[Configuration] = &[
         bpfilter_program: "round-robin",
         signature_file: "round-robin.sig",
         click_config: "-> BPFClassifier(ID 1, FILE round-robin, SIGNATURE round-robin.sig, JIT true)",
-    },
-    Configuration {
-        name: "udp-tcp-classifier (BPFClassifier)",
-        bpfilter_program: "udp-tcp-classifier",
-        signature_file: "udp-tcp-classifier.sig",
-        click_config: "-> BPFClassifier(ID 1, FILE udp-tcp-classifier, SIGNATURE udp-tcp-classifier.sig, JIT false)",
-    },
-    Configuration {
-        name: "udp-tcp-classifier (BPFClassifier - JIT)",
-        bpfilter_program: "udp-tcp-classifier",
-        signature_file: "udp-tcp-classifier.sig",
-        click_config: "-> BPFClassifier(ID 1, FILE udp-tcp-classifier, SIGNATURE udp-tcp-classifier.sig, JIT true)",
     },
     Configuration {
         name: "strip-ether-vlan-header (BPFRewriter)",

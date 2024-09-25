@@ -6,6 +6,10 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [lib]
 
+[[bin]]
+name = "consolidate-criterion"
+path = "src/bin/consolidate-criterion.rs"
+
 [dependencies]
 anyhow = "1.0"
 criterion = "0.5.1"
