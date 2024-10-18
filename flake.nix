@@ -38,6 +38,10 @@
                 gnuplot
                 llvmPackages_15.bintools
                 perl
+                doxygen
+                gzip
+                ncurses
+                ncurses.dev
               ]);
               prevailDeps = pkgs: (with pkgs; [
                 gcc
