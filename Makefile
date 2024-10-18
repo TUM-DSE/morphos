@@ -7,5 +7,5 @@ build:
 	kraft build --log-type basic
 
 kill:
-    sudo pkill -f "clicknet"
-    sudo pkill -f "controlnet"
+		sudo pkill -f "clicknet"
+		sudo pkill -f "controlnet"
