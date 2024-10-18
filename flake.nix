@@ -15,7 +15,7 @@
               unstable = import unstablepkgs {
                    inherit system;
               };
-              buildDeps = with pkgs; [
+              buildDeps = pkgs: (with pkgs; [
                 pkg-config
                 gnumake
                 flex
@@ -37,19 +37,20 @@
                 python3Packages.scipy
                 gnuplot
                 llvmPackages_15.bintools
-              ];
-              prevailDeps = with pkgs; [
+                perl
+              ]);
+              prevailDeps = pkgs: (with pkgs; [
                 gcc
                 git
                 cmake
                 boost
                 yaml-cpp
-              ];
+              ]);
             in
             {
               devShells.default = pkgs.mkShell {
                 name = "devShell";
-                buildInputs = buildDeps ++ prevailDeps ++ [
+                buildInputs = (buildDeps pkgs) ++ (prevailDeps pkgs) ++ [
                     unstable.kraft
                     unstable.rustup
                     unstable.bmon
@@ -58,6 +59,20 @@
                 KRAFTKIT_NO_WARN_SUDO = "1";
                 KRAFTKIT_NO_CHECK_UPDATES = "true";
               };
+              devShells.fhs = (pkgs.buildFHSEnv {
+                name = "devShell";
+                targetPkgs = pkgs: (
+                  (buildDeps pkgs) ++ (prevailDeps pkgs) ++ [
+                    unstable.kraft
+                    unstable.rustup
+                    unstable.bmon
+                    unstable.gh
+                  ]
+                );
+                runScript = "bash";
+                # KRAFTKIT_NO_WARN_SUDO = "1";
+                # KRAFTKIT_NO_CHECK_UPDATES = "true";
+              }).env;
             }
         )
     );
