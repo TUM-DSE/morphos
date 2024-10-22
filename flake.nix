@@ -24,8 +24,11 @@
                 wget
                 libuuid
                 gcc
-                qemu
-                qemu_kvm
+                # qemu
+                (qemu_kvm.overrideAttrs (new: old: {
+                  patches = old.patches ++ [
+                  ];
+                }))
                 cmake
                 unzip
                 clang
@@ -42,6 +45,8 @@
                 gzip
                 ncurses
                 ncurses.dev
+                libgcc
+                gdb
               ]);
               prevailDeps = pkgs: (with pkgs; [
                 gcc
