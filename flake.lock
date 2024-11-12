@@ -15,13 +15,12 @@
     "compiler-rt": {
       "flake": false,
       "locked": {
-        "lastModified": 1655916384,
-        "narHash": "sha256-9RF05adTGykVs++7RYfpUWZkEuxH9IVlERkjjP64aZA=",
-        "type": "tarball",
+        "narHash": "sha256-nNivqg2yD+1x3tEuVUGp6nEjWkE6JrTwsNd+hz3aKZ4=",
+        "type": "file",
         "url": "https://github.com/llvm/llvm-project/releases/download/llvmorg-14.0.6/compiler-rt-14.0.6.src.tar.xz"
       },
       "original": {
-        "type": "tarball",
+        "type": "file",
         "url": "https://github.com/llvm/llvm-project/releases/download/llvmorg-14.0.6/compiler-rt-14.0.6.src.tar.xz"
       }
     },
@@ -148,39 +147,36 @@
     "libcxx": {
       "flake": false,
       "locked": {
-        "lastModified": 1655916384,
-        "narHash": "sha256-VzqxpX6n+U2TU0qc7ubPoSIoinpXXud2oWLEktCceJg=",
-        "type": "tarball",
+        "narHash": "sha256-Zyn1lTxYViCpf7n1PZmAuqk7sD28kIyB2Dhk258ToMQ=",
+        "type": "file",
         "url": "https://github.com/llvm/llvm-project/releases/download/llvmorg-14.0.6/libcxx-14.0.6.src.tar.xz"
       },
       "original": {
-        "type": "tarball",
+        "type": "file",
         "url": "https://github.com/llvm/llvm-project/releases/download/llvmorg-14.0.6/libcxx-14.0.6.src.tar.xz"
       }
     },
     "libcxxabi": {
       "flake": false,
       "locked": {
-        "lastModified": 1655916384,
-        "narHash": "sha256-BWkup7o2SrLnBXPP4FL0SC/i2xmXS/6eXfuy9ZQvZ64=",
-        "type": "tarball",
+        "narHash": "sha256-vELSFsKDdOpbb6iA/KGshMnLpRsJxmCwib40kErFVgM=",
+        "type": "file",
         "url": "https://github.com/llvm/llvm-project/releases/download/llvmorg-14.0.6/libcxxabi-14.0.6.src.tar.xz"
       },
       "original": {
-        "type": "tarball",
+        "type": "file",
         "url": "https://github.com/llvm/llvm-project/releases/download/llvmorg-14.0.6/libcxxabi-14.0.6.src.tar.xz"
       }
     },
     "libunwind": {
       "flake": false,
       "locked": {
-        "lastModified": 1655916384,
-        "narHash": "sha256-cCSoQvKf/k94ZBrZ1N01JIYCYYyShrZjU1a11QIITEc=",
-        "type": "tarball",
+        "narHash": "sha256-Wu07iOLJY2aX/yD0+lqjF9ROljaOqOAoerx6ZY03m7Y=",
+        "type": "file",
         "url": "https://github.com/llvm/llvm-project/releases/download/llvmorg-14.0.6/libunwind-14.0.6.src.tar.xz"
       },
       "original": {
-        "type": "tarball",
+        "type": "file",
         "url": "https://github.com/llvm/llvm-project/releases/download/llvmorg-14.0.6/libunwind-14.0.6.src.tar.xz"
       }
     },
@@ -215,13 +211,12 @@
     "openssl": {
       "flake": false,
       "locked": {
-        "lastModified": 1559049141,
-        "narHash": "sha256-h57CvxH3mOCTDHO62wxjQnRY0FWXZLT9/YH+p5gyemU=",
-        "type": "tarball",
+        "narHash": "sha256-BYVzC1KlA2kwzPj1gaOOu5HyG6UpzrgOc15uFxZERac=",
+        "type": "file",
         "url": "https://www.openssl.org/source/old/1.1.1/openssl-1.1.1c.tar.gz"
       },
       "original": {
-        "type": "tarball",
+        "type": "file",
         "url": "https://www.openssl.org/source/old/1.1.1/openssl-1.1.1c.tar.gz"
       }
     },

@@ -24,7 +24,7 @@
     };
     libunwind = {
       flake = false;
-      url = "https://github.com/llvm/llvm-project/releases/download/llvmorg-14.0.6/libunwind-14.0.6.src.tar.xz";
+      url = "file+https://github.com/llvm/llvm-project/releases/download/llvmorg-14.0.6/libunwind-14.0.6.src.tar.xz";
     };
 
     lib-libcxxabi = {
@@ -33,7 +33,7 @@
     };
     libcxxabi = {
       flake = false;
-      url = "https://github.com/llvm/llvm-project/releases/download/llvmorg-14.0.6/libcxxabi-14.0.6.src.tar.xz";
+      url = "file+https://github.com/llvm/llvm-project/releases/download/llvmorg-14.0.6/libcxxabi-14.0.6.src.tar.xz";
     };
 
     lib-libcxx= {
@@ -42,7 +42,7 @@
     };
     libcxx= {
       flake = false;
-      url = "https://github.com/llvm/llvm-project/releases/download/llvmorg-14.0.6/libcxx-14.0.6.src.tar.xz";
+      url = "file+https://github.com/llvm/llvm-project/releases/download/llvmorg-14.0.6/libcxx-14.0.6.src.tar.xz";
     };
 
     lib-openssl = {
@@ -51,7 +51,7 @@
     };
     openssl = {
       flake = false;
-      url = "https://www.openssl.org/source/old/1.1.1/openssl-1.1.1c.tar.gz";
+      url = "file+https://www.openssl.org/source/old/1.1.1/openssl-1.1.1c.tar.gz";
     };
 
     lib-compiler-rt = {
@@ -60,7 +60,7 @@
     };
     compiler-rt = {
       flake = false;
-      url = "https://github.com/llvm/llvm-project/releases/download/llvmorg-14.0.6/compiler-rt-14.0.6.src.tar.xz";
+      url = "file+https://github.com/llvm/llvm-project/releases/download/llvmorg-14.0.6/compiler-rt-14.0.6.src.tar.xz";
     };
 
     click = {
@@ -189,21 +189,20 @@
                   srcsUnpack ${inputs.musl} .unikraft/build/libmusl/musl-1.2.3.tar.gz
 
                   srcsUnpack ${inputs.lib-libunwind} libs/libunwind
-                  srcsUnpack ${inputs.libunwind} .unikraft/build/libunwind/origin
+                  srcsUnpack ${inputs.libunwind} .unikraft/build/libunwind/libunwind-14.0.6.src.tar.xz
 
                   srcsUnpack ${inputs.lib-libcxxabi} libs/libcxxabi
-                  srcsUnpack ${inputs.libcxxabi} .unikraft/build/libcxxabi/origin
+                  srcsUnpack ${inputs.libcxxabi} .unikraft/build/libcxxabi/libcxxabi-14.0.6.src.tar.xz
 
                   srcsUnpack ${inputs.lib-libcxx} libs/libcxx
-                  srcsUnpack ${inputs.libcxx} .unikraft/build/libcxx/origin
+                  srcsUnpack ${inputs.libcxx} .unikraft/build/libcxx/libcxx-14.0.6.src.tar.xz
 
                   srcsUnpack ${inputs.lib-openssl} libs/openssl
-                  srcsUnpack ${inputs.openssl} .unikraft/build/openssl/origin
+                  srcsUnpack ${inputs.openssl} .unikraft/build/libssl/openssl-1.1.1c.tar.gz
 
                   srcsUnpack ${inputs.lib-compiler-rt} libs/compiler-rt
-                  srcsUnpack ${inputs.compiler-rt} .unikraft/build/compiler-rt/origin
+                  srcsUnpack ${inputs.compiler-rt} .unikraft/build/libcompiler_rt/compiler-rt-14.0.6.src.tar.xz
 
-                  # srcsUnpack ${inputs.click} .unikraft/build/libclick/origin/click-a5384835a6cac10f8d44da4eeea8eaa8f8e6a0c2
                   srcsUnpack ${inputs.click} .unikraft/build/libclick/click-a5384835a6cac10f8d44da4eeea8eaa8f8e6a0c2.zip
                 '';
                 buildPhase = ''
