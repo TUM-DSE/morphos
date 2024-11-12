@@ -89,6 +89,29 @@
                 # KRAFTKIT_NO_WARN_SUDO = "1";
                 # KRAFTKIT_NO_CHECK_UPDATES = "true";
               }).env;
+              packages.unikraft = let
+                runMake = (pkgs.buildFHSEnv {
+                  name = "runMake";
+                  targetPkgs = pkgs: (
+                    (buildDeps pkgs) ++ (prevailDeps pkgs) ++ [
+                      unstable.kraft
+                      unstable.rustup
+                      unstable.bmon
+                      unstable.gh
+                    ]
+                  );
+                  runScript = "bash -c \"KRAFTKIT_NO_CHECK_UPDATES=true make\"";
+                });
+              in pkgs.stdenv.mkDerivation {
+                name = "unikraft";
+                src = ./.;
+                buildPhase = ''
+                  mkdir -p $out
+
+                  ${runMake}/bin/runMake
+                '';
+
+              };
             }
         )
     );
