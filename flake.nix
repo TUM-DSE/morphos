@@ -45,8 +45,14 @@
                 gzip
                 ncurses
                 ncurses.dev
-                libgcc
+                (pkgs.runCommand "gcc-nm" {} ''
+                  # only bring in gcc-nm from libgcc.out, because it otherwise prevents crt1.so from musl to be found
+                  mkdir -p $out/bin
+                  cp ${pkgs.libgcc.out}/bin/gcc-nm $out/bin
+                  cp -r ${pkgs.libgcc.out}/libexec/ $out/
+                '')
                 gdb
+                musl
               ]);
               prevailDeps = pkgs: (with pkgs; [
                 gcc
