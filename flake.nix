@@ -35,6 +35,7 @@
                 openssl
                 ncurses
                 bridge-utils
+                python3
                 python3Packages.numpy
                 python3Packages.matplotlib
                 python3Packages.scipy
