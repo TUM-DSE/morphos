@@ -5,6 +5,8 @@ build:
 	cp -r libs/click/unikraft .unikraft/build/libclick/origin/click-a5384835a6cac10f8d44da4eeea8eaa8f8e6a0c2/elements
 
 	kraft build --log-type basic
+downloadLibs:
+	@nix develop .#unikraft --command bash -c 'sourceRoot=$$(pwd); eval "$$postUnpack"'
 
 kill:
 		sudo pkill -f "clicknet"

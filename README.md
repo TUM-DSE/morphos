@@ -28,7 +28,8 @@ The project is structured as follows:
 
 1. Clone the repository with the `--recursive` flag to also clone the submodules
 2. Install the `nix` package manager
-3. Run `nix develop` to enter the development environment with all dependencies
+3. Run `nix develop .#fhs` to enter the development environment with all system dependencies
+4. Run `make downloadLibs` to download unikraft libraries as pinned by `flake.*`
 
 ### Building the Unikernel
 

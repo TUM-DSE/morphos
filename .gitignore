@@ -9,3 +9,11 @@ libs/ubpf/vm/libubpf.so
 rootfs/*.bin
 Makefile.uk
 .envrc
+
+libs/compiler-rt/
+libs/libcxx/
+libs/libcxxabi/
+libs/libunwind/
+libs/musl/
+libs/openssl/
+libs/unikraft/
