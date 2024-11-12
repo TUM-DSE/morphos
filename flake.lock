@@ -1,5 +1,30 @@
 {
   "nodes": {
+    "click": {
+      "flake": false,
+      "locked": {
+        "narHash": "sha256-6FHxiYqOZcGnaXEXNz+vHj7/Wm7oTJO+prCa35q/j68=",
+        "type": "file",
+        "url": "https://codeload.github.com/kohler/click/zip/a5384835a6cac10f8d44da4eeea8eaa8f8e6a0c2"
+      },
+      "original": {
+        "type": "file",
+        "url": "https://codeload.github.com/kohler/click/zip/a5384835a6cac10f8d44da4eeea8eaa8f8e6a0c2"
+      }
+    },
+    "compiler-rt": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1655916384,
+        "narHash": "sha256-9RF05adTGykVs++7RYfpUWZkEuxH9IVlERkjjP64aZA=",
+        "type": "tarball",
+        "url": "https://github.com/llvm/llvm-project/releases/download/llvmorg-14.0.6/compiler-rt-14.0.6.src.tar.xz"
+      },
+      "original": {
+        "type": "tarball",
+        "url": "https://github.com/llvm/llvm-project/releases/download/llvmorg-14.0.6/compiler-rt-14.0.6.src.tar.xz"
+      }
+    },
     "flake-utils": {
       "inputs": {
         "systems": "systems"
@@ -18,6 +43,159 @@
         "type": "github"
       }
     },
+    "lib-compiler-rt": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1697821086,
+        "narHash": "sha256-mPe7a3elXtqFiopaO5uknSkpV51HtPkZ3GfAb1gY52Y=",
+        "owner": "unikraft",
+        "repo": "lib-compiler-rt",
+        "rev": "e728010e59a7277147884cfb31c9946aa12543e9",
+        "type": "github"
+      },
+      "original": {
+        "owner": "unikraft",
+        "ref": "stable",
+        "repo": "lib-compiler-rt",
+        "type": "github"
+      }
+    },
+    "lib-libcxx": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1697820946,
+        "narHash": "sha256-6he39G26GPfwNhycXhLIBYA4dMDm0eKQ9Ls+whRWi0g=",
+        "owner": "unikraft",
+        "repo": "lib-libcxx",
+        "rev": "980bcedd35d7dac8a12f4c7537bae5689b578739",
+        "type": "github"
+      },
+      "original": {
+        "owner": "unikraft",
+        "ref": "stable",
+        "repo": "lib-libcxx",
+        "type": "github"
+      }
+    },
+    "lib-libcxxabi": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1697820977,
+        "narHash": "sha256-WJKct4qhNeG/2GyBinwvUBOpmvUkTLB8zenNfIpnwAE=",
+        "owner": "unikraft",
+        "repo": "lib-libcxxabi",
+        "rev": "6105b8a26bb084c4e59068c83fe667e591bd4fe3",
+        "type": "github"
+      },
+      "original": {
+        "owner": "unikraft",
+        "ref": "stable",
+        "repo": "lib-libcxxabi",
+        "type": "github"
+      }
+    },
+    "lib-libunwind": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1700502930,
+        "narHash": "sha256-UuOcbz3LRBVETuggQAno01wHQls4sty3MK2gyLioayQ=",
+        "owner": "unikraft",
+        "repo": "lib-libunwind",
+        "rev": "c00929901c1b07d3587c50c7a28ae58f9918f68f",
+        "type": "github"
+      },
+      "original": {
+        "owner": "unikraft",
+        "ref": "stable",
+        "repo": "lib-libunwind",
+        "type": "github"
+      }
+    },
+    "lib-musl": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1717457302,
+        "narHash": "sha256-cCEceRdVNjv3WfjVmJuZvWkU7HmCWS5wEQ17GD+/avY=",
+        "owner": "unikraft",
+        "repo": "lib-musl",
+        "rev": "e1627255ba67677efa0b7f2990e34bc053e5e2c7",
+        "type": "github"
+      },
+      "original": {
+        "owner": "unikraft",
+        "ref": "stable",
+        "repo": "lib-musl",
+        "type": "github"
+      }
+    },
+    "lib-openssl": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1717457347,
+        "narHash": "sha256-VinxVcJL0Kvzq8igZE6sWcafude1iqw50FW7yGQSMLU=",
+        "owner": "unikraft",
+        "repo": "lib-openssl",
+        "rev": "20ab0db15d62562a68d1bfbc3a5ae81ea4389918",
+        "type": "github"
+      },
+      "original": {
+        "owner": "unikraft",
+        "ref": "stable",
+        "repo": "lib-openssl",
+        "type": "github"
+      }
+    },
+    "libcxx": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1655916384,
+        "narHash": "sha256-VzqxpX6n+U2TU0qc7ubPoSIoinpXXud2oWLEktCceJg=",
+        "type": "tarball",
+        "url": "https://github.com/llvm/llvm-project/releases/download/llvmorg-14.0.6/libcxx-14.0.6.src.tar.xz"
+      },
+      "original": {
+        "type": "tarball",
+        "url": "https://github.com/llvm/llvm-project/releases/download/llvmorg-14.0.6/libcxx-14.0.6.src.tar.xz"
+      }
+    },
+    "libcxxabi": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1655916384,
+        "narHash": "sha256-BWkup7o2SrLnBXPP4FL0SC/i2xmXS/6eXfuy9ZQvZ64=",
+        "type": "tarball",
+        "url": "https://github.com/llvm/llvm-project/releases/download/llvmorg-14.0.6/libcxxabi-14.0.6.src.tar.xz"
+      },
+      "original": {
+        "type": "tarball",
+        "url": "https://github.com/llvm/llvm-project/releases/download/llvmorg-14.0.6/libcxxabi-14.0.6.src.tar.xz"
+      }
+    },
+    "libunwind": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1655916384,
+        "narHash": "sha256-cCSoQvKf/k94ZBrZ1N01JIYCYYyShrZjU1a11QIITEc=",
+        "type": "tarball",
+        "url": "https://github.com/llvm/llvm-project/releases/download/llvmorg-14.0.6/libunwind-14.0.6.src.tar.xz"
+      },
+      "original": {
+        "type": "tarball",
+        "url": "https://github.com/llvm/llvm-project/releases/download/llvmorg-14.0.6/libunwind-14.0.6.src.tar.xz"
+      }
+    },
+    "musl": {
+      "flake": false,
+      "locked": {
+        "narHash": "sha256-QNdPqJKijrQlnbp14t75RdIe5rwoH+BJ1ZHD7uTCTxo=",
+        "type": "file",
+        "url": "https://www.musl-libc.org/releases/musl-1.2.3.tar.gz"
+      },
+      "original": {
+        "type": "file",
+        "url": "https://www.musl-libc.org/releases/musl-1.2.3.tar.gz"
+      }
+    },
     "nixpkgs": {
       "locked": {
         "lastModified": 1714409183,
@@ -34,10 +212,37 @@
         "type": "github"
       }
     },
+    "openssl": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1559049141,
+        "narHash": "sha256-h57CvxH3mOCTDHO62wxjQnRY0FWXZLT9/YH+p5gyemU=",
+        "type": "tarball",
+        "url": "https://www.openssl.org/source/old/1.1.1/openssl-1.1.1c.tar.gz"
+      },
+      "original": {
+        "type": "tarball",
+        "url": "https://www.openssl.org/source/old/1.1.1/openssl-1.1.1c.tar.gz"
+      }
+    },
     "root": {
       "inputs": {
+        "click": "click",
+        "compiler-rt": "compiler-rt",
         "flake-utils": "flake-utils",
+        "lib-compiler-rt": "lib-compiler-rt",
+        "lib-libcxx": "lib-libcxx",
+        "lib-libcxxabi": "lib-libcxxabi",
+        "lib-libunwind": "lib-libunwind",
+        "lib-musl": "lib-musl",
+        "lib-openssl": "lib-openssl",
+        "libcxx": "libcxx",
+        "libcxxabi": "libcxxabi",
+        "libunwind": "libunwind",
+        "musl": "musl",
         "nixpkgs": "nixpkgs",
+        "openssl": "openssl",
+        "unikraft": "unikraft",
         "unstablepkgs": "unstablepkgs"
       }
     },
@@ -53,6 +258,23 @@
       "original": {
         "owner": "nix-systems",
         "repo": "default",
+        "type": "github"
+      }
+    },
+    "unikraft": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1710966246,
+        "narHash": "sha256-prYb7vjps7cQA5Cfaf9tofBqk8xOMhFJjGpZ3I369iQ=",
+        "owner": "unikraft",
+        "repo": "unikraft",
+        "rev": "e453b74a2e78a0de98563d75d8e0a97e668088e6",
+        "type": "github"
+      },
+      "original": {
+        "owner": "unikraft",
+        "ref": "RELEASE-0.16.3",
+        "repo": "unikraft",
         "type": "github"
       }
     },

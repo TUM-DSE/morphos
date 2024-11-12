@@ -3,9 +3,73 @@
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-23.11";
     unstablepkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
     flake-utils.url = "github:numtide/flake-utils";
+
+    unikraft = {
+      flake = false;
+      url = "github:unikraft/unikraft/RELEASE-0.16.3";
+    };
+
+    lib-musl = {
+      flake = false;
+      url = "github:unikraft/lib-musl/stable";
+    };
+    musl = {
+      flake = false;
+      url = "file+https://www.musl-libc.org/releases/musl-1.2.3.tar.gz";
+    };
+
+    lib-libunwind = {
+      flake = false;
+      url = "github:unikraft/lib-libunwind/stable";
+    };
+    libunwind = {
+      flake = false;
+      url = "https://github.com/llvm/llvm-project/releases/download/llvmorg-14.0.6/libunwind-14.0.6.src.tar.xz";
+    };
+
+    lib-libcxxabi = {
+      flake = false;
+      url = "github:unikraft/lib-libcxxabi/stable";
+    };
+    libcxxabi = {
+      flake = false;
+      url = "https://github.com/llvm/llvm-project/releases/download/llvmorg-14.0.6/libcxxabi-14.0.6.src.tar.xz";
+    };
+
+    lib-libcxx= {
+      flake = false;
+      url = "github:unikraft/lib-libcxx/stable";
+    };
+    libcxx= {
+      flake = false;
+      url = "https://github.com/llvm/llvm-project/releases/download/llvmorg-14.0.6/libcxx-14.0.6.src.tar.xz";
+    };
+
+    lib-openssl = {
+      flake = false;
+      url = "github:unikraft/lib-openssl/stable";
+    };
+    openssl = {
+      flake = false;
+      url = "https://www.openssl.org/source/old/1.1.1/openssl-1.1.1c.tar.gz";
+    };
+
+    lib-compiler-rt = {
+      flake = false;
+      url = "github:unikraft/lib-compiler-rt/stable";
+    };
+    compiler-rt = {
+      flake = false;
+      url = "https://github.com/llvm/llvm-project/releases/download/llvmorg-14.0.6/compiler-rt-14.0.6.src.tar.xz";
+    };
+
+    click = {
+      flake = false;
+      url = "file+https://codeload.github.com/kohler/click/zip/a5384835a6cac10f8d44da4eeea8eaa8f8e6a0c2";
+    };
   };
 
-  outputs = { self, nixpkgs, unstablepkgs, flake-utils }:
+  outputs = { self, nixpkgs, unstablepkgs, flake-utils, ... } @ inputs:
     (flake-utils.lib.eachDefaultSystem
         (system:
             let
@@ -105,9 +169,48 @@
               in pkgs.stdenv.mkDerivation {
                 name = "unikraft";
                 src = ./.;
+                updateAutotoolsGnuConfigScriptsPhase = ''
+                  echo "wft is this. Skip it."
+                '';
+                postUnpack = ''
+                  # srcsUnpack src_absolute destination_relative
+                  function srcsUnpack () {
+                    mkdir -p $(dirname $sourceRoot/$2)
+                    cp -r $1 $sourceRoot/$2
+                  }
+                  function llvmUnpack () {
+                    mkdir -p $(dirname $sourceRoot/$2)
+                    cp -r $1 $sourceRoot/$2-raw
+                    cp -r $sourceRoot/$2-raw/*.src $sourceRoot/$2
+                  }
+                  srcsUnpack ${inputs.unikraft} libs/unikraft
+
+                  srcsUnpack ${inputs.lib-musl} libs/musl
+                  srcsUnpack ${inputs.musl} .unikraft/build/libmusl/musl-1.2.3.tar.gz
+
+                  srcsUnpack ${inputs.lib-libunwind} libs/libunwind
+                  srcsUnpack ${inputs.libunwind} .unikraft/build/libunwind/origin
+
+                  srcsUnpack ${inputs.lib-libcxxabi} libs/libcxxabi
+                  srcsUnpack ${inputs.libcxxabi} .unikraft/build/libcxxabi/origin
+
+                  srcsUnpack ${inputs.lib-libcxx} libs/libcxx
+                  srcsUnpack ${inputs.libcxx} .unikraft/build/libcxx/origin
+
+                  srcsUnpack ${inputs.lib-openssl} libs/openssl
+                  srcsUnpack ${inputs.openssl} .unikraft/build/openssl/origin
+
+                  srcsUnpack ${inputs.lib-compiler-rt} libs/compiler-rt
+                  srcsUnpack ${inputs.compiler-rt} .unikraft/build/compiler-rt/origin
+
+                  # srcsUnpack ${inputs.click} .unikraft/build/libclick/origin/click-a5384835a6cac10f8d44da4eeea8eaa8f8e6a0c2
+                  srcsUnpack ${inputs.click} .unikraft/build/libclick/click-a5384835a6cac10f8d44da4eeea8eaa8f8e6a0c2.zip
+                '';
                 buildPhase = ''
                   mkdir -p $out
 
+                  chmod -R +w .unikraft/build/libclick
+                  touch .unikraft/build/libclick/.origin
                   ${runMake}/bin/runMake
                 '';
 
