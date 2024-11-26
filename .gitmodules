@@ -1,3 +1,6 @@
 [submodule "verifier/ebpf-verifier"]
 	path = verifier/ebpf-verifier
 	url = https://github.com/vbpf/ebpf-verifier.git
+[submodule "baseline/click"]
+	path = baseline/click
+	url = git@github.com:kohler/click.git

@@ -1,17 +1,5 @@
 {
   "nodes": {
-    "click": {
-      "flake": false,
-      "locked": {
-        "narHash": "sha256-6FHxiYqOZcGnaXEXNz+vHj7/Wm7oTJO+prCa35q/j68=",
-        "type": "file",
-        "url": "https://codeload.github.com/kohler/click/zip/a5384835a6cac10f8d44da4eeea8eaa8f8e6a0c2"
-      },
-      "original": {
-        "type": "file",
-        "url": "https://codeload.github.com/kohler/click/zip/a5384835a6cac10f8d44da4eeea8eaa8f8e6a0c2"
-      }
-    },
     "compiler-rt": {
       "flake": false,
       "locked": {
@@ -208,6 +196,22 @@
         "type": "github"
       }
     },
+    "og-click": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1656924237,
+        "narHash": "sha256-4Y5UlO6B/dmHNebP+MtndyEC0ctI0t7bB1i0XIxmG+A=",
+        "ref": "refs/heads/master",
+        "rev": "9197a594b1c314264935106297aff08d97cbe7ee",
+        "revCount": 10856,
+        "type": "git",
+        "url": "https://github.com/kohler/click.git"
+      },
+      "original": {
+        "type": "git",
+        "url": "https://github.com/kohler/click.git"
+      }
+    },
     "openssl": {
       "flake": false,
       "locked": {
@@ -222,7 +226,6 @@
     },
     "root": {
       "inputs": {
-        "click": "click",
         "compiler-rt": "compiler-rt",
         "flake-utils": "flake-utils",
         "lib-compiler-rt": "lib-compiler-rt",
@@ -236,8 +239,10 @@
         "libunwind": "libunwind",
         "musl": "musl",
         "nixpkgs": "nixpkgs",
+        "og-click": "og-click",
         "openssl": "openssl",
         "unikraft": "unikraft",
+        "unikraft_click": "unikraft_click",
         "unstablepkgs": "unstablepkgs"
       }
     },
@@ -271,6 +276,18 @@
         "ref": "RELEASE-0.16.3",
         "repo": "unikraft",
         "type": "github"
+      }
+    },
+    "unikraft_click": {
+      "flake": false,
+      "locked": {
+        "narHash": "sha256-6FHxiYqOZcGnaXEXNz+vHj7/Wm7oTJO+prCa35q/j68=",
+        "type": "file",
+        "url": "https://codeload.github.com/kohler/click/zip/a5384835a6cac10f8d44da4eeea8eaa8f8e6a0c2"
+      },
+      "original": {
+        "type": "file",
+        "url": "https://codeload.github.com/kohler/click/zip/a5384835a6cac10f8d44da4eeea8eaa8f8e6a0c2"
       }
     },
     "unstablepkgs": {
