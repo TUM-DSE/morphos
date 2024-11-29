@@ -13,7 +13,7 @@ kill:
 		sudo pkill -f "controlnet"
 
 throughput.cpio: throughput.click
-	mkdir /tmp/ukcpio-$(USER)
+	mkdir -p /tmp/ukcpio-$(USER)
 	cp ./throughput.click /tmp/ukcpio-$(USER)
 	.unikraft/unikraft/support/scripts/mkcpio ./throughput.cpio /tmp/ukcpio-$(USER)
 
