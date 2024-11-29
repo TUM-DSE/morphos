@@ -117,7 +117,6 @@
                   cp -r ${pkgs.libgcc.out}/libexec/ $out/
                 '')
                 gdb
-                musl
               ]);
               prevailDeps = pkgs: (with pkgs; [
                 gcc
