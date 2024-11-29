@@ -7,7 +7,7 @@
 }:
 let
   # dpdk = pkgs.dpdk;
-  dpdk = selfpkgs.dpdk21; # click doesn't build with dpdk >= 22 as of 2024.11.29
+  dpdk = selfpkgs.dpdk20; # click doesn't build with dpdk >= 22 as of 2024.11.29
   # dpdk = self.inputs.nixpkgs.legacyPackages.x86_64-linux.dpdk; # needed to build with flow-api
   debug = false;
 in
