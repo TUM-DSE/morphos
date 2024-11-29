@@ -6,7 +6,8 @@
 , ...
 }:
 let
-  #dpdk = selfpkgs.dpdk23; # needed for ice package thingy
+  # dpdk = pkgs.dpdk;
+  dpdk = selfpkgs.dpdk21; # click doesn't build with dpdk >= 22 as of 2024.11.29
   # dpdk = self.inputs.nixpkgs.legacyPackages.x86_64-linux.dpdk; # needed to build with flow-api
   debug = false;
 in
@@ -31,10 +32,9 @@ pkgs.stdenv.mkDerivation {
     numactl
     luajit
     libpcap
-    dpdk
     hyperscan
     jansson
-  ];
+  ] ++ [ dpdk ];
 
   postPatch = ''
     # sln /bin/echo ${pkgs.coreutils}/bin/echo
@@ -45,7 +45,7 @@ pkgs.stdenv.mkDerivation {
     #   --replace "/bin/echo" "echo"
 
     mkdir /build/rte_sdk
-    cp -r ${pkgs.dpdk}/* /build/rte_sdk
+    cp -r ${dpdk}/* /build/rte_sdk
       '';
 
     /*
@@ -59,7 +59,7 @@ pkgs.stdenv.mkDerivation {
 
 
     # fastlick FromDPDKDevice(FLOW_RULES_FILE) requires dpdk 21.11 or older.
-    # We attempt to patch fastclick for dpdk 22. 
+    # We attempt to patch fastclick for dpdk 22.
     substituteInPlace ./include/click/flowruleparser.hh \
       --replace "main_ctx" "builtin_ctx"
     # patch needed for dpdk 23.
@@ -68,6 +68,7 @@ pkgs.stdenv.mkDerivation {
     */
 
   RTE_SDK = "/build/rte_sdk";
+  RTE_SDK_BIN = "/build/rte_sdk";
   RTE_TARGET = "x86_64-native-linuxapp-gcc";
   # RTE_KERNELDIR = "${pkgs.linux.dev}/lib/modules/${pkgs.linux.modDirVersion}/build";
 
@@ -120,7 +121,7 @@ pkgs.stdenv.mkDerivation {
   CFLAGS = "-msse4.1 -mavx -O3";
   #CXXFLAGS = "-std=c++11 -msse4.1 -mavx" + lib.optionalString (!debug) " -O3" + lib.optionalString debug " -g";
   CXXFLAGS = "-std=c++11 -msse4.1 -mavx -O3";
-  #NIX_LDFLAGS = "-lrte_eal -lrte_ring -lrte_mempool -lrte_ethdev -lrte_mbuf -lrte_net -lrte_latencystats -lrte_cmdline -lrte_net_bond -lrte_metrics -lrte_gso -lrte_gro -lrte_net_ixgbe -lrte_net_i40e -lrte_net_bnxt -lrte_net_dpaa -lrte_bpf -lrte_bitratestats -ljansson -lbsd";
+  NIX_LDFLAGS = "-lrte_eal -lrte_ring -lrte_mempool -lrte_ethdev -lrte_mbuf -lrte_net -lrte_latencystats -lrte_cmdline -lrte_net_bond -lrte_metrics -lrte_gso -lrte_gro -lrte_net_ixgbe -lrte_net_i40e -lrte_net_bnxt -lrte_net_dpaa -lrte_bpf -lrte_bitratestats -ljansson -lbsd";
   #RTE_VER_YEAR = "21"; # does this bubble through to the makefile variable? i dont think so. Then we can remove it.
   enableParallelBuilding = true;
   hardeningDisable = [ "all" ];
