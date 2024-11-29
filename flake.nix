@@ -1,4 +1,12 @@
 {
+  nixConfig.extra-substituters = [
+    "https://tum-dse.cachix.org"
+  ];
+
+  nixConfig.extra-trusted-public-keys = [
+    "tum-dse.cachix.org-1:v67rK18oLwgO0Z4b69l30SrV1yRtqxKpiHodG4YxhNM="
+  ];
+
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-23.11";
     unstablepkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
