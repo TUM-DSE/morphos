@@ -10,3 +10,9 @@ setup:
 	sudo ip link add dev controlnet type bridge
 	sudo ip address add 173.44.0.1/24 dev controlnet
 	sudo ip link set dev controlnet up
+
+kill:
+	pkill cargo
+	pkill throughput
+	sudo pkill -f click_qemu-x86_64
+
