@@ -12,6 +12,22 @@
         "url": "https://github.com/llvm/llvm-project/releases/download/llvmorg-14.0.6/compiler-rt-14.0.6.src.tar.xz"
       }
     },
+    "fastclick": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1730729627,
+        "narHash": "sha256-KMvX32/x9kk5HPULD6h1AIukFghYJmWCMZCaxnu/Xmo=",
+        "ref": "refs/heads/main",
+        "rev": "199ca4e2c2a52a96e6edb4ca62e41223da395109",
+        "revCount": 12758,
+        "type": "git",
+        "url": "https://github.com/tbarbette/fastclick.git"
+      },
+      "original": {
+        "type": "git",
+        "url": "https://github.com/tbarbette/fastclick.git"
+      }
+    },
     "flake-utils": {
       "inputs": {
         "systems": "systems"
@@ -227,6 +243,7 @@
     "root": {
       "inputs": {
         "compiler-rt": "compiler-rt",
+        "fastclick": "fastclick",
         "flake-utils": "flake-utils",
         "lib-compiler-rt": "lib-compiler-rt",
         "lib-libcxx": "lib-libcxx",

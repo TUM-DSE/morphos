@@ -81,6 +81,11 @@
             flake = false;
         };
 
+        fastclick = {
+            url = "git+https://github.com/tbarbette/fastclick.git";
+            flake = false;
+        };
+
     };
 
     outputs = { self, nixpkgs, unstablepkgs, flake-utils, ... } @ inputs:
@@ -126,44 +131,46 @@
                  cp -r ${pkgs.libgcc.out}/libexec/ $out/
                  '')
                 gdb
-              ]);
-              prevailDeps = pkgs: (with pkgs; [
-                gcc
-                git
-                cmake
-                boost
-                yaml-cpp
-              ]);
-              make-disk-image = import (./nix/make-disk-image.nix);
-            in
-            {
-              packages.unikraft = let
-                runMake = (pkgs.buildFHSEnv {
-                  name = "runMake";
-                  targetPkgs = pkgs: (
-                    (buildDeps pkgs) ++ (prevailDeps pkgs) ++ [
-                      unstable.kraft
-                      unstable.rustup
-                      unstable.bmon
-                      unstable.gh
-                    ]
-                  );
-                  runScript = "bash -c \"KRAFTKIT_NO_CHECK_UPDATES=true make\"";
-                });
-              in pkgs.stdenv.mkDerivation {
-                name = "unikraft";
-                src = ./.;
-                updateAutotoolsGnuConfigScriptsPhase = ''
-                  echo "wft is this. Skip it."
-                '';
-                postUnpack = ''
-                  # srcsUnpack src_absolute destination_relative
-                  function srcsUnpack () {
-                    mkdir -p $(dirname $sourceRoot/$2)
-                    cp -r $1 $sourceRoot/$2
-                    chmod -R o+w $sourceRoot/$2
-                  }
-                  srcsUnpack ${inputs.unikraft} libs/unikraft
+            ]);
+            unikraftDeps = pkgs: (with pkgs; [
+            ]);
+            prevailDeps = pkgs: (with pkgs; [
+                    gcc
+                    git
+                    cmake
+                    boost
+                    yaml-cpp
+            ]);
+            make-disk-image = import (./nix/make-disk-image.nix);
+            in {
+                packages = {
+                    unikraft = let
+                        runMake = (pkgs.buildFHSEnv {
+                                name = "runMake";
+                                targetPkgs = pkgs: (
+                                        (buildDeps pkgs) ++ (unikraftDeps pkgs) ++ (prevailDeps pkgs) ++ [
+                                        unstable.kraft
+                                        unstable.rustup
+                                        unstable.bmon
+                                        unstable.gh
+                                        ]
+                                        );
+                                runScript = "bash -c \"KRAFTKIT_NO_CHECK_UPDATES=true make\"";
+                                });
+                    in pkgs.stdenv.mkDerivation {
+                        name = "unikraft";
+                        src = ./.;
+                        updateAutotoolsGnuConfigScriptsPhase = ''
+                            echo "wft is this. Skip it."
+                            '';
+                        postUnpack = ''
+# srcsUnpack src_absolute destination_relative
+                            function srcsUnpack () {
+                                mkdir -p $(dirname $sourceRoot/$2)
+                                    cp -r $1 $sourceRoot/$2
+                                    chmod -R o+w $sourceRoot/$2
+                            }
+                        srcsUnpack ${inputs.unikraft} libs/unikraft
 
                             srcsUnpack ${inputs.lib-musl} libs/musl
                             srcsUnpack ${inputs.musl} .unikraft/build/libmusl/musl-1.2.3.tar.gz
@@ -211,7 +218,28 @@
                         selfpkgs = flakepkgs;
                         inherit self;
                     };
+                    
+                    fastclick = pkgs.callPackage ./nix/fastclick.nix {
+                        linux = pkgs.linuxPackages_6_6.kernel;
+                        selfpkgs = flakepkgs;
+                        inherit self;
+                    };
 
+                    dpdk23 = pkgs.callPackage ./nix/dpdk23.nix {
+                        kernel = pkgs.linuxPackages_6_6.kernel;
+                        inherit (flakepkgs) linux-firmware-pinned;
+                    };
+
+                    linux-firmware-pinned = (pkgs.linux-firmware.overrideAttrs (old: new: {
+                        src = fetchGit {
+                            url = "git://git.kernel.org/pub/scm/linux/kernel/git/firmware/linux-firmware.git";
+                            ref = "main";
+                            rev = "8a2d811764e7fcc9e2862549f91487770b70563b";
+                        };
+                        version = "8a2d81";
+                        outputHash = "sha256-dVvfwgto9Pgpkukf/IoJ298MUYzcsV1G/0jTxVcdFGw=";
+                    }));
+                };
 
                 devShells = {
                     default = pkgs.mkShell {
@@ -223,11 +251,12 @@
                                 unstable.gh
                                 unstable.just
                                 unstable.bridge-utils
+                                unstable.ack
                         ];
                         KRAFTKIT_NO_WARN_SUDO = "1";
                         KRAFTKIT_NO_CHECK_UPDATES = "true";
                     };
-                    devShells.fhs = (pkgs.buildFHSEnv {
+                    fhs = (pkgs.buildFHSEnv {
                             name = "devShell";
                             targetPkgs = pkgs: (
                                     (buildDeps pkgs) ++ (prevailDeps pkgs) ++ [

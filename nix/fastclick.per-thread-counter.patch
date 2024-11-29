@@ -1,0 +1,31 @@
+From a88f72c0ef4bd051041ce095776c9586c7aa0e6a Mon Sep 17 00:00:00 2001
+From: Pogobanane <aenderboy@gmx.de>
+Date: Mon, 18 Mar 2024 13:39:46 +0000
+Subject: [PATCH] AverageCounterIMP: prints per-thread counts (ugly)
+
+---
+ elements/standard/averagecounter.hh | 8 +++++++-
+ 1 file changed, 7 insertions(+), 1 deletion(-)
+
+diff --git a/elements/standard/averagecounter.hh b/elements/standard/averagecounter.hh
+index c1164505c..c8d29f625 100644
+--- a/elements/standard/averagecounter.hh
++++ b/elements/standard/averagecounter.hh
+@@ -174,7 +174,13 @@ struct AverageCounterStatsIMP {
+         }
+     }
+ 
+-    inline uint64_t count() const { PER_THREAD_MEMBER_SUM(uint64_t,total,_counts,count);return total; }
++    inline uint64_t count() const { 
++        for (unsigned i = 0; i < _counts.weight(); i++) {
++            printf("thread %d count: %d\n", i, _counts.get_value(i).count);
++        }
++
++        PER_THREAD_MEMBER_SUM(uint64_t,total,_counts,count);return total; 
++    }
+     inline uint64_t byte_count() const  { PER_THREAD_MEMBER_SUM(uint64_t,total,_counts,byte_count);return total; };
+     inline uint64_t first() const {
+         uint64_t min = UINT64_MAX;
+-- 
+2.42.0
+

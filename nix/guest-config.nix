@@ -70,6 +70,14 @@
 
     boot.kernelPackages = pkgs.linuxKernel.packages.linux_6_6;
     boot.kernelModules = ["vfio" "vfio-pci"];
+    boot.kernelParams = [
+        "nokaslr"
+        "iomem=relaxed"
+        # spdk/dpdk hugepages
+        "default_hugepages=2MB"
+        "hugepagesz=2MB"
+        "hugepages=1000"
+    ];
 
     system.stateVersion = "24.05";
 

@@ -34,7 +34,10 @@ vm EXTRA_CMDLINE="" :
         -drive file={{proot}}/VMs/guest-image.qcow2 \
         -net nic,netdev=user.0,model=virtio \
         -netdev user,id=user.0,hostfwd=tcp:127.0.0.1:{{qemu_ssh_port}}-:22 \
+        -netdev bridge,id=en0,br=clicknet \
+        -device virtio-net-pci,netdev=en0 \
         -nographic
+
 
 #-device vfio-pci,host={{PASSTHROUGH}} \
 #PASSTHROUGH=`yq -r '.devices[] | select(.name=="ethDut") | ."pci"' hosts/$(hostname).yaml`
