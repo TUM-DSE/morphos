@@ -224,23 +224,34 @@
                 };
                 
             }
-            )) // {
-                nixosConfigurations = let
-                pkgs = nixpkgs.legacyPackages.x86_64-linux;
-                flakepkgs = self.packages.x86_64-linux;
+            )) // (let
+                    pkgs = nixpkgs.legacyPackages.x86_64-linux;
+                    flakepkgs = self.packages.x86_64-linux;
                 in {
-                    guest = nixpkgs.lib.nixosSystem {
-                        system = "x86_64-linux";
-                        modules = [ 
-                            (import ./nix/guest-config.nix 
-                            { 
-                                inherit pkgs;
-                                inherit (pkgs) lib;
-                                inherit flakepkgs;
-                            })
-                            ./nix/nixos-generators-qcow.nix
-                        ];
+                    nixosConfigurations =  {
+                        guest = nixpkgs.lib.nixosSystem {
+                            system = "x86_64-linux";
+                            modules = [
+                                (import ./nix/guest-config.nix
+                                {
+                                    inherit pkgs;
+                                    inherit (pkgs) lib;
+                                    inherit flakepkgs;
+                                })
+                                ./nix/nixos-generators-qcow.nix
+                            ];
+                        };
                     };
-                };
-            };
+
+                    # checks used by CI (buildbot)
+                    checks = let
+                      system = "x86_64-linux";
+                      nixosMachines = pkgs.lib.mapAttrs' (name: config: pkgs.lib.nameValuePair "nixos-${name}" config.config.system.build.toplevel) ((pkgs.lib.filterAttrs (_: config: config.pkgs.system == system)) self.nixosConfigurations);
+                      blacklistPackages = [ ];
+                      packages = pkgs.lib.mapAttrs' (n: pkgs.lib.nameValuePair "package-${n}") (pkgs.lib.filterAttrs (n: _v: !(builtins.elem n blacklistPackages)) self.packages.x86_64-linux);
+                      devShells = pkgs.lib.mapAttrs' (n: pkgs.lib.nameValuePair "devShell-${n}") self.devShells.x86_64-linux;
+                      homeConfigurations = pkgs.lib.mapAttrs' (name: config: pkgs.lib.nameValuePair "home-manager-${name}" config.activation-script) (self.legacyPackages.x86_64-linux.homeConfigurations or { });
+                    in
+                      nixosMachines // packages // devShells // homeConfigurations;
+            });
 }
