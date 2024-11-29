@@ -114,4 +114,3 @@ build/ubpf_verifier -f [PROGRAM] -k keys/ec_private_key.pem -o [SIGNATURE_OUTPUT
 ```
 
 **Keep in mind that the supplied private keys are for test purposes only. They are deliberately shared to make it easy to test.**
-
