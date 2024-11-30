@@ -153,7 +153,7 @@ def run_test(host: Host, loadgen: LoadGen, guests: Dict[int, Guest], test: Media
         }
     elif test.fastclick == "hardware":
         fastclick_program = "test/fastclick/mac-switch-hardware.click"
-        project_root = str(Path(example_guest.moonprogs_dir) / "../..") # click wants nicely formatted paths
+        project_root = str(Path(example_guest.project_root) / "../..") # click wants nicely formatted paths
         fastclick_rules = f"{project_root}/test/fastclick/rteflow_etype_rules"
         # fastclick_rules = f"{project_root}/test/fastclick/rteflow_empty"
         # fastclick_rules = "/tmp/test_dpdk_nic_rules"

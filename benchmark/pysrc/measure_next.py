@@ -198,7 +198,7 @@ class DeathStarBench:
             local_output_file = test.output_filepath(repetition)
             loadgen.exec(f"sudo rm {remote_output_file} || true")
             LoadGen.stop_wrk2(loadgen)
-            workdir = f"{loadgen.moonprogs_dir}/../../subprojects/deathstarbench/{self.app}"
+            workdir = f"{loadgen.project_root}/../../subprojects/deathstarbench/{self.app}"
             LoadGen.start_wrk2(loadgen, self.frontend_url, self.script, duration=DURATION_S, outfile=remote_output_file, workdir=workdir)
             time.sleep(DURATION_S + 1)
             try:

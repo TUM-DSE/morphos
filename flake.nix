@@ -202,6 +202,30 @@
                                 unstable.just
                                 unstable.bridge-utils
                                 unstable.ack
+
+                            # deps for tests
+                            (pkgs.python3.withPackages (ps: [
+                              # deps for tests/autotest
+                              ps.colorlog
+                              ps.netaddr
+                              ps.pandas
+                              ps.tqdm
+                              ps.requests
+                              ps.argcomplete
+
+                              # dependencies for hosts/prepare.py
+                              ps.pyyaml
+
+                              # deps for deathstarbench/socialNetwork
+                              ps.aiohttp
+
+                              # linting
+                              ps.black
+                              ps.flake8
+                              ps.isort
+                              ps.mypy
+                            ]))
+
                         ];
                         KRAFTKIT_NO_WARN_SUDO = "1";
                         KRAFTKIT_NO_CHECK_UPDATES = "true";

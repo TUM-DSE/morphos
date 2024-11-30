@@ -90,7 +90,7 @@ class Server(ABC):
     test_iface_dpdk_driv: str
     tmux_socket: str
     moongen_dir: str
-    moonprogs_dir: str
+    project_root: str
     xdp_reflector_dir: str
     cpupinner: cpupinning.CpuPinner = cpupinning.CpuPinner(None)
     localhost: bool = False
@@ -116,8 +116,8 @@ class Server(ABC):
         """
         self.nixos = True # all hosts are nixos actually
         self.cpupinner = cpupinning.CpuPinner(self)
-        return
         self.localhost = self.fqdn == 'localhost' or self.fqdn == getfqdn()
+        return
         try:
             self.nixos = self.isfile('/etc/NIXOS')
         except Exception:
@@ -168,7 +168,7 @@ class Server(ABC):
         Returns a prefix for a console command. The prefix ensures package to be available to command.
         Command will not run in a shell!
         """
-        return f"nix shell --inputs-from {self.moonprogs_dir} nixpkgs#{package} --command"
+        return f"nix shell --inputs-from {self.project_root} nixpkgs#{package} --command"
 
     def __exec_local(self: 'Server', command: str) -> str:
         """
@@ -1016,7 +1016,7 @@ class Server(ABC):
         -------
         """
         self.tmux_new('reflector', f'cd {self.moongen_dir}; sudo bin/MoonGen '
-                      + path_join(self.moonprogs_dir, 'reflector.lua') +
+                      + path_join(self.project_root, 'reflector.lua') +
                       f' {self._test_iface_id}')
 
     def stop_moongen_reflector(self: 'Server'):
@@ -1034,7 +1034,7 @@ class Server(ABC):
     def start_xdp_pure_reflector(self: 'Server', iface: str = None):
         if not iface:
             iface = self.test_iface
-        project_root = str(Path(self.moonprogs_dir) / "../..") # nix wants nicely formatted paths
+        project_root = str(Path(self.project_root) / "../..") # nix wants nicely formatted paths
         xdgDir = f"{project_root}/xdp-pure"
         xdgProgram = f"{xdgDir}/lib/pure_reflector.o"
 
@@ -1108,7 +1108,7 @@ class Server(ABC):
         # some general usage docs: https://github.com/brianfrankcooper/YCSB/wiki/Running-a-Workload
         # docs for generic -p parameters: https://github.com/brianfrankcooper/YCSB/wiki/Core-Properties
         # docs for redis -p parameters: https://github.com/brianfrankcooper/YCSB/blob/master/redis/README.md
-        ycsb_path = f"{self.moonprogs_dir}/../../ycsb"
+        ycsb_path = f"{self.project_root}/../../ycsb"
         workloads_path = f"{ycsb_path}/share/workloads"
         if not load:
             ops = 429496729 # MAX_INT
@@ -1137,7 +1137,7 @@ class Server(ABC):
         outfile: path to remote log file
         script_args: arguements to override click scripts define() directive variables
         """
-        project_root = f"{self.moonprogs_dir}/../../"
+        project_root = f"{self.project_root}/../../"
         fastclick_bin = f"{project_root}/fastclick/bin/click"
         fastclick_program = f"{project_root}{program}"
         args = ' '.join([f'{key}={value}' for key, value in script_args.items()])
@@ -1167,9 +1167,9 @@ class Server(ABC):
         Returns
         -------
         """
-        self.exec(f'mkdir -p {self.moonprogs_dir}')
+        self.exec(f'mkdir -p {self.project_root}')
         for file in listdir(source_dir):
-            self.copy_to(path_join(source_dir, file), self.moonprogs_dir)
+            self.copy_to(path_join(source_dir, file), self.project_root)
 
     def modprobe_test_iface_drivers(self, interface: Optional[Interface] = None):
         """
@@ -1197,7 +1197,7 @@ class Server(ABC):
 
     def start_ptp_client(self, out_dir: str):
         self.exec(f": > {out_dir}")
-        project_root = str(Path(self.moonprogs_dir) / "../..") # nix wants nicely formatted paths
+        project_root = str(Path(self.project_root) / "../..") # nix wants nicely formatted paths
         self.tmux_new("ptpclient", f"sudo {project_root}/test/ptptest/build/ptpclient -l 0 -n 4 -a {self.test_iface_addr} -- T 0 -p 1 >> {out_dir}; sleep 999")
 
 
@@ -1292,7 +1292,7 @@ class Host(Server):
                  fsdevs: dict[str, str],
                  tmux_socket: str,
                  moongen_dir: str,
-                 moonprogs_dir: str,
+                 project_root: str,
                  xdp_reflector_dir: str,
                  localhost: bool = False,
                  ssh_config: Optional[str] = None,
@@ -1375,7 +1375,7 @@ class Host(Server):
         """
         super().__init__(fqdn, test_iface, test_iface_addr, test_iface_mac,
                          test_iface_driv, test_iface_dpdk_driv,
-                         tmux_socket, moongen_dir, moonprogs_dir,
+                         tmux_socket, moongen_dir, project_root,
                          xdp_reflector_dir, localhost, ssh_config=ssh_config,
                          ssh_as_root=ssh_as_root)
         self.admin_bridge = admin_bridge
@@ -1723,7 +1723,7 @@ class Host(Server):
         memory_backend = f' -object memory-backend-file,mem-path={memory_path},prealloc=yes,id=bm,size={mem}M,share=on'
 
         # Actually start qemu in tmux
-        project_root = str(Path(self.moonprogs_dir) / "../..") # nix wants nicely formatted paths
+        project_root = str(Path(self.project_root) / "../..") # nix wants nicely formatted paths
         extkern_options = ""
         if extkern is not None:
             extkern_options = ("" +
@@ -1731,7 +1731,7 @@ class Host(Server):
                 f' -initrd {project_root}/nix/results/test-guest-initrd/initrd' +
                 f' -append \\"root=/dev/vda console=ttyS0 init=/init $(cat {project_root}/nix/results/test-guest-kernelParams) {extkern}\\"')
 
-        project_root = str(Path(self.moonprogs_dir) / "../..") # nix wants nicely formatted paths
+        project_root = str(Path(self.project_root)) # nix wants nicely formatted paths
         nix_shell = f"nix shell --inputs-from {project_root} nixpkgs#numactl --command"
         numactl = f"numactl -C {self.cpupinner.qemu(vm_number)}"
         # numactl = ""
@@ -1761,7 +1761,6 @@ class Host(Server):
             (',use-ioregionfd=true' if ioregionfd else '') +
             f',queue-size={rx_queue_size}' +
             # ' -cdrom /home/networkadmin/images/guest_init.iso' +
-            f' -drive driver=raw,file={MultiHost.cloud_init(disk_path, vm_number)},if=virtio ' +
             fsdev_config +
             ' -serial stdio' +
             (' -monitor tcp:127.0.0.1:2345,server,nowait' if debug_qemu else '') +
@@ -1830,7 +1829,7 @@ class Host(Server):
                     args += f' -s {vmux_socket} -d none -t {MultiHost.iface_name(self.test_tap, vm_number)} -m {vmux_mode} -e {self.cpupinner.vmux_rx(vm_number)} -f {self.cpupinner.vmux_runner(vm_number)}'
 
         base_mac = MultiHost.mac(self.guest_test_iface_mac, 1) # vmux increments macs itself
-        project_root = str(Path(self.moonprogs_dir) / "../..") # nix wants nicely formatted paths
+        project_root = str(Path(self.project_root) / "../..") # nix wants nicely formatted paths
         nix_shell = f"nix shell --inputs-from {project_root} nixpkgs#numactl --command"
         # numactl = "numactl -C 1-5 "
         numactl = ""
@@ -2147,7 +2146,7 @@ class LoadGen(Server):
         """
         server.tmux_new('loadlatency', f'cd {server.moongen_dir}; ' +
                       'sudo bin/MoonGen '
-                      f'{server.moonprogs_dir}/l2-load-latency.lua ' +
+                      f'{server.project_root}/l2-load-latency.lua ' +
                       f'-r {rate} -f {histfile} -T {runtime} -s {size} ' +
                       f' -c {statsfile} -m {nr_macs} -e {nr_ethertypes} ' +
                       f'{server._test_iface_id} {mac} ' +
@@ -2178,7 +2177,7 @@ class LoadGen(Server):
         server.tmux_kill('wrk2')
 
     def start_redis(self, nr: int = 0):
-        project_root = str(Path(self.moonprogs_dir) / "../..") # nix wants nicely formatted paths
+        project_root = str(Path(self.project_root) / "../..") # nix wants nicely formatted paths
         port = 6379 + nr
         redis_cmd = f'redis-server --port {port} --protected-mode no --save ""'
         nix_cmd = f"nix shell --inputs-from {project_root} nixpkgs#redis --command {redis_cmd}"

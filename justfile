@@ -57,3 +57,37 @@ vm-image-init:
 
     nix build .#guest-image --out-link {{proot}}/VMs/ro
     overwrite guest-image
+
+# use autotest tmux sessions: `just autotest-tmux ls`
+autotest-tmux *ARGS:
+  #!/usr/bin/env python3
+  from configparser import ConfigParser, ExtendedInterpolation
+  import importlib.util
+  spec = importlib.util.spec_from_file_location("default_parser", "benchmark/pysrc/conf.py")
+  default_parser = importlib.util.module_from_spec(spec)
+  spec.loader.exec_module(default_parser)
+  conf = default_parser.default_config_parser()
+  conf.read("{{proot}}/benchmark/conf/autotest_localhost.cfg")
+  import os
+  os.system(f"tmux -L {conf['common']['tmux_socket']} {{ARGS}}")
+
+# connect to the autotest guest
+autotest-ssh *ARGS:
+  #!/usr/bin/env python3
+  from configparser import ConfigParser, ExtendedInterpolation
+  import importlib.util
+  spec = importlib.util.spec_from_file_location("default_parser", "benchmark/pysrc/conf.py")
+  default_parser = importlib.util.module_from_spec(spec)
+  spec.loader.exec_module(default_parser)
+  conf = default_parser.default_config_parser()
+  conf.read("{{proot}}/benchmark/conf/autotest_localhost.cfg")
+  import os
+  sudo = ""
+  if conf["host"]["ssh_as_root"]:
+    sudo = "sudo "
+  cmd = f"{sudo}ssh -F {conf['host']['ssh_config']} {conf['guest']['fqdn']} {{ARGS}}"
+  print(f"$ {cmd}")
+  os.system(cmd)
+
+benchmark:
+  python3 benchmark/pysrc/measure_iperf.py -c benchmark/conf/autotest_localhost.cfg -b -vvv

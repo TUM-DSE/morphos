@@ -20,7 +20,6 @@ import copy
 import time
 from concurrent.futures import ThreadPoolExecutor
 import subprocess
-from root import QEMU_BUILD_DIR
 from conf import G
 from tqdm import tqdm
 from tqdm.contrib.telegram import tqdm as tqdm_telegram
@@ -167,7 +166,6 @@ class Measurement:
         self.host.run_guest(
                 net_type=interface,
                 machine_type='pc',
-                qemu_build_dir=QEMU_BUILD_DIR,
                 **run_guest_args
                 )
 
@@ -202,7 +200,7 @@ class Measurement:
             pass
 
         self.host.modprobe_test_iface_drivers() # cleanup network needs device drivers
-        self.host.cleanup_network()
+        self.host.cleanup_network() # cleanup unclear for ubpf
 
 
         # host: set up interfaces and networking
@@ -244,7 +242,6 @@ class Measurement:
                 self.host.run_guest(
                         net_type=interface,
                         machine_type='pc',
-                        qemu_build_dir=QEMU_BUILD_DIR,
                         vm_number=i
                         )
 

@@ -182,13 +182,13 @@ def main(measurement: Measurement, plan_only: bool = False) -> None:
     repetitions = 3
     DURATION_S = 61 if not G.BRIEF else 11
     if G.BRIEF:
-        # interfaces = [ Interface.BRIDGE_E1000 ]
+        interfaces = [ Interface.BRIDGE ]
         # interfaces = [ Interface.VMUX_DPDK_E810, Interface.BRIDGE_E1000 ]
-        interfaces = [ Interface.VMUX_MED ]
+        # interfaces = [ Interface.VMUX_MED ]
         # interfaces = [ Interface.VMUX_EMU ]
         directions = [ "forward" ]
         # vm_nums = [ 1, 2, 4 ]
-        vm_nums = [ 2 ]
+        vm_nums = [ 1 ]
         # vm_nums = [ 128, 160 ]
         DURATION_S = 10
         repetitions = 1
@@ -240,7 +240,7 @@ def main(measurement: Measurement, plan_only: bool = False) -> None:
             info(IPerfTest.test_matrix_string(a_tests))
 
             # boot VMs
-            with measurement.virtual_machines(interface, num_vms) as guests:
+            with measurement.virtual_machine(interface) as guests:
                 # loadgen: set up interfaces and networking
 
                 info('Binding loadgen interface')
