@@ -9,6 +9,7 @@ libs/ubpf/vm/libubpf.so
 rootfs/*.bin
 Makefile.uk
 .envrc
+__pycache__/
 
 libs/compiler-rt/
 libs/libcxx/
