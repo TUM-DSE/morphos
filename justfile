@@ -29,8 +29,8 @@ vm EXTRA_CMDLINE="" :
         -device virtio-serial \
         -fsdev local,id=home,path={{proot}},security_model=none \
         -device virtio-9p-pci,fsdev=home,mount_tag=home,disable-modern=on,disable-legacy=off \
-        -fsdev local,id=myNixStore,path=/nix/store,security_model=none \
-        -device virtio-9p-pci,fsdev=myNixStore,mount_tag=myNixStore,disable-modern=on,disable-legacy=off \
+        -fsdev local,id=nixstore,path=/nix/store,security_model=none \
+        -device virtio-9p-pci,fsdev=nixstore,mount_tag=nixstore,disable-modern=on,disable-legacy=off \
         -drive file={{proot}}/VMs/guest-image.qcow2 \
         -net nic,netdev=user.0,model=virtio \
         -netdev user,id=user.0,hostfwd=tcp:127.0.0.1:{{qemu_ssh_port}}-:22 \
@@ -91,3 +91,7 @@ autotest-ssh *ARGS:
 
 benchmark:
   python3 benchmark/pysrc/measure_iperf.py -c benchmark/conf/autotest_localhost.cfg -b -vvv
+
+build-dependencies:
+  mkdir -p {{proot}}/nix/builds
+  nix build .#click -o {{proot}}/nix/builds/click

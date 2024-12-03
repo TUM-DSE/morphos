@@ -1131,28 +1131,27 @@ class Server(ABC):
         self.tmux_kill("ycsb")
 
 
-    def start_fastclick(self, program: str, outfile: str, script_args: dict = dict(), dpdk: bool = True):
+    def start_click(self, program: str, outfile: str, script_args: dict = dict(), dpdk: bool = True):
         """
         program: path to .click file relative to project root
         outfile: path to remote log file
         script_args: arguements to override click scripts define() directive variables
         """
-        project_root = f"{self.project_root}/../../"
-        fastclick_bin = f"{project_root}/fastclick/bin/click"
-        fastclick_program = f"{project_root}{program}"
+        click_bin = f"{self.project_root}/nix/builds/click/bin/click"
+        click_program = f"{self.project_root}/{program}"
         args = ' '.join([f'{key}={value}' for key, value in script_args.items()])
         dpdk_args = ""
         if dpdk:
             dpdk_args = f'--dpdk \'-l 0\' --'
-        self.tmux_new('fastclick', f'{fastclick_bin} {dpdk_args} {fastclick_program} {args} 2>&1 | tee {outfile}; echo AUTOTEST_DONE >> {outfile}; sleep 999');
+        self.tmux_new('click', f'{click_bin} {dpdk_args} {click_program} {args} 2>&1 | tee {outfile}; echo AUTOTEST_DONE >> {outfile}; sleep 999');
 
 
-    def stop_fastclick(self):
+    def stop_click(self):
         self.exec("pkill click")
 
 
-    def kill_fastclick(self):
-        self.tmux_kill("fastclick")
+    def kill_click(self):
+        self.tmux_kill("click")
 
 
     def upload_moonprogs(self: 'Server', source_dir: str):

@@ -1,3 +1,13 @@
+Host vm.local
+Hostname 192.168.56.20
+User root
+StrictHostKeyChecking=no
+IdentityFile /home/okelmann/appclick-ubpf/nix/ssh_key
+UserKnownHostsFile=/dev/null
+IdentityAgent=/dev/null
+StrictHostKeyChecking=no
+LogLevel=ERROR
+
 Host guest.vmux.local
 Hostname 192.168.56.20
 User root

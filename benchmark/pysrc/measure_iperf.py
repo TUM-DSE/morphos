@@ -240,38 +240,42 @@ def main(measurement: Measurement, plan_only: bool = False) -> None:
             info(IPerfTest.test_matrix_string(a_tests))
 
             # boot VMs
-            with measurement.virtual_machine(interface) as guests:
+            with measurement.virtual_machine(interface) as guest:
                 # loadgen: set up interfaces and networking
 
-                info('Binding loadgen interface')
-                loadgen.modprobe_test_iface_drivers()
-                loadgen.release_test_iface() # bind linux driver
+                guest.start_click("benchmark/configurations/linux-tx.click", "/tmp/click.out", dpdk=False)
+                breakpoint()
+                guest.stop_click()
 
-                try:
-                    loadgen.delete_nic_ip_addresses(loadgen.test_iface)
-                except Exception:
-                    pass
-                loadgen.setup_test_iface_ip_net()
-                loadgen.stop_xdp_pure_reflector()
-                # loadgen.start_xdp_pure_reflector()
-                # install inter-VM ARP rules (except first one which actually receives ARP. If we prevent ARP on the first one, all break somehow.)
-                loadgen.add_arp_entries({ i_:guest_ for i_, guest_ in guests.items() if i_ != 1 })
+                # info('Binding loadgen interface')
+                # loadgen.modprobe_test_iface_drivers()
+                # loadgen.release_test_iface() # bind linux driver
 
-                def foreach_parallel(i, guest): # pyright: ignore[reportGeneralTypeIssues]
-                    guest.modprobe_test_iface_drivers(interface=interface)
-                    guest.setup_test_iface_ip_net()
-                end_foreach(guests, foreach_parallel)
+                # try:
+                #     loadgen.delete_nic_ip_addresses(loadgen.test_iface)
+                # except Exception:
+                #     pass
+                # loadgen.setup_test_iface_ip_net()
+                # loadgen.stop_xdp_pure_reflector()
+                # # loadgen.start_xdp_pure_reflector()
+                # # install inter-VM ARP rules (except first one which actually receives ARP. If we prevent ARP on the first one, all break somehow.)
+                # loadgen.add_arp_entries({ i_:guest_ for i_, guest_ in guests.items() if i_ != 1 })
 
-                for [proto, length], b_tests in bench.multi_iterator(a_tests, ["proto", "length"]):
-                        assert len(b_tests) == 1 # we have looped through all variables now, right?
-                        test = b_tests[0]
-                        info(f"Running {test}")
+                # def foreach_parallel(i, guest): # pyright: ignore[reportGeneralTypeIssues]
+                #     guest.modprobe_test_iface_drivers(interface=interface)
+                #     guest.setup_test_iface_ip_net()
+                # end_foreach(guests, foreach_parallel)
 
-                        for repetition in range(repetitions):
-                            test.run(repetition, guests, loadgen, host)
+                # for [proto, length], b_tests in bench.multi_iterator(a_tests, ["proto", "length"]):
+                #         assert len(b_tests) == 1 # we have looped through all variables now, right?
+                #         test = b_tests[0]
+                #         info(f"Running {test}")
 
-                        bench.done(test)
-                loadgen.stop_xdp_pure_reflector()
+                #         for repetition in range(repetitions):
+                #             test.run(repetition, guests, loadgen, host)
+
+                #         bench.done(test)
+                # loadgen.stop_xdp_pure_reflector()
             # end VM
 
     for ipt in tests:
