@@ -90,7 +90,7 @@ autotest-ssh *ARGS:
   os.system(cmd)
 
 benchmark:
-  python3 benchmark/pysrc/measure_iperf.py -c benchmark/conf/autotest_localhost.cfg -b -vvv
+  python3 benchmark/pysrc/measure_throughput.py -c benchmark/conf/autotest_localhost.cfg -b -vvv
 
 build-dependencies:
   mkdir -p {{proot}}/nix/builds

@@ -26,21 +26,17 @@ from conf import G
 
 
 @dataclass
-class IPerfTest(AbstractBenchTest):
+class ThroughputTest(AbstractBenchTest):
 
     # test options
-    direction: str # can be: forward | reverse | bidirectional
-    output_json = True # sets / unsets -J flag on iperf client
+    direction: str # VM's point of view: rx | tx
 
     interface: str # network interface used
-    length: int # iperf3 -l buffer write length (default 128000 for tcp, 9000 for udp)
-    proto: str # tcp | udp
+    size: int # packet size
+    vnf: str # workload
 
     def test_infix(self):
-        return f"iperf3_{self.num_vms}vms_{self.interface}_{self.direction}_{self.proto}_{self.length}B"
-
-    def output_path_per_vm(self, repetition: int, vm_number: int) -> str:
-        return str(Path(G.OUT_DIR) / f"iperf3VMs_{self.test_infix()}_rep{repetition}" / f"vm{vm_number}.json")
+        return f"throughput_{self.interface}_{self.direction}_{self.vnf}_{self.size}B"
 
     def estimated_runtime(self) -> float:
         """
@@ -48,40 +44,6 @@ class IPerfTest(AbstractBenchTest):
         """
         overheads = 35
         return (self.repetitions * (DURATION_S + 2) ) + overheads
-
-    def find_error(self, repetition: int) -> bool:
-        failure = False
-        if not self.output_json:
-            file = self.output_filepath(repetition)
-            if os.stat(file).st_size == 0:
-                error(f"Some iperf tests returned errors:\n{file}")
-                failure = True
-        return failure
-
-    def summarize(self, repetition: int, vm_num: int) -> DataFrame:
-        with open(self.output_path_per_vm(repetition, vm_num), 'r') as f:
-            data = json.load(f)
-
-        # Extract important values
-        start = data['start']
-        end = data['end']
-        intervals = data['intervals']
-
-        duration_secs = end['sum_sent']['seconds']
-        sent_bytes = end['sum_sent']['bytes']
-        sent_bits_per_second = end['sum_sent']['bits_per_second']
-        received_bytes = end['sum_received']['bytes']
-        received_bits_per_second = end['sum_received']['bits_per_second']
-
-        gbitps = received_bits_per_second / 1024 / 1024 / 1024
-
-        data = [{
-            **asdict(self), # put selfs member variables and values into this dict
-            "repetition": repetition,
-            "vm_num": vm_num,
-            "GBit/s": gbitps,
-        }]
-        return DataFrame(data=data)
 
     def run(self, repetition: int, guests, loadgen, host):
         #cleanup
@@ -108,7 +70,7 @@ class IPerfTest(AbstractBenchTest):
             guest.start_iperf_server(strip_subnet_mask(guest.test_iface_ip_net))
         end_foreach(guests, foreach_parallel)
         def foreach_parallel(i, guest): # pyright: ignore[reportGeneralTypeIssues]
-            loadgen.run_iperf_client(self, DURATION_S, strip_subnet_mask(guest.test_iface_ip_net), remote_output_file(i), tmp_remote_output_file(i), proto=self.proto, length=self.length, vm_num=i)
+            loadgen.run_iperf_client(self, DURATION_S, strip_subnet_mask(guest.test_iface_ip_net), remote_output_file(i), tmp_remote_output_file(i), proto=self.proto, length=self.size, vm_num=i)
         end_foreach(guests, foreach_parallel)
 
         time.sleep(DURATION_S)
@@ -177,8 +139,8 @@ def main(measurement: Measurement, plan_only: bool = False) -> None:
           ]
     directions = [ "forward" ]
     vm_nums = [ 1, 2, 4, 8, 16, 32, 64 ]
-    tcp_lengths = [ -1 ]
-    udp_lengths = [ 64, 128, 256, 512, 1024, 1470 ]
+    sizes = [ 64 ]
+    vnfs = [ "empty" ]
     repetitions = 3
     DURATION_S = 61 if not G.BRIEF else 11
     if G.BRIEF:
@@ -186,17 +148,16 @@ def main(measurement: Measurement, plan_only: bool = False) -> None:
         # interfaces = [ Interface.VMUX_DPDK_E810, Interface.BRIDGE_E1000 ]
         # interfaces = [ Interface.VMUX_MED ]
         # interfaces = [ Interface.VMUX_EMU ]
-        directions = [ "forward" ]
+        directions = [ "tx" ]
         # vm_nums = [ 1, 2, 4 ]
         vm_nums = [ 1 ]
         # vm_nums = [ 128, 160 ]
         DURATION_S = 10
         repetitions = 1
+        vnfs = [ "empty" ]
 
     def exclude(test):
         return (Interface(test.interface).is_passthrough() and test.num_vms > 1)
-
-    tests: List[IPerfTest] = []
 
     # multi-VM TCP tests, but only one length
     test_matrix = dict(
@@ -204,27 +165,16 @@ def main(measurement: Measurement, plan_only: bool = False) -> None:
         direction=directions,
         interface=[ interface.value for interface in interfaces],
         num_vms=vm_nums,
-        length=tcp_lengths,
-        proto=["tcp"]
+        size=sizes,
+        vnf=vnfs,
     )
-    tests += IPerfTest.list_tests(test_matrix, exclude_test=exclude)
+    tests: List[ThroughputTest] = []
+    tests = ThroughputTest.list_tests(test_matrix, exclude_test=exclude)
 
-    if not G.BRIEF:
-        # packet-size UDP tests, but only one VM and not tap based interfaces
-        test_matrix = dict(
-            repetitions=[ repetitions ],
-            direction=directions,
-            interface=[ interface.value for interface in udp_interfaces],
-            num_vms=[ 1 ],
-            length=udp_lengths,
-            proto=["udp"]
-        )
-        tests += IPerfTest.list_tests(test_matrix, exclude_test=exclude)
-        tests = deduplicate(tests)
 
     args_reboot = ["interface", "num_vms", "direction"]
     info(f"Iperf Test execution plan:")
-    IPerfTest.estimate_time2(tests, args_reboot)
+    ThroughputTest.estimate_time2(tests, args_reboot)
 
     if plan_only:
         return
@@ -237,15 +187,44 @@ def main(measurement: Measurement, plan_only: bool = False) -> None:
         for [num_vms, interface, direction], a_tests in bench.multi_iterator(bench_tests, ["num_vms", "interface", "direction"]):
             interface = Interface(interface)
             info("Booting VM for this test matrix:")
-            info(IPerfTest.test_matrix_string(a_tests))
+            info(ThroughputTest.test_matrix_string(a_tests))
 
             # boot VMs
             with measurement.virtual_machine(interface) as guest:
-                # loadgen: set up interfaces and networking
+                assert len(a_tests) == 1 # we have looped through all variables now, right?
+                test = a_tests[0]
+                info(f"Running {test}")
 
-                guest.start_click("benchmark/configurations/linux-tx.click", "/tmp/click.out", dpdk=False)
-                breakpoint()
-                guest.stop_click()
+                for repetition in range(repetitions):
+                    # loadgen: set up interfaces and networking
+
+                    remote_monitor_file = "/tmp/throughput.tsv"
+                    remote_click_output = "/tmp/click.log"
+                    local_monitor_file = test.output_filepath(repetition)
+                    local_click_output = test.output_filepath(repetition, "click.log")
+
+                    loadgen.exec(f"sudo rm {remote_monitor_file} || true")
+                    guest.exec(f"sudo rm {remote_click_output} || true")
+
+                    click_args = { "R": 0 }
+                    guest.kill_click()
+                    guest.start_click("benchmark/configurations/linux-tx.click", remote_click_output, script_args=click_args, dpdk=False)
+                    # count packets that actually arrive, but cut first line because it is always zero
+                    monitor_cmd = f"bmon -p {host.test_tap} -o 'format:fmt=\$(attr:rxrate:packets)\t\$(attr:rxrate:bytes)\n' | tee {remote_monitor_file}"
+                    loadgen.tmux_kill("monitor")
+                    loadgen.tmux_new("monitor", monitor_cmd)
+                    time.sleep(DURATION_S)
+                    loadgen.tmux_kill("monitor")
+                    guest.stop_click()
+                    guest.kill_click()
+
+                    loadgen.copy_from(remote_monitor_file, local_monitor_file)
+                    guest.copy_from(remote_click_output, local_click_output)
+
+                    # breakpoint()
+                    pass
+
+                bench.done(test)
 
                 # info('Binding loadgen interface')
                 # loadgen.modprobe_test_iface_drivers()
@@ -277,10 +256,6 @@ def main(measurement: Measurement, plan_only: bool = False) -> None:
                 #         bench.done(test)
                 # loadgen.stop_xdp_pure_reflector()
             # end VM
-
-    for ipt in tests:
-        for repetition in range(repetitions):
-            ipt.find_error(repetition)
 
 
 if __name__ == "__main__":

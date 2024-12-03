@@ -568,7 +568,7 @@ class Bench(Generic[T], ContextDecorator):
 import measure_vnf
 import measure_hotel
 import measure_ycsb
-import measure_iperf
+import measure_throughput
 import measure_mediation
 import measure_ptp
 
