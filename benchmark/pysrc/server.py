@@ -1147,7 +1147,7 @@ class Server(ABC):
 
 
     def stop_click(self):
-        self.exec("pkill click")
+        self.exec("pkill click || true")
 
 
     def kill_click(self):

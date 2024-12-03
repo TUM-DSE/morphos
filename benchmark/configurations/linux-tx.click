@@ -22,13 +22,22 @@ define($dstip 192.168.128.13)
 define($verbose 3)
 define($blocking true)
 
-//###################
-// TX
-//###################
-//Create a UDP flow
-FastUDPFlows(RATE $R, LIMIT -1, LENGTH $L, SRCETH $mymac, DSTETH $dmac, SRCIP $myip, DSTIP $dstip, FLOWS 1, FLOWSIZE $S)
+
+InfiniteSource(DATA \<0800>, LENGTH 1460, LIMIT -1, BURST 100000)
+-> UDPIPEncap($myip, 5678, $dstip, 5678)
+-> EtherEncap(0x0800, $mymac, $dmac)
 -> ic0 :: AverageCounter()
--> td :: ToDevice(ens7)
+-> ToDevice(ens7);
+
+
+
+// //###################
+// // TX
+// //###################
+// //Create a UDP flow
+// FastUDPFlows(RATE $R, LIMIT -1, LENGTH $L, SRCETH $mymac, DSTETH $dmac, SRCIP $myip, DSTIP $dstip, FLOWS 1, FLOWSIZE $S)
+// -> ic0 :: AverageCounter()
+// -> td :: ToDevice(ens7)
 
 //###################
 // RX
