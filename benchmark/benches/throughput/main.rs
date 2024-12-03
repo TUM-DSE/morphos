@@ -101,9 +101,22 @@ pub fn main() {
         .filter(|arg| arg.starts_with("--except"))
         .map(|arg| arg.split('=').nth(1).unwrap().to_string())
         .collect::<Vec<String>>();
+    let only = std::env::args()
+        .skip(1)
+        .filter(|arg| arg.starts_with("--only"))
+        .map(|arg| arg.split('=').nth(1).unwrap().to_string())
+        .collect::<Vec<String>>();
 
-    let mut datapoints_per_config = Vec::with_capacity(CONFIGURATIONS.len());
-    for config in CONFIGURATIONS.iter() {
+    let mut configs: Vec<&Configuration> = CONFIGURATIONS.iter().collect();
+    if only.len() > 0 {
+        let new_configs: Vec<&Configuration> = CONFIGURATIONS
+            .iter()
+            .filter(|config| only.contains(&config.name.to_string()))
+            .collect();
+        configs = new_configs;
+    }
+    let mut datapoints_per_config = Vec::with_capacity(configs.len());
+    for config in configs.iter() {
         let datapoints = run_benchmark(config, skip_measurement, &except);
         datapoints_per_config.push((config.name, datapoints));
     }
