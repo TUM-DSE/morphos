@@ -85,7 +85,7 @@ class ThroughputTest(AbstractBenchTest):
     system: str # linux | unikraft
 
     def test_infix(self):
-        return f"throughput_{self.interface}_{self.direction}_{self.vnf}_{self.size}B"
+        return f"throughput_{self.system}_{self.interface}_{self.direction}_{self.vnf}_{self.size}B"
 
     def pktgen_output_filepath(self, repetition: int) -> str:
         return self.output_filepath(repetition, extension="pktgen.log")
@@ -225,22 +225,7 @@ def main(measurement: Measurement, plan_only: bool = False) -> None:
 
     # set up test plan
     interfaces = [
-          Interface.VFIO,
           Interface.BRIDGE,
-          Interface.BRIDGE_VHOST,
-          Interface.BRIDGE_E1000,
-          # Interface.VMUX_PT, # interrupts dont work
-          Interface.VMUX_EMU,
-          # Interface.VMUX_EMU_E810, # tap backend not implemented for e810 (see #127)
-          # Interface.VMUX_DPDK, # e1000 dpdk backend doesn't support multi-VM
-          Interface.VMUX_DPDK_E810,
-          Interface.VMUX_MED
-          ]
-    udp_interfaces = [ # tap based interfaces have very broken ARP behaviour with udp
-          Interface.VFIO,
-          Interface.VMUX_DPDK,
-          Interface.VMUX_DPDK_E810,
-          Interface.VMUX_MED
           ]
     directions = [ "rx", "tx" ]
     systems = [ "linux", "unikraft" ]
@@ -251,17 +236,13 @@ def main(measurement: Measurement, plan_only: bool = False) -> None:
     DURATION_S = 61 if not G.BRIEF else 11
     if G.BRIEF:
         interfaces = [ Interface.BRIDGE ]
-        # interfaces = [ Interface.VMUX_DPDK_E810, Interface.BRIDGE_E1000 ]
-        # interfaces = [ Interface.VMUX_MED ]
-        # interfaces = [ Interface.VMUX_EMU ]
-        directions = [ "tx" ]
-        # vm_nums = [ 1, 2, 4 ]
+        directions = [ "rx" ]
+        systems = [ "unikraft" ]
         vm_nums = [ 1 ]
         # vm_nums = [ 128, 160 ]
+        vnfs = [ "empty" ]
         DURATION_S = 10
         repetitions = 1
-        vnfs = [ "empty" ]
-        systems = [ "unikraft" ]
 
     def exclude(test):
         return (Interface(test.interface).is_passthrough() and test.num_vms > 1)
