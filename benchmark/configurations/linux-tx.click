@@ -9,7 +9,7 @@
  */
 
 //Default values for packet length, number of packets and amountfs of time to replay them
-define($L 60, $R 100, $S 100000);
+define($L 60, $R 0, $S 100000);
 
 //You do not need to change these to the real ones, just have the dmac match the receiver's one
 define($mymac 90:e2:ba:c3:79:66)
