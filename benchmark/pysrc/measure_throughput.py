@@ -46,7 +46,7 @@ class ThroughputTest(AbstractBenchTest):
         overheads = 35
         return (self.repetitions * (DURATION_S + 2) ) + overheads
 
-    def run_tx(self, repetition: int, guest, loadgen, host):
+    def run_linux_tx(self, repetition: int, guest, loadgen, host):
         remote_monitor_file = "/tmp/throughput.tsv"
         remote_click_output = "/tmp/click.log"
         local_monitor_file = self.output_filepath(repetition)
@@ -70,10 +70,40 @@ class ThroughputTest(AbstractBenchTest):
         loadgen.copy_from(remote_monitor_file, local_monitor_file)
         guest.copy_from(remote_click_output, local_click_output)
 
-    def run_rx(self, repetition: int, guest, loadgen, host):
+    def run_linux_rx(self, repetition: int, guest, loadgen, host):
         loadgen.exec(f"sudo modprobe pktgen")
         pass
 
+    def run_unikraft_tx(self, repetition: int, guest, loadgen, host, remote_unikraft_log_raw):
+        pass
+
+    def run_unikraft_rx(self, repetition: int, guest, loadgen, host, remote_unikraft_log_raw):
+        remote_pktgen_log = "/tmp/pktgen.log"
+        remote_unikraft_log = f"{remote_unikraft_log_raw}.{repetition}"
+        local_unikraft_log = self.output_filepath(repetition)
+        local_pktgen_log = self.output_filepath(repetition, extension="pktgen.log")
+
+        loadgen.exec(f"sudo rm {remote_pktgen_log} || true")
+        host.exec(f"sudo rm {remote_unikraft_log} || true")
+
+        # start network load
+        info("Starting pktgen")
+        pktgen_cmd = f"{loadgen.project_root}/nix/builds/linux-pktgen/bin/pktgen_sample03_burst_single_flow" + \
+            f" -i {host.test_bridge} -s {self.size} -d {guest.test_iface_ip_net} -m {guest.test_iface_mac} -b 1 | tee {remote_pktgen_log}; sleep 10";
+        loadgen.tmux_kill("pktgen")
+        loadgen.tmux_new("pktgen", pktgen_cmd)
+        # reset unikraft log
+        host.exec(f"sudo truncate -s 0 {remote_unikraft_log_raw}")
+
+        time.sleep(DURATION_S)
+
+        # copy raw to log, but only printable characters (cut leading null bytes)
+        host.exec(f"strings {remote_unikraft_log_raw} | sudo tee {remote_unikraft_log}")
+        loadgen.exec("sudo pkill -SIGINT pktgen")
+
+        host.copy_from(remote_unikraft_log, local_unikraft_log)
+        loadgen.copy_from(remote_pktgen_log, local_pktgen_log)
+        pass
 
 
 def main(measurement: Measurement, plan_only: bool = False) -> None:
@@ -111,7 +141,7 @@ def main(measurement: Measurement, plan_only: bool = False) -> None:
         # interfaces = [ Interface.VMUX_DPDK_E810, Interface.BRIDGE_E1000 ]
         # interfaces = [ Interface.VMUX_MED ]
         # interfaces = [ Interface.VMUX_EMU ]
-        directions = [ "tx" ]
+        directions = [ "rx" ]
         # vm_nums = [ 1, 2, 4 ]
         vm_nums = [ 1 ]
         # vm_nums = [ 128, 160 ]
@@ -180,32 +210,10 @@ def main(measurement: Measurement, plan_only: bool = False) -> None:
                 with measurement.unikraft_vm(interface, click_config, remote_unikraft_log_raw) as guest:
                     host.exec(f"sudo cp {remote_unikraft_log_raw} {remote_unikraft_init_log}")
                     for repetition in range(repetitions):
-                        remote_pktgen_log = "/tmp/pktgen.log"
-                        remote_unikraft_log = f"{remote_unikraft_log_raw}.{repetition}"
-                        local_unikraft_log = test.output_filepath(repetition)
-                        local_pktgen_log = test.output_filepath(repetition, extension="pktgen.log")
-
-                        loadgen.exec(f"sudo rm {remote_pktgen_log} || true")
-                        host.exec(f"sudo rm {remote_unikraft_log} || true")
-
-                        # start network load
-                        info("Starting pktgen")
-                        pktgen_cmd = f"{loadgen.project_root}/nix/builds/linux-pktgen/bin/pktgen_sample03_burst_single_flow" + \
-                            f" -i {host.test_bridge} -s {test.size} -d {guest.test_iface_ip_net} -m {guest.test_iface_mac} -b 1 | tee {remote_pktgen_log}; sleep 10";
-                        loadgen.tmux_kill("pktgen")
-                        loadgen.tmux_new("pktgen", pktgen_cmd)
-                        # reset unikraft log
-                        host.exec(f"sudo truncate -s 0 {remote_unikraft_log_raw}")
-
-                        time.sleep(DURATION_S)
-
-                        # copy raw to log, but only printable characters (cut leading null bytes)
-                        host.exec(f"strings {remote_unikraft_log_raw} | sudo tee {remote_unikraft_log}")
-                        loadgen.exec("sudo pkill -SIGINT pktgen")
-
-                        host.copy_from(remote_unikraft_log, local_unikraft_log)
-                        loadgen.copy_from(remote_pktgen_log, local_pktgen_log)
-                        pass
+                        if test.direction == "tx":
+                            test.run_unikraft_tx(repetition, guest, loadgen, host, remote_unikraft_log_raw)
+                        elif test.direction == "rx":
+                            test.run_unikraft_rx(repetition, guest, loadgen, host, remote_unikraft_log_raw)
                 # end VM
 
             elif system == "linux":
@@ -214,9 +222,9 @@ def main(measurement: Measurement, plan_only: bool = False) -> None:
                     for repetition in range(repetitions):
 
                         if test.direction == "tx":
-                            test.run_tx(repetition, guest, loadgen, host)
+                            test.run_linux_tx(repetition, guest, loadgen, host)
                         elif test.direction == "rx":
-                            test.run_rx(repetition, guest, loadgen, host)
+                            test.run_linux_rx(repetition, guest, loadgen, host)
                     pass
                 # end VM
 
