@@ -71,6 +71,7 @@ Script(TYPE ACTIVE,
        )
 """
 
+bmon_format = "format:fmt=\$(attr:rxrate:packets)\t\$(attr:rxrate:bytes)\n"
 
 @dataclass
 class ThroughputTest(AbstractBenchTest):
@@ -118,11 +119,15 @@ class ThroughputTest(AbstractBenchTest):
         click_args = { "R": 0 }
         guest.kill_click()
         guest.start_click("benchmark/configurations/linux-tx.click", remote_click_output, script_args=click_args, dpdk=False)
+
+        info("Start measuring with bmon")
         # count packets that actually arrive, but cut first line because it is always zero
-        monitor_cmd = f"bmon -p {host.test_tap} -o 'format:fmt=\$(attr:rxrate:packets)\t\$(attr:rxrate:bytes)\n' | tee {remote_monitor_file}"
+        monitor_cmd = f"bmon -p {host.test_tap} -o '{bmon_format}' | tee {remote_monitor_file}"
         loadgen.tmux_kill("monitor")
         loadgen.tmux_new("monitor", monitor_cmd)
+
         time.sleep(DURATION_S)
+
         loadgen.tmux_kill("monitor")
         guest.stop_click()
         guest.kill_click()
@@ -160,7 +165,30 @@ class ThroughputTest(AbstractBenchTest):
 
 
     def run_unikraft_tx(self, repetition: int, guest, loadgen, host, remote_unikraft_log_raw):
-        breakpoint()
+        remote_monitor_file = "/tmp/throughput.tsv"
+        remote_unikraft_log = f"{remote_unikraft_log_raw}.{repetition}"
+        local_monitor_file = self.output_filepath(repetition)
+        local_unikraft_log = self.output_filepath(repetition, "unikraft.log")
+
+        loadgen.exec(f"sudo rm {remote_monitor_file} || true")
+        host.exec(f"sudo rm {remote_unikraft_log} || true")
+
+        # reset unikraft log
+        host.exec(f"sudo truncate -s 0 {remote_unikraft_log_raw}")
+
+        info("Start measuring with bmon")
+        monitor_cmd = f"bmon -p {host.test_tap} -o '{bmon_format}' | tee {remote_monitor_file}"
+        loadgen.tmux_kill("monitor")
+        loadgen.tmux_new("monitor", monitor_cmd)
+
+        time.sleep(DURATION_S)
+
+        loadgen.tmux_kill("monitor")
+
+        # copy raw to log, but only printable characters (cut leading null bytes)
+        host.exec(f"strings {remote_unikraft_log_raw} | sudo tee {remote_unikraft_log}")
+        host.copy_from(remote_unikraft_log, local_unikraft_log)
+        loadgen.copy_from(remote_monitor_file, local_monitor_file)
         pass
 
     def run_unikraft_rx(self, repetition: int, guest, loadgen, host, remote_unikraft_log_raw):
@@ -214,9 +242,9 @@ def main(measurement: Measurement, plan_only: bool = False) -> None:
           Interface.VMUX_DPDK_E810,
           Interface.VMUX_MED
           ]
-    directions = [ "forward" ]
+    directions = [ "rx", "tx" ]
     systems = [ "linux", "unikraft" ]
-    vm_nums = [ 1, 2, 4, 8, 16, 32, 64 ]
+    vm_nums = [ 1 ]
     sizes = [ 64 ]
     vnfs = [ "empty" ]
     repetitions = 3
@@ -226,14 +254,14 @@ def main(measurement: Measurement, plan_only: bool = False) -> None:
         # interfaces = [ Interface.VMUX_DPDK_E810, Interface.BRIDGE_E1000 ]
         # interfaces = [ Interface.VMUX_MED ]
         # interfaces = [ Interface.VMUX_EMU ]
-        directions = [ "rx" ]
+        directions = [ "tx" ]
         # vm_nums = [ 1, 2, 4 ]
         vm_nums = [ 1 ]
         # vm_nums = [ 128, 160 ]
         DURATION_S = 10
         repetitions = 1
         vnfs = [ "empty" ]
-        systems = [ "linux" ]
+        systems = [ "unikraft" ]
 
     def exclude(test):
         return (Interface(test.interface).is_passthrough() and test.num_vms > 1)
