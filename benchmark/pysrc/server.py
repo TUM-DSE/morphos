@@ -1661,53 +1661,7 @@ class Host(Server):
                 )
 
         # Build test network parameters
-
-        test_net_config = ''
-        if net_type == Interface.BRIDGE or net_type == Interface.BRIDGE_VHOST:
-            if BRIDGE_QUEUES == 0:
-                queues = ""
-                multi_queue = ""
-            else:
-                queues = f",queues={BRIDGE_QUEUES}"
-                multi_queue = ",mq=on"
-            if net_type == Interface.BRIDGE_VHOST:
-                vhost = True
-
-            test_net_config = (
-                f" -netdev tap,vhost={'on' if vhost else 'off'}," +
-                f'id=test0,ifname={MultiHost.iface_name(self.test_tap, vm_number)},script=no,' +
-                f'downscript=no' +
-                queues +
-                f' -device virtio-net-{dev_type},id=testif,' +
-                f'netdev=test0,mac={MultiHost.mac(self.guest_test_iface_mac, vm_number)}' +
-                multi_queue +
-                (',use-ioregionfd=true' if ioregionfd else '') +
-                f',rx_queue_size={rx_queue_size},tx_queue_size={tx_queue_size}'
-            )
-        if net_type == Interface.BRIDGE_E1000:
-            test_net_config = (
-                f" -netdev tap," +
-                f'id=test0,ifname={MultiHost.iface_name(self.test_tap, vm_number)},script=no,' +
-                'downscript=no' +
-                f' -device e1000,' +
-                f'netdev=test0,mac={MultiHost.mac(self.guest_test_iface_mac, vm_number)}'
-            )
-        elif net_type == Interface.MACVTAP:
-            test_net_config = (
-                f" -netdev tap,vhost={'on' if vhost else 'off'}," +
-                'id=test0,fd=3 3<>/dev/tap$(cat ' +
-                f'/sys/class/net/{self.test_macvtap}/ifindex) ' +
-                f' -device virtio-net-{dev_type},id=testif,' +
-                'netdev=test0,mac=$(cat ' +
-                f'/sys/class/net/{self.test_macvtap}/address)' +
-                (',use-ioregionfd=true' if ioregionfd else '') +
-                f',rx_queue_size={rx_queue_size},tx_queue_size={tx_queue_size}'
-            )
-        elif net_type == Interface.VFIO:
-            test_net_config = f' -device vfio-pci,host={self.test_iface_addr}'
-        elif net_type.needs_vmux():
-            test_net_config = \
-                f' -device vfio-user-pci,socket={MultiHost.vfu_path(self.vmux_socket_path, vm_number)}'
+        test_net_config = self._test_network_qemu_args(net_type, ioregionfd, vhost, dev_type, vm_number, rx_queue_size, tx_queue_size)
 
         # Build memory backend parameter
 
@@ -1792,6 +1746,121 @@ class Host(Server):
         -------
         """
         self.tmux_kill('qemu')
+
+    def _test_network_qemu_args(self: 'Host', net_type, ioregionfd, vhost, dev_type, vm_number, rx_queue_size, tx_queue_size) -> str:
+        # Build test network parameters
+
+        test_net_config = ''
+        if net_type == Interface.BRIDGE or net_type == Interface.BRIDGE_VHOST:
+            if BRIDGE_QUEUES == 0:
+                queues = ""
+                multi_queue = ""
+            else:
+                queues = f",queues={BRIDGE_QUEUES}"
+                multi_queue = ",mq=on"
+            if net_type == Interface.BRIDGE_VHOST:
+                vhost = True
+
+            test_net_config = (
+                f" -netdev tap,vhost={'on' if vhost else 'off'}," +
+                f'id=test0,ifname={MultiHost.iface_name(self.test_tap, vm_number)},script=no,' +
+                f'downscript=no' +
+                queues +
+                f' -device virtio-net-{dev_type},id=testif,' +
+                f'netdev=test0,mac={MultiHost.mac(self.guest_test_iface_mac, vm_number)}' +
+                multi_queue +
+                (',use-ioregionfd=true' if ioregionfd else '') +
+                (f',rx_queue_size={rx_queue_size},tx_queue_size={tx_queue_size}' if rx_queue_size != -1 and tx_queue_size != -1 else '')
+            )
+        if net_type == Interface.BRIDGE_E1000:
+            test_net_config = (
+                f" -netdev tap," +
+                f'id=test0,ifname={MultiHost.iface_name(self.test_tap, vm_number)},script=no,' +
+                'downscript=no' +
+                f' -device e1000,' +
+                f'netdev=test0,mac={MultiHost.mac(self.guest_test_iface_mac, vm_number)}'
+            )
+        elif net_type == Interface.MACVTAP:
+            test_net_config = (
+                f" -netdev tap,vhost={'on' if vhost else 'off'}," +
+                'id=test0,fd=3 3<>/dev/tap$(cat ' +
+                f'/sys/class/net/{self.test_macvtap}/ifindex) ' +
+                f' -device virtio-net-{dev_type},id=testif,' +
+                'netdev=test0,mac=$(cat ' +
+                f'/sys/class/net/{self.test_macvtap}/address)' +
+                (',use-ioregionfd=true' if ioregionfd else '') +
+                (f',rx_queue_size={rx_queue_size},tx_queue_size={tx_queue_size}' if rx_queue_size != -1 and tx_queue_size != -1 else '')
+            )
+        elif net_type == Interface.VFIO:
+            test_net_config = f' -device vfio-pci,host={self.test_iface_addr}'
+        elif net_type.needs_vmux():
+            test_net_config = \
+                f' -device vfio-user-pci,socket={MultiHost.vfu_path(self.vmux_socket_path, vm_number)}'
+        return test_net_config
+
+
+    def run_unikraft(self: 'Host',
+                     initrd: str,
+                     net_type: Interface,
+                     vm_log_path: str = ''
+                    ) -> None:
+        vm_number = 0
+        project_root = str(Path(self.project_root)) # nix wants nicely formatted paths
+
+        cpus = self.guest_vcpus
+        mem = self.guest_memory
+        vhost = net_type.is_vhost()
+        dev_type = 'pci'
+        qemu_bin_path = 'qemu-system-x86_64'
+        unikraft_bin = f'{project_root}/.unikraft/build/click_qemu-x86_64'
+
+        nix_shell = f"nix shell --inputs-from {project_root} nixpkgs#numactl --command"
+        numactl = f"numactl -C {self.cpupinner.qemu(vm_number)}"
+
+        admin_interface = '' + \
+            f' -netdev tap,vhost=on,id=admin0,ifname={MultiHost.iface_name(self.admin_tap, vm_number)},' + \
+            'script=no,downscript=no' + \
+            f' -device virtio-net-{dev_type},id=admif,netdev=admin0,' + \
+            f'mac={MultiHost.mac(self.guest_admin_iface_mac, vm_number)}'
+
+        test_net_config = self._test_network_qemu_args(net_type, ioregionfd=False, vhost=vhost, dev_type=dev_type, vm_number=vm_number, rx_queue_size=256, tx_queue_size=256)
+
+        vm_logging = ''
+        if vm_log_path != '':
+            vm_logging = '' + \
+                f' -chardev stdio,id=char0,mux=on,logfile={vm_log_path},signal=off' + \
+                ' -serial chardev:char0' + \
+                ' -mon chardev=char0'
+
+        self.tmux_new(
+            MultiHost.enumerate('unikraft', vm_number),
+            f"sudo {nix_shell} {numactl} " +
+            qemu_bin_path +
+            f' -accel kvm' +
+            ' -cpu host' +
+            f' -smp {cpus}' +
+            # shared memory
+            f' -m {mem}' +
+            # boot unikraft
+            " -append \\\" vfs.fstab=['initrd0:/:extract::ramfs=1:'] --\\\"" +
+            f' -kernel {unikraft_bin}' +
+            f' -initrd {initrd}' +
+            # networking
+            admin_interface +
+            test_net_config +
+            # optional logging
+            vm_logging +
+            # final remarks
+            ' -nographic' +
+            # ''
+            f' 2>/tmp/trace-vm{vm_number}.log'
+            )
+        pass
+
+
+    def kill_unikraft(self: 'Host') -> None:
+        self.tmux_kill('unikraft')
+
 
     def start_vmux(self: 'Host', interface: Interface, num_vms: int = 0) -> None:
         """

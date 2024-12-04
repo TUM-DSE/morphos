@@ -1,4 +1,6 @@
 from typing import cast, Any, TypeVar, Iterator, cast, List, Dict, Callable, Tuple, Any
+import random
+import string
 
 T = TypeVar("T")
 
@@ -61,3 +63,6 @@ def _product_dict(input_dict: Dict[str, List[Any]], current: Dict[str, Any], res
 def strip_subnet_mask(ip_addr: str):
     return ip_addr[ : ip_addr.index("/")]
 
+def randomword(length):
+   letters = string.ascii_lowercase
+   return ''.join(random.choice(letters) for i in range(length))

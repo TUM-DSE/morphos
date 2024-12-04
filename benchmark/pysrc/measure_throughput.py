@@ -150,6 +150,25 @@ def main(measurement: Measurement, plan_only: bool = False) -> None:
             info("Booting VM for this test matrix:")
             info(ThroughputTest.test_matrix_string(a_tests))
 
+            click_config = """
+            FromDevice(0)
+            -> ic0 :: AverageCounter()
+            -> Discard;
+
+            Script(TYPE ACTIVE,
+ 				            wait 5ms,
+				            label start,
+				            print "Rx rate: $(ic0.count)",
+				            write ic0.reset 1,
+				            wait 1s,
+				            goto start
+				            )
+            """
+            host.exec("sudo rm /tmp/unikraft.log || true")
+            with measurement.unikraft_vm(interface, click_config, "/tmp/unikraft.log"):
+                breakpoint()
+                pass
+
             # boot VMs
             with measurement.virtual_machine(interface) as guest:
                 assert len(a_tests) == 1 # we have looped through all variables now, right?

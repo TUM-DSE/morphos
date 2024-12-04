@@ -75,6 +75,9 @@ class Interface(Enum):
     def is_passthrough(self) -> bool:
         return self in [ Interface.VFIO, Interface.VMUX_PT ]
 
+    def is_vhost(self) -> bool:
+        return self in [ Interface.BRIDGE_VHOST ]
+
     def guest_driver(self) -> str:
         if self in [ Interface.VFIO, Interface.VMUX_PT, Interface.VMUX_EMU_E810, Interface.VMUX_MED, Interface.VMUX_DPDK_E810 ]:
             return "ice"

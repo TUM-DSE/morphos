@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from util import safe_cast, product_dict
+from util import safe_cast, product_dict, randomword
 from typing import Iterator, cast, List, Dict, Callable, Tuple, Any, Self, TypeVar, Iterable, Type, Generic
 from os.path import isfile, join as path_join
 import os
@@ -18,6 +18,7 @@ from util import safe_cast, deduplicate
 from pathlib import Path
 import copy
 import time
+import tempfile
 from concurrent.futures import ThreadPoolExecutor
 import subprocess
 from conf import G
@@ -133,6 +134,65 @@ class Measurement:
         vm_boot = max(0.3, (num_vms / 32)) * 60 * 2
         return vm_boot
 
+    @contextmanager
+    def unikraft_vm(self, interface: Interface, click_config: str, vm_log: str = "", run_guest_args = dict()) -> Iterator[Guest]:
+        """
+        Creates a unikraft-click virtual machine
+        """
+
+        # host: inital cleanup
+
+        debug('Initial cleanup')
+        try:
+            self.host.kill_unikraft()
+        except Exception:
+            pass
+
+        self.host.cleanup_network()
+
+        # host: set up interfaces and networking
+
+        self.host.detect_test_iface()
+
+        debug(f"Setting up interface {interface.value}")
+        setup_host_interface(self.host, interface)
+
+        if interface.needs_vmux():
+            self.host.start_vmux(interface)
+
+        # prepare initrd
+
+        tmpdir = f"/tmp/measure-cpio-{randomword(6)}"
+        initrd = f"{tmpdir}.cpio"
+        self.host.exec(f"sudo rm -r {tmpdir} || true")
+        self.host.exec(f"sudo rm {initrd} || true")
+        self.host.exec(f"mkdir -p {tmpdir}")
+        self.host.write(click_config, f"{tmpdir}/config.click")
+        self.host.exec(f"{self.host.project_root}/libs/unikraft/support/scripts/mkcpio {initrd} {tmpdir}")
+
+        # start VM
+
+        info(f"Starting VM ({interface.value})")
+        self.host.run_unikraft(
+                initrd=initrd,
+                net_type=interface,
+                vm_log_path=vm_log,
+                **run_guest_args
+                )
+
+        debug("Waiting for click to start")
+        self.host.wait_for_success(f"grep 'Starting driver...' {vm_log}")
+
+        yield self.guest
+
+        # teardown
+
+        self.host.kill_unikraft()
+        if interface.needs_vmux():
+            self.host.stop_vmux()
+        self.host.cleanup_network()
+        self.host.exec(f"sudo rm -r {tmpdir} || true")
+        self.host.exec(f"sudo rm {initrd} || true")
 
     @contextmanager
     def virtual_machine(self, interface: Interface, run_guest_args = dict()) -> Iterator[Guest]:
