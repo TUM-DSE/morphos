@@ -13,9 +13,10 @@ kill:
 		sudo pkill -f "controlnet"
 
 throughput.cpio: throughput.click
+	rm -r /tmp/ukcpio-$(USER) || true
 	mkdir -p /tmp/ukcpio-$(USER)
-	cp ./throughput.click /tmp/ukcpio-$(USER)
-	.unikraft/unikraft/support/scripts/mkcpio ./throughput.cpio /tmp/ukcpio-$(USER)
+	cp ./throughput.click /tmp/ukcpio-$(USER)/config.click
+	./libs/unikraft/support/scripts/mkcpio ./throughput.cpio /tmp/ukcpio-$(USER)
 
 vm: throughput.cpio
 	sudo taskset -c 3,4 qemu-system-x86_64 -accel kvm -cpu max -netdev bridge,id=en0,br=clicknet -device virtio-net-pci,netdev=en0 -append " vfs.fstab=[\"initrd0:/:extract::ramfs=1:\"] --" -kernel ./.unikraft/build/click_qemu-x86_64 -initrd ./throughput.cpio -nographic

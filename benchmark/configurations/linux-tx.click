@@ -35,7 +35,7 @@ InfiniteSource(DATA \<0800>, LENGTH 1460, LIMIT -1, BURST 100000)
 // // TX
 // //###################
 // //Create a UDP flow
-// FastUDPFlows(RATE $R, LIMIT -1, LENGTH $L, SRCETH $mymac, DSTETH $dmac, SRCIP $myip, DSTIP $dstip, FLOWS 1, FLOWSIZE $S)
+// FastUDPFlows(RATE 0, LIMIT -1, LENGTH $L, SRCETH $mymac, DSTETH $dmac, SRCIP $myip, DSTIP $dstip, FLOWS 1, FLOWSIZE $S)
 // -> ic0 :: AverageCounter()
 // -> td :: ToDevice(ens7)
 
