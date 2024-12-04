@@ -34,6 +34,7 @@ class ThroughputTest(AbstractBenchTest):
     interface: str # network interface used
     size: int # packet size
     vnf: str # workload
+    system: str # linux | unikraft
 
     def test_infix(self):
         return f"throughput_{self.interface}_{self.direction}_{self.vnf}_{self.size}B"
@@ -99,6 +100,7 @@ def main(measurement: Measurement, plan_only: bool = False) -> None:
           Interface.VMUX_MED
           ]
     directions = [ "forward" ]
+    systems = [ "linux", "unikraft" ]
     vm_nums = [ 1, 2, 4, 8, 16, 32, 64 ]
     sizes = [ 64 ]
     vnfs = [ "empty" ]
@@ -116,6 +118,7 @@ def main(measurement: Measurement, plan_only: bool = False) -> None:
         DURATION_S = 10
         repetitions = 1
         vnfs = [ "empty" ]
+        systems = [ "unikraft" ]
 
     def exclude(test):
         return (Interface(test.interface).is_passthrough() and test.num_vms > 1)
@@ -128,12 +131,13 @@ def main(measurement: Measurement, plan_only: bool = False) -> None:
         num_vms=vm_nums,
         size=sizes,
         vnf=vnfs,
+        system=systems,
     )
     tests: List[ThroughputTest] = []
     tests = ThroughputTest.list_tests(test_matrix, exclude_test=exclude)
 
 
-    args_reboot = ["interface", "num_vms", "direction"]
+    args_reboot = ["interface", "num_vms", "direction", "system"]
     info(f"Iperf Test execution plan:")
     ThroughputTest.estimate_time2(tests, args_reboot)
 
@@ -145,75 +149,82 @@ def main(measurement: Measurement, plan_only: bool = False) -> None:
             args_reboot = args_reboot,
             brief = G.BRIEF
             ) as (bench, bench_tests):
-        for [num_vms, interface, direction], a_tests in bench.multi_iterator(bench_tests, ["num_vms", "interface", "direction"]):
+        for [num_vms, interface, direction, system], a_tests in bench.multi_iterator(bench_tests, ["num_vms", "interface", "direction", "system"]):
             interface = Interface(interface)
             info("Booting VM for this test matrix:")
             info(ThroughputTest.test_matrix_string(a_tests))
 
-            click_config = """
-            FromDevice(0)
-            -> ic0 :: AverageCounter()
-            -> Discard;
+            assert len(a_tests) == 1 # we have looped through all variables now, right?
+            test = a_tests[0]
+            info(f"Running {test}")
 
-            Script(TYPE ACTIVE,
- 				            wait 5ms,
-				            label start,
-				            print "Rx rate: $(ic0.count)",
-				            write ic0.reset 1,
-				            wait 1s,
-				            goto start
-				            )
-            """
-            host.exec("sudo rm /tmp/unikraft.log || true")
-            with measurement.unikraft_vm(interface, click_config, "/tmp/unikraft.log"):
-                breakpoint()
-                pass
+            if system == "unikraft":
+                click_config = """
+                FromDevice(0)
+                -> ic0 :: AverageCounter()
+                -> Discard;
 
-            # boot VMs
-            with measurement.virtual_machine(interface) as guest:
-                assert len(a_tests) == 1 # we have looped through all variables now, right?
-                test = a_tests[0]
-                info(f"Running {test}")
+                Script(TYPE ACTIVE,
+ 				                wait 5ms,
+				                label start,
+				                print "Rx rate: $(ic0.count)",
+				                write ic0.reset 1,
+				                wait 1s,
+				                goto start
+				                )
+                """
+                remote_unikraft_log_raw  = "/tmp/unikraft.log" # will be cleared sometimes
+                remote_unikraft_init_log  = f"{remote_unikraft_log_raw}.init" # contains the startup log
+                host.exec(f"sudo rm {remote_unikraft_log_raw} || true")
+                host.exec(f"sudo rm {remote_unikraft_init_log} || true")
+                with measurement.unikraft_vm(interface, click_config, remote_unikraft_log_raw) as guest:
+                    host.exec(f"sudo cp {remote_unikraft_log_raw} {remote_unikraft_init_log}")
+                    for repetition in range(repetitions):
+                        remote_pktgen_log = "/tmp/pktgen.log"
+                        remote_unikraft_log = f"{remote_unikraft_log_raw}.{repetition}"
+                        local_unikraft_log = test.output_filepath(repetition)
+                        local_pktgen_log = test.output_filepath(repetition, extension="pktgen.log")
 
-                for repetition in range(repetitions):
+                        loadgen.exec(f"sudo rm {remote_pktgen_log} || true")
+                        host.exec(f"sudo rm {remote_unikraft_log} || true")
 
-                    if test.direction == "tx":
-                        test.run_tx(repetition, guest, loadgen, host)
-                    elif test.direction == "rx":
-                        test.run_rx(repetition, guest, loadgen, host)
+                        # start network load
+                        info("Starting pktgen")
+                        pktgen_cmd = f"{loadgen.project_root}/nix/builds/linux-pktgen/bin/pktgen_sample03_burst_single_flow" + \
+                            f" -i {host.test_bridge} -s {test.size} -d {guest.test_iface_ip_net} -m {guest.test_iface_mac} -b 1 | tee {remote_pktgen_log}; sleep 10";
+                        loadgen.tmux_kill("pktgen")
+                        loadgen.tmux_new("pktgen", pktgen_cmd)
+                        # reset unikraft log
+                        host.exec(f"sudo truncate -s 0 {remote_unikraft_log_raw}")
 
-                bench.done(test)
+                        time.sleep(DURATION_S)
 
-                # info('Binding loadgen interface')
-                # loadgen.modprobe_test_iface_drivers()
-                # loadgen.release_test_iface() # bind linux driver
+                        # copy raw to log, but only printable characters (cut leading null bytes)
+                        host.exec(f"strings {remote_unikraft_log_raw} | sudo tee {remote_unikraft_log}")
+                        loadgen.exec("sudo pkill -SIGINT pktgen")
 
-                # try:
-                #     loadgen.delete_nic_ip_addresses(loadgen.test_iface)
-                # except Exception:
-                #     pass
-                # loadgen.setup_test_iface_ip_net()
-                # loadgen.stop_xdp_pure_reflector()
-                # # loadgen.start_xdp_pure_reflector()
-                # # install inter-VM ARP rules (except first one which actually receives ARP. If we prevent ARP on the first one, all break somehow.)
-                # loadgen.add_arp_entries({ i_:guest_ for i_, guest_ in guests.items() if i_ != 1 })
+                        host.copy_from(remote_unikraft_log, local_unikraft_log)
+                        loadgen.copy_from(remote_pktgen_log, local_pktgen_log)
+                        pass
+                # end VM
 
-                # def foreach_parallel(i, guest): # pyright: ignore[reportGeneralTypeIssues]
-                #     guest.modprobe_test_iface_drivers(interface=interface)
-                #     guest.setup_test_iface_ip_net()
-                # end_foreach(guests, foreach_parallel)
+            elif system == "linux":
+                # boot VMs
+                with measurement.virtual_machine(interface) as guest:
+                    for repetition in range(repetitions):
 
-                # for [proto, length], b_tests in bench.multi_iterator(a_tests, ["proto", "length"]):
-                #         assert len(b_tests) == 1 # we have looped through all variables now, right?
-                #         test = b_tests[0]
-                #         info(f"Running {test}")
+                        if test.direction == "tx":
+                            test.run_tx(repetition, guest, loadgen, host)
+                        elif test.direction == "rx":
+                            test.run_rx(repetition, guest, loadgen, host)
+                    pass
+                # end VM
 
-                #         for repetition in range(repetitions):
-                #             test.run(repetition, guests, loadgen, host)
+            else:
+                raise ValueError(f"Unknown system: {system}")
 
-                #         bench.done(test)
-                # loadgen.stop_xdp_pure_reflector()
-            # end VM
+
+            bench.done(test)
 
 
 if __name__ == "__main__":

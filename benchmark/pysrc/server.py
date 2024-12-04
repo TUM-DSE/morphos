@@ -1833,7 +1833,7 @@ class Host(Server):
                 ' -mon chardev=char0'
 
         self.tmux_new(
-            MultiHost.enumerate('unikraft', vm_number),
+            MultiHost.enumerate('qemu', vm_number),
             f"sudo {nix_shell} {numactl} " +
             qemu_bin_path +
             f' -accel kvm' +
@@ -1846,8 +1846,8 @@ class Host(Server):
             f' -kernel {unikraft_bin}' +
             f' -initrd {initrd}' +
             # networking
-            admin_interface +
             test_net_config +
+            admin_interface +
             # optional logging
             vm_logging +
             # final remarks
@@ -1859,7 +1859,7 @@ class Host(Server):
 
 
     def kill_unikraft(self: 'Host') -> None:
-        self.tmux_kill('unikraft')
+        self.tmux_kill('qemu')
 
 
     def start_vmux(self: 'Host', interface: Interface, num_vms: int = 0) -> None:
