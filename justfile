@@ -95,3 +95,4 @@ benchmark:
 build-dependencies:
   mkdir -p {{proot}}/nix/builds
   nix build .#click -o {{proot}}/nix/builds/click
+  nix build .#linux-pktgen -o {{proot}}/nix/builds/linux-pktgen

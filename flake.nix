@@ -180,6 +180,10 @@
                         inherit (flakepkgs) linux-firmware-pinned;
                     };
 
+                    linux-pktgen = pkgs.callPackage ./nix/linux-pktgen.nix {
+                        kernel = pkgs.linuxPackages_6_6.kernel;
+                    };
+
                     linux-firmware-pinned = (pkgs.linux-firmware.overrideAttrs (old: new: {
                         src = fetchGit {
                             url = "git://git.kernel.org/pub/scm/linux/kernel/git/firmware/linux-firmware.git";
