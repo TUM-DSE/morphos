@@ -1,0 +1,2495 @@
+Host vm.local
+Hostname 192.168.56.20
+User root
+StrictHostKeyChecking=no
+IdentityFile /home/okelmann/appclick-ubpf/nix/ssh_key
+UserKnownHostsFile=/dev/null
+IdentityAgent=/dev/null
+StrictHostKeyChecking=no
+LogLevel=ERROR
+
+Host guest.vmux.local
+Hostname 192.168.56.20
+User root
+StrictHostKeyChecking=no
+IdentityFile /scratch/okelmann/vmuxIO/nix/ssh_key
+UserKnownHostsFile=/dev/null
+IdentityAgent=/dev/null
+StrictHostKeyChecking=no
+LogLevel=ERROR
+
+Host rose.christina
+Hostname rose.dos.cit.tum.de
+IdentityFile /root/.ssh/lawful_access
+StrictHostKeyChecking=no
+UserKnownHostsFile=/dev/null
+IdentityAgent=/dev/null
+StrictHostKeyChecking=no
+LogLevel=ERROR
+
+Host wilfred.christina
+Hostname wilfred.dos.cit.tum.de
+IdentityFile /root/.ssh/lawful_access
+StrictHostKeyChecking=no
+UserKnownHostsFile=/dev/null
+IdentityAgent=/dev/null
+StrictHostKeyChecking=no
+LogLevel=ERROR
+
+Host river.christina
+Hostname river.dos.cit.tum.de
+IdentityFile /root/.ssh/lawful_access
+StrictHostKeyChecking=no
+UserKnownHostsFile=/dev/null
+IdentityAgent=/dev/null
+LogLevel=ERROR
+
+Host amy.christina
+Hostname amy.dos.cit.tum.de
+IdentityFile /root/.ssh/lawful_access
+StrictHostKeyChecking=no
+UserKnownHostsFile=/dev/null
+IdentityAgent=/dev/null
+LogLevel=ERROR
+
+Host vm*.rose.christina
+ProxyJump rose.christina
+User root
+StrictHostKeyChecking=no
+IdentityFile /scratch/okelmann/vmuxIO/nix/ssh_key
+UserKnownHostsFile=/dev/null
+IdentityAgent=/dev/null
+LogLevel=ERROR
+
+Host vm*.amy.christina
+ProxyJump amy.christina
+User root
+StrictHostKeyChecking=no
+IdentityFile /scratch/okelmann/vmuxIO/nix/ssh_key
+UserKnownHostsFile=/dev/null
+IdentityAgent=/dev/null
+LogLevel=ERROR
+
+Host vm.river.christina
+ProxyJump river.christina
+User root
+StrictHostKeyChecking=no
+IdentityFile /scratch/okelmann/vmuxIO/nix/ssh_key
+UserKnownHostsFile=/dev/null
+IdentityAgent=/dev/null
+LogLevel=ERROR
+
+Host christina.christina
+Hostname christina.dos.cit.tum.de
+IdentityFile /root/.ssh/lawful_access
+StrictHostKeyChecking=no
+UserKnownHostsFile=/dev/null
+IdentityAgent=/dev/null
+LogLevel=ERROR
+
+
+# generate vm*.* hosts with:
+# just gen-ssh-config
+
+Host vm.*
+Hostname 192.168.56.20
+
+Host vm1.*
+Hostname 192.168.56.20
+
+Host vm2.*
+Hostname 192.168.56.21
+
+Host vm3.*
+Hostname 192.168.56.22
+
+Host vm4.*
+Hostname 192.168.56.23
+
+Host vm5.*
+Hostname 192.168.56.24
+
+Host vm6.*
+Hostname 192.168.56.25
+
+Host vm7.*
+Hostname 192.168.56.26
+
+Host vm8.*
+Hostname 192.168.56.27
+
+Host vm9.*
+Hostname 192.168.56.28
+
+Host vm10.*
+Hostname 192.168.56.29
+
+Host vm11.*
+Hostname 192.168.56.30
+
+Host vm12.*
+Hostname 192.168.56.31
+
+Host vm13.*
+Hostname 192.168.56.32
+
+Host vm14.*
+Hostname 192.168.56.33
+
+Host vm15.*
+Hostname 192.168.56.34
+
+Host vm16.*
+Hostname 192.168.56.35
+
+Host vm17.*
+Hostname 192.168.56.36
+
+Host vm18.*
+Hostname 192.168.56.37
+
+Host vm19.*
+Hostname 192.168.56.38
+
+Host vm20.*
+Hostname 192.168.56.39
+
+Host vm21.*
+Hostname 192.168.56.40
+
+Host vm22.*
+Hostname 192.168.56.41
+
+Host vm23.*
+Hostname 192.168.56.42
+
+Host vm24.*
+Hostname 192.168.56.43
+
+Host vm25.*
+Hostname 192.168.56.44
+
+Host vm26.*
+Hostname 192.168.56.45
+
+Host vm27.*
+Hostname 192.168.56.46
+
+Host vm28.*
+Hostname 192.168.56.47
+
+Host vm29.*
+Hostname 192.168.56.48
+
+Host vm30.*
+Hostname 192.168.56.49
+
+Host vm31.*
+Hostname 192.168.56.50
+
+Host vm32.*
+Hostname 192.168.56.51
+
+Host vm33.*
+Hostname 192.168.56.52
+
+Host vm34.*
+Hostname 192.168.56.53
+
+Host vm35.*
+Hostname 192.168.56.54
+
+Host vm36.*
+Hostname 192.168.56.55
+
+Host vm37.*
+Hostname 192.168.56.56
+
+Host vm38.*
+Hostname 192.168.56.57
+
+Host vm39.*
+Hostname 192.168.56.58
+
+Host vm40.*
+Hostname 192.168.56.59
+
+Host vm41.*
+Hostname 192.168.56.60
+
+Host vm42.*
+Hostname 192.168.56.61
+
+Host vm43.*
+Hostname 192.168.56.62
+
+Host vm44.*
+Hostname 192.168.56.63
+
+Host vm45.*
+Hostname 192.168.56.64
+
+Host vm46.*
+Hostname 192.168.56.65
+
+Host vm47.*
+Hostname 192.168.56.66
+
+Host vm48.*
+Hostname 192.168.56.67
+
+Host vm49.*
+Hostname 192.168.56.68
+
+Host vm50.*
+Hostname 192.168.56.69
+
+Host vm51.*
+Hostname 192.168.56.70
+
+Host vm52.*
+Hostname 192.168.56.71
+
+Host vm53.*
+Hostname 192.168.56.72
+
+Host vm54.*
+Hostname 192.168.56.73
+
+Host vm55.*
+Hostname 192.168.56.74
+
+Host vm56.*
+Hostname 192.168.56.75
+
+Host vm57.*
+Hostname 192.168.56.76
+
+Host vm58.*
+Hostname 192.168.56.77
+
+Host vm59.*
+Hostname 192.168.56.78
+
+Host vm60.*
+Hostname 192.168.56.79
+
+Host vm61.*
+Hostname 192.168.56.80
+
+Host vm62.*
+Hostname 192.168.56.81
+
+Host vm63.*
+Hostname 192.168.56.82
+
+Host vm64.*
+Hostname 192.168.56.83
+
+Host vm65.*
+Hostname 192.168.56.84
+
+Host vm66.*
+Hostname 192.168.56.85
+
+Host vm67.*
+Hostname 192.168.56.86
+
+Host vm68.*
+Hostname 192.168.56.87
+
+Host vm69.*
+Hostname 192.168.56.88
+
+Host vm70.*
+Hostname 192.168.56.89
+
+Host vm71.*
+Hostname 192.168.56.90
+
+Host vm72.*
+Hostname 192.168.56.91
+
+Host vm73.*
+Hostname 192.168.56.92
+
+Host vm74.*
+Hostname 192.168.56.93
+
+Host vm75.*
+Hostname 192.168.56.94
+
+Host vm76.*
+Hostname 192.168.56.95
+
+Host vm77.*
+Hostname 192.168.56.96
+
+Host vm78.*
+Hostname 192.168.56.97
+
+Host vm79.*
+Hostname 192.168.56.98
+
+Host vm80.*
+Hostname 192.168.56.99
+
+Host vm81.*
+Hostname 192.168.56.100
+
+Host vm82.*
+Hostname 192.168.56.101
+
+Host vm83.*
+Hostname 192.168.56.102
+
+Host vm84.*
+Hostname 192.168.56.103
+
+Host vm85.*
+Hostname 192.168.56.104
+
+Host vm86.*
+Hostname 192.168.56.105
+
+Host vm87.*
+Hostname 192.168.56.106
+
+Host vm88.*
+Hostname 192.168.56.107
+
+Host vm89.*
+Hostname 192.168.56.108
+
+Host vm90.*
+Hostname 192.168.56.109
+
+Host vm91.*
+Hostname 192.168.56.110
+
+Host vm92.*
+Hostname 192.168.56.111
+
+Host vm93.*
+Hostname 192.168.56.112
+
+Host vm94.*
+Hostname 192.168.56.113
+
+Host vm95.*
+Hostname 192.168.56.114
+
+Host vm96.*
+Hostname 192.168.56.115
+
+Host vm97.*
+Hostname 192.168.56.116
+
+Host vm98.*
+Hostname 192.168.56.117
+
+Host vm99.*
+Hostname 192.168.56.118
+
+Host vm100.*
+Hostname 192.168.56.119
+
+Host vm101.*
+Hostname 192.168.56.120
+
+Host vm102.*
+Hostname 192.168.56.121
+
+Host vm103.*
+Hostname 192.168.56.122
+
+Host vm104.*
+Hostname 192.168.56.123
+
+Host vm105.*
+Hostname 192.168.56.124
+
+Host vm106.*
+Hostname 192.168.56.125
+
+Host vm107.*
+Hostname 192.168.56.126
+
+Host vm108.*
+Hostname 192.168.56.127
+
+Host vm109.*
+Hostname 192.168.56.128
+
+Host vm110.*
+Hostname 192.168.56.129
+
+Host vm111.*
+Hostname 192.168.56.130
+
+Host vm112.*
+Hostname 192.168.56.131
+
+Host vm113.*
+Hostname 192.168.56.132
+
+Host vm114.*
+Hostname 192.168.56.133
+
+Host vm115.*
+Hostname 192.168.56.134
+
+Host vm116.*
+Hostname 192.168.56.135
+
+Host vm117.*
+Hostname 192.168.56.136
+
+Host vm118.*
+Hostname 192.168.56.137
+
+Host vm119.*
+Hostname 192.168.56.138
+
+Host vm120.*
+Hostname 192.168.56.139
+
+Host vm121.*
+Hostname 192.168.56.140
+
+Host vm122.*
+Hostname 192.168.56.141
+
+Host vm123.*
+Hostname 192.168.56.142
+
+Host vm124.*
+Hostname 192.168.56.143
+
+Host vm125.*
+Hostname 192.168.56.144
+
+Host vm126.*
+Hostname 192.168.56.145
+
+Host vm127.*
+Hostname 192.168.56.146
+
+Host vm128.*
+Hostname 192.168.56.147
+
+Host vm129.*
+Hostname 192.168.56.148
+
+Host vm130.*
+Hostname 192.168.56.149
+
+Host vm131.*
+Hostname 192.168.56.150
+
+Host vm132.*
+Hostname 192.168.56.151
+
+Host vm133.*
+Hostname 192.168.56.152
+
+Host vm134.*
+Hostname 192.168.56.153
+
+Host vm135.*
+Hostname 192.168.56.154
+
+Host vm136.*
+Hostname 192.168.56.155
+
+Host vm137.*
+Hostname 192.168.56.156
+
+Host vm138.*
+Hostname 192.168.56.157
+
+Host vm139.*
+Hostname 192.168.56.158
+
+Host vm140.*
+Hostname 192.168.56.159
+
+Host vm141.*
+Hostname 192.168.56.160
+
+Host vm142.*
+Hostname 192.168.56.161
+
+Host vm143.*
+Hostname 192.168.56.162
+
+Host vm144.*
+Hostname 192.168.56.163
+
+Host vm145.*
+Hostname 192.168.56.164
+
+Host vm146.*
+Hostname 192.168.56.165
+
+Host vm147.*
+Hostname 192.168.56.166
+
+Host vm148.*
+Hostname 192.168.56.167
+
+Host vm149.*
+Hostname 192.168.56.168
+
+Host vm150.*
+Hostname 192.168.56.169
+
+Host vm151.*
+Hostname 192.168.56.170
+
+Host vm152.*
+Hostname 192.168.56.171
+
+Host vm153.*
+Hostname 192.168.56.172
+
+Host vm154.*
+Hostname 192.168.56.173
+
+Host vm155.*
+Hostname 192.168.56.174
+
+Host vm156.*
+Hostname 192.168.56.175
+
+Host vm157.*
+Hostname 192.168.56.176
+
+Host vm158.*
+Hostname 192.168.56.177
+
+Host vm159.*
+Hostname 192.168.56.178
+
+Host vm160.*
+Hostname 192.168.56.179
+
+Host vm161.*
+Hostname 192.168.56.180
+
+Host vm162.*
+Hostname 192.168.56.181
+
+Host vm163.*
+Hostname 192.168.56.182
+
+Host vm164.*
+Hostname 192.168.56.183
+
+Host vm165.*
+Hostname 192.168.56.184
+
+Host vm166.*
+Hostname 192.168.56.185
+
+Host vm167.*
+Hostname 192.168.56.186
+
+Host vm168.*
+Hostname 192.168.56.187
+
+Host vm169.*
+Hostname 192.168.56.188
+
+Host vm170.*
+Hostname 192.168.56.189
+
+Host vm171.*
+Hostname 192.168.56.190
+
+Host vm172.*
+Hostname 192.168.56.191
+
+Host vm173.*
+Hostname 192.168.56.192
+
+Host vm174.*
+Hostname 192.168.56.193
+
+Host vm175.*
+Hostname 192.168.56.194
+
+Host vm176.*
+Hostname 192.168.56.195
+
+Host vm177.*
+Hostname 192.168.56.196
+
+Host vm178.*
+Hostname 192.168.56.197
+
+Host vm179.*
+Hostname 192.168.56.198
+
+Host vm180.*
+Hostname 192.168.56.199
+
+Host vm181.*
+Hostname 192.168.56.200
+
+Host vm182.*
+Hostname 192.168.56.201
+
+Host vm183.*
+Hostname 192.168.56.202
+
+Host vm184.*
+Hostname 192.168.56.203
+
+Host vm185.*
+Hostname 192.168.56.204
+
+Host vm186.*
+Hostname 192.168.56.205
+
+Host vm187.*
+Hostname 192.168.56.206
+
+Host vm188.*
+Hostname 192.168.56.207
+
+Host vm189.*
+Hostname 192.168.56.208
+
+Host vm190.*
+Hostname 192.168.56.209
+
+Host vm191.*
+Hostname 192.168.56.210
+
+Host vm192.*
+Hostname 192.168.56.211
+
+Host vm193.*
+Hostname 192.168.56.212
+
+Host vm194.*
+Hostname 192.168.56.213
+
+Host vm195.*
+Hostname 192.168.56.214
+
+Host vm196.*
+Hostname 192.168.56.215
+
+Host vm197.*
+Hostname 192.168.56.216
+
+Host vm198.*
+Hostname 192.168.56.217
+
+Host vm199.*
+Hostname 192.168.56.218
+
+Host vm200.*
+Hostname 192.168.56.219
+
+Host vm201.*
+Hostname 192.168.56.220
+
+Host vm202.*
+Hostname 192.168.56.221
+
+Host vm203.*
+Hostname 192.168.56.222
+
+Host vm204.*
+Hostname 192.168.56.223
+
+Host vm205.*
+Hostname 192.168.56.224
+
+Host vm206.*
+Hostname 192.168.56.225
+
+Host vm207.*
+Hostname 192.168.56.226
+
+Host vm208.*
+Hostname 192.168.56.227
+
+Host vm209.*
+Hostname 192.168.56.228
+
+Host vm210.*
+Hostname 192.168.56.229
+
+Host vm211.*
+Hostname 192.168.56.230
+
+Host vm212.*
+Hostname 192.168.56.231
+
+Host vm213.*
+Hostname 192.168.56.232
+
+Host vm214.*
+Hostname 192.168.56.233
+
+Host vm215.*
+Hostname 192.168.56.234
+
+Host vm216.*
+Hostname 192.168.56.235
+
+Host vm217.*
+Hostname 192.168.56.236
+
+Host vm218.*
+Hostname 192.168.56.237
+
+Host vm219.*
+Hostname 192.168.56.238
+
+Host vm220.*
+Hostname 192.168.56.239
+
+Host vm221.*
+Hostname 192.168.56.240
+
+Host vm222.*
+Hostname 192.168.56.241
+
+Host vm223.*
+Hostname 192.168.56.242
+
+Host vm224.*
+Hostname 192.168.56.243
+
+Host vm225.*
+Hostname 192.168.56.244
+
+Host vm226.*
+Hostname 192.168.56.245
+
+Host vm227.*
+Hostname 192.168.56.246
+
+Host vm228.*
+Hostname 192.168.56.247
+
+Host vm229.*
+Hostname 192.168.56.248
+
+Host vm230.*
+Hostname 192.168.56.249
+
+Host vm231.*
+Hostname 192.168.56.250
+
+Host vm232.*
+Hostname 192.168.56.251
+
+Host vm233.*
+Hostname 192.168.56.252
+
+Host vm234.*
+Hostname 192.168.56.253
+
+Host vm235.*
+Hostname 192.168.56.254
+
+Host vm236.*
+Hostname 192.168.56.255
+
+Host vm237.*
+Hostname 192.168.57.0
+
+Host vm238.*
+Hostname 192.168.57.1
+
+Host vm239.*
+Hostname 192.168.57.2
+
+Host vm240.*
+Hostname 192.168.57.3
+
+Host vm241.*
+Hostname 192.168.57.4
+
+Host vm242.*
+Hostname 192.168.57.5
+
+Host vm243.*
+Hostname 192.168.57.6
+
+Host vm244.*
+Hostname 192.168.57.7
+
+Host vm245.*
+Hostname 192.168.57.8
+
+Host vm246.*
+Hostname 192.168.57.9
+
+Host vm247.*
+Hostname 192.168.57.10
+
+Host vm248.*
+Hostname 192.168.57.11
+
+Host vm249.*
+Hostname 192.168.57.12
+
+Host vm250.*
+Hostname 192.168.57.13
+
+Host vm251.*
+Hostname 192.168.57.14
+
+Host vm252.*
+Hostname 192.168.57.15
+
+Host vm253.*
+Hostname 192.168.57.16
+
+Host vm254.*
+Hostname 192.168.57.17
+
+Host vm255.*
+Hostname 192.168.57.18
+
+Host vm256.*
+Hostname 192.168.57.19
+
+Host vm257.*
+Hostname 192.168.57.20
+
+Host vm258.*
+Hostname 192.168.57.21
+
+Host vm259.*
+Hostname 192.168.57.22
+
+Host vm260.*
+Hostname 192.168.57.23
+
+Host vm261.*
+Hostname 192.168.57.24
+
+Host vm262.*
+Hostname 192.168.57.25
+
+Host vm263.*
+Hostname 192.168.57.26
+
+Host vm264.*
+Hostname 192.168.57.27
+
+Host vm265.*
+Hostname 192.168.57.28
+
+Host vm266.*
+Hostname 192.168.57.29
+
+Host vm267.*
+Hostname 192.168.57.30
+
+Host vm268.*
+Hostname 192.168.57.31
+
+Host vm269.*
+Hostname 192.168.57.32
+
+Host vm270.*
+Hostname 192.168.57.33
+
+Host vm271.*
+Hostname 192.168.57.34
+
+Host vm272.*
+Hostname 192.168.57.35
+
+Host vm273.*
+Hostname 192.168.57.36
+
+Host vm274.*
+Hostname 192.168.57.37
+
+Host vm275.*
+Hostname 192.168.57.38
+
+Host vm276.*
+Hostname 192.168.57.39
+
+Host vm277.*
+Hostname 192.168.57.40
+
+Host vm278.*
+Hostname 192.168.57.41
+
+Host vm279.*
+Hostname 192.168.57.42
+
+Host vm280.*
+Hostname 192.168.57.43
+
+Host vm281.*
+Hostname 192.168.57.44
+
+Host vm282.*
+Hostname 192.168.57.45
+
+Host vm283.*
+Hostname 192.168.57.46
+
+Host vm284.*
+Hostname 192.168.57.47
+
+Host vm285.*
+Hostname 192.168.57.48
+
+Host vm286.*
+Hostname 192.168.57.49
+
+Host vm287.*
+Hostname 192.168.57.50
+
+Host vm288.*
+Hostname 192.168.57.51
+
+Host vm289.*
+Hostname 192.168.57.52
+
+Host vm290.*
+Hostname 192.168.57.53
+
+Host vm291.*
+Hostname 192.168.57.54
+
+Host vm292.*
+Hostname 192.168.57.55
+
+Host vm293.*
+Hostname 192.168.57.56
+
+Host vm294.*
+Hostname 192.168.57.57
+
+Host vm295.*
+Hostname 192.168.57.58
+
+Host vm296.*
+Hostname 192.168.57.59
+
+Host vm297.*
+Hostname 192.168.57.60
+
+Host vm298.*
+Hostname 192.168.57.61
+
+Host vm299.*
+Hostname 192.168.57.62
+
+Host vm300.*
+Hostname 192.168.57.63
+
+Host vm301.*
+Hostname 192.168.57.64
+
+Host vm302.*
+Hostname 192.168.57.65
+
+Host vm303.*
+Hostname 192.168.57.66
+
+Host vm304.*
+Hostname 192.168.57.67
+
+Host vm305.*
+Hostname 192.168.57.68
+
+Host vm306.*
+Hostname 192.168.57.69
+
+Host vm307.*
+Hostname 192.168.57.70
+
+Host vm308.*
+Hostname 192.168.57.71
+
+Host vm309.*
+Hostname 192.168.57.72
+
+Host vm310.*
+Hostname 192.168.57.73
+
+Host vm311.*
+Hostname 192.168.57.74
+
+Host vm312.*
+Hostname 192.168.57.75
+
+Host vm313.*
+Hostname 192.168.57.76
+
+Host vm314.*
+Hostname 192.168.57.77
+
+Host vm315.*
+Hostname 192.168.57.78
+
+Host vm316.*
+Hostname 192.168.57.79
+
+Host vm317.*
+Hostname 192.168.57.80
+
+Host vm318.*
+Hostname 192.168.57.81
+
+Host vm319.*
+Hostname 192.168.57.82
+
+Host vm320.*
+Hostname 192.168.57.83
+
+Host vm321.*
+Hostname 192.168.57.84
+
+Host vm322.*
+Hostname 192.168.57.85
+
+Host vm323.*
+Hostname 192.168.57.86
+
+Host vm324.*
+Hostname 192.168.57.87
+
+Host vm325.*
+Hostname 192.168.57.88
+
+Host vm326.*
+Hostname 192.168.57.89
+
+Host vm327.*
+Hostname 192.168.57.90
+
+Host vm328.*
+Hostname 192.168.57.91
+
+Host vm329.*
+Hostname 192.168.57.92
+
+Host vm330.*
+Hostname 192.168.57.93
+
+Host vm331.*
+Hostname 192.168.57.94
+
+Host vm332.*
+Hostname 192.168.57.95
+
+Host vm333.*
+Hostname 192.168.57.96
+
+Host vm334.*
+Hostname 192.168.57.97
+
+Host vm335.*
+Hostname 192.168.57.98
+
+Host vm336.*
+Hostname 192.168.57.99
+
+Host vm337.*
+Hostname 192.168.57.100
+
+Host vm338.*
+Hostname 192.168.57.101
+
+Host vm339.*
+Hostname 192.168.57.102
+
+Host vm340.*
+Hostname 192.168.57.103
+
+Host vm341.*
+Hostname 192.168.57.104
+
+Host vm342.*
+Hostname 192.168.57.105
+
+Host vm343.*
+Hostname 192.168.57.106
+
+Host vm344.*
+Hostname 192.168.57.107
+
+Host vm345.*
+Hostname 192.168.57.108
+
+Host vm346.*
+Hostname 192.168.57.109
+
+Host vm347.*
+Hostname 192.168.57.110
+
+Host vm348.*
+Hostname 192.168.57.111
+
+Host vm349.*
+Hostname 192.168.57.112
+
+Host vm350.*
+Hostname 192.168.57.113
+
+Host vm351.*
+Hostname 192.168.57.114
+
+Host vm352.*
+Hostname 192.168.57.115
+
+Host vm353.*
+Hostname 192.168.57.116
+
+Host vm354.*
+Hostname 192.168.57.117
+
+Host vm355.*
+Hostname 192.168.57.118
+
+Host vm356.*
+Hostname 192.168.57.119
+
+Host vm357.*
+Hostname 192.168.57.120
+
+Host vm358.*
+Hostname 192.168.57.121
+
+Host vm359.*
+Hostname 192.168.57.122
+
+Host vm360.*
+Hostname 192.168.57.123
+
+Host vm361.*
+Hostname 192.168.57.124
+
+Host vm362.*
+Hostname 192.168.57.125
+
+Host vm363.*
+Hostname 192.168.57.126
+
+Host vm364.*
+Hostname 192.168.57.127
+
+Host vm365.*
+Hostname 192.168.57.128
+
+Host vm366.*
+Hostname 192.168.57.129
+
+Host vm367.*
+Hostname 192.168.57.130
+
+Host vm368.*
+Hostname 192.168.57.131
+
+Host vm369.*
+Hostname 192.168.57.132
+
+Host vm370.*
+Hostname 192.168.57.133
+
+Host vm371.*
+Hostname 192.168.57.134
+
+Host vm372.*
+Hostname 192.168.57.135
+
+Host vm373.*
+Hostname 192.168.57.136
+
+Host vm374.*
+Hostname 192.168.57.137
+
+Host vm375.*
+Hostname 192.168.57.138
+
+Host vm376.*
+Hostname 192.168.57.139
+
+Host vm377.*
+Hostname 192.168.57.140
+
+Host vm378.*
+Hostname 192.168.57.141
+
+Host vm379.*
+Hostname 192.168.57.142
+
+Host vm380.*
+Hostname 192.168.57.143
+
+Host vm381.*
+Hostname 192.168.57.144
+
+Host vm382.*
+Hostname 192.168.57.145
+
+Host vm383.*
+Hostname 192.168.57.146
+
+Host vm384.*
+Hostname 192.168.57.147
+
+Host vm385.*
+Hostname 192.168.57.148
+
+Host vm386.*
+Hostname 192.168.57.149
+
+Host vm387.*
+Hostname 192.168.57.150
+
+Host vm388.*
+Hostname 192.168.57.151
+
+Host vm389.*
+Hostname 192.168.57.152
+
+Host vm390.*
+Hostname 192.168.57.153
+
+Host vm391.*
+Hostname 192.168.57.154
+
+Host vm392.*
+Hostname 192.168.57.155
+
+Host vm393.*
+Hostname 192.168.57.156
+
+Host vm394.*
+Hostname 192.168.57.157
+
+Host vm395.*
+Hostname 192.168.57.158
+
+Host vm396.*
+Hostname 192.168.57.159
+
+Host vm397.*
+Hostname 192.168.57.160
+
+Host vm398.*
+Hostname 192.168.57.161
+
+Host vm399.*
+Hostname 192.168.57.162
+
+Host vm400.*
+Hostname 192.168.57.163
+
+Host vm401.*
+Hostname 192.168.57.164
+
+Host vm402.*
+Hostname 192.168.57.165
+
+Host vm403.*
+Hostname 192.168.57.166
+
+Host vm404.*
+Hostname 192.168.57.167
+
+Host vm405.*
+Hostname 192.168.57.168
+
+Host vm406.*
+Hostname 192.168.57.169
+
+Host vm407.*
+Hostname 192.168.57.170
+
+Host vm408.*
+Hostname 192.168.57.171
+
+Host vm409.*
+Hostname 192.168.57.172
+
+Host vm410.*
+Hostname 192.168.57.173
+
+Host vm411.*
+Hostname 192.168.57.174
+
+Host vm412.*
+Hostname 192.168.57.175
+
+Host vm413.*
+Hostname 192.168.57.176
+
+Host vm414.*
+Hostname 192.168.57.177
+
+Host vm415.*
+Hostname 192.168.57.178
+
+Host vm416.*
+Hostname 192.168.57.179
+
+Host vm417.*
+Hostname 192.168.57.180
+
+Host vm418.*
+Hostname 192.168.57.181
+
+Host vm419.*
+Hostname 192.168.57.182
+
+Host vm420.*
+Hostname 192.168.57.183
+
+Host vm421.*
+Hostname 192.168.57.184
+
+Host vm422.*
+Hostname 192.168.57.185
+
+Host vm423.*
+Hostname 192.168.57.186
+
+Host vm424.*
+Hostname 192.168.57.187
+
+Host vm425.*
+Hostname 192.168.57.188
+
+Host vm426.*
+Hostname 192.168.57.189
+
+Host vm427.*
+Hostname 192.168.57.190
+
+Host vm428.*
+Hostname 192.168.57.191
+
+Host vm429.*
+Hostname 192.168.57.192
+
+Host vm430.*
+Hostname 192.168.57.193
+
+Host vm431.*
+Hostname 192.168.57.194
+
+Host vm432.*
+Hostname 192.168.57.195
+
+Host vm433.*
+Hostname 192.168.57.196
+
+Host vm434.*
+Hostname 192.168.57.197
+
+Host vm435.*
+Hostname 192.168.57.198
+
+Host vm436.*
+Hostname 192.168.57.199
+
+Host vm437.*
+Hostname 192.168.57.200
+
+Host vm438.*
+Hostname 192.168.57.201
+
+Host vm439.*
+Hostname 192.168.57.202
+
+Host vm440.*
+Hostname 192.168.57.203
+
+Host vm441.*
+Hostname 192.168.57.204
+
+Host vm442.*
+Hostname 192.168.57.205
+
+Host vm443.*
+Hostname 192.168.57.206
+
+Host vm444.*
+Hostname 192.168.57.207
+
+Host vm445.*
+Hostname 192.168.57.208
+
+Host vm446.*
+Hostname 192.168.57.209
+
+Host vm447.*
+Hostname 192.168.57.210
+
+Host vm448.*
+Hostname 192.168.57.211
+
+Host vm449.*
+Hostname 192.168.57.212
+
+Host vm450.*
+Hostname 192.168.57.213
+
+Host vm451.*
+Hostname 192.168.57.214
+
+Host vm452.*
+Hostname 192.168.57.215
+
+Host vm453.*
+Hostname 192.168.57.216
+
+Host vm454.*
+Hostname 192.168.57.217
+
+Host vm455.*
+Hostname 192.168.57.218
+
+Host vm456.*
+Hostname 192.168.57.219
+
+Host vm457.*
+Hostname 192.168.57.220
+
+Host vm458.*
+Hostname 192.168.57.221
+
+Host vm459.*
+Hostname 192.168.57.222
+
+Host vm460.*
+Hostname 192.168.57.223
+
+Host vm461.*
+Hostname 192.168.57.224
+
+Host vm462.*
+Hostname 192.168.57.225
+
+Host vm463.*
+Hostname 192.168.57.226
+
+Host vm464.*
+Hostname 192.168.57.227
+
+Host vm465.*
+Hostname 192.168.57.228
+
+Host vm466.*
+Hostname 192.168.57.229
+
+Host vm467.*
+Hostname 192.168.57.230
+
+Host vm468.*
+Hostname 192.168.57.231
+
+Host vm469.*
+Hostname 192.168.57.232
+
+Host vm470.*
+Hostname 192.168.57.233
+
+Host vm471.*
+Hostname 192.168.57.234
+
+Host vm472.*
+Hostname 192.168.57.235
+
+Host vm473.*
+Hostname 192.168.57.236
+
+Host vm474.*
+Hostname 192.168.57.237
+
+Host vm475.*
+Hostname 192.168.57.238
+
+Host vm476.*
+Hostname 192.168.57.239
+
+Host vm477.*
+Hostname 192.168.57.240
+
+Host vm478.*
+Hostname 192.168.57.241
+
+Host vm479.*
+Hostname 192.168.57.242
+
+Host vm480.*
+Hostname 192.168.57.243
+
+Host vm481.*
+Hostname 192.168.57.244
+
+Host vm482.*
+Hostname 192.168.57.245
+
+Host vm483.*
+Hostname 192.168.57.246
+
+Host vm484.*
+Hostname 192.168.57.247
+
+Host vm485.*
+Hostname 192.168.57.248
+
+Host vm486.*
+Hostname 192.168.57.249
+
+Host vm487.*
+Hostname 192.168.57.250
+
+Host vm488.*
+Hostname 192.168.57.251
+
+Host vm489.*
+Hostname 192.168.57.252
+
+Host vm490.*
+Hostname 192.168.57.253
+
+Host vm491.*
+Hostname 192.168.57.254
+
+Host vm492.*
+Hostname 192.168.57.255
+
+Host vm493.*
+Hostname 192.168.58.0
+
+Host vm494.*
+Hostname 192.168.58.1
+
+Host vm495.*
+Hostname 192.168.58.2
+
+Host vm496.*
+Hostname 192.168.58.3
+
+Host vm497.*
+Hostname 192.168.58.4
+
+Host vm498.*
+Hostname 192.168.58.5
+
+Host vm499.*
+Hostname 192.168.58.6
+
+Host vm500.*
+Hostname 192.168.58.7
+
+Host vm501.*
+Hostname 192.168.58.8
+
+Host vm502.*
+Hostname 192.168.58.9
+
+Host vm503.*
+Hostname 192.168.58.10
+
+Host vm504.*
+Hostname 192.168.58.11
+
+Host vm505.*
+Hostname 192.168.58.12
+
+Host vm506.*
+Hostname 192.168.58.13
+
+Host vm507.*
+Hostname 192.168.58.14
+
+Host vm508.*
+Hostname 192.168.58.15
+
+Host vm509.*
+Hostname 192.168.58.16
+
+Host vm510.*
+Hostname 192.168.58.17
+
+Host vm511.*
+Hostname 192.168.58.18
+
+Host vm512.*
+Hostname 192.168.58.19
+
+Host vm513.*
+Hostname 192.168.58.20
+
+Host vm514.*
+Hostname 192.168.58.21
+
+Host vm515.*
+Hostname 192.168.58.22
+
+Host vm516.*
+Hostname 192.168.58.23
+
+Host vm517.*
+Hostname 192.168.58.24
+
+Host vm518.*
+Hostname 192.168.58.25
+
+Host vm519.*
+Hostname 192.168.58.26
+
+Host vm520.*
+Hostname 192.168.58.27
+
+Host vm521.*
+Hostname 192.168.58.28
+
+Host vm522.*
+Hostname 192.168.58.29
+
+Host vm523.*
+Hostname 192.168.58.30
+
+Host vm524.*
+Hostname 192.168.58.31
+
+Host vm525.*
+Hostname 192.168.58.32
+
+Host vm526.*
+Hostname 192.168.58.33
+
+Host vm527.*
+Hostname 192.168.58.34
+
+Host vm528.*
+Hostname 192.168.58.35
+
+Host vm529.*
+Hostname 192.168.58.36
+
+Host vm530.*
+Hostname 192.168.58.37
+
+Host vm531.*
+Hostname 192.168.58.38
+
+Host vm532.*
+Hostname 192.168.58.39
+
+Host vm533.*
+Hostname 192.168.58.40
+
+Host vm534.*
+Hostname 192.168.58.41
+
+Host vm535.*
+Hostname 192.168.58.42
+
+Host vm536.*
+Hostname 192.168.58.43
+
+Host vm537.*
+Hostname 192.168.58.44
+
+Host vm538.*
+Hostname 192.168.58.45
+
+Host vm539.*
+Hostname 192.168.58.46
+
+Host vm540.*
+Hostname 192.168.58.47
+
+Host vm541.*
+Hostname 192.168.58.48
+
+Host vm542.*
+Hostname 192.168.58.49
+
+Host vm543.*
+Hostname 192.168.58.50
+
+Host vm544.*
+Hostname 192.168.58.51
+
+Host vm545.*
+Hostname 192.168.58.52
+
+Host vm546.*
+Hostname 192.168.58.53
+
+Host vm547.*
+Hostname 192.168.58.54
+
+Host vm548.*
+Hostname 192.168.58.55
+
+Host vm549.*
+Hostname 192.168.58.56
+
+Host vm550.*
+Hostname 192.168.58.57
+
+Host vm551.*
+Hostname 192.168.58.58
+
+Host vm552.*
+Hostname 192.168.58.59
+
+Host vm553.*
+Hostname 192.168.58.60
+
+Host vm554.*
+Hostname 192.168.58.61
+
+Host vm555.*
+Hostname 192.168.58.62
+
+Host vm556.*
+Hostname 192.168.58.63
+
+Host vm557.*
+Hostname 192.168.58.64
+
+Host vm558.*
+Hostname 192.168.58.65
+
+Host vm559.*
+Hostname 192.168.58.66
+
+Host vm560.*
+Hostname 192.168.58.67
+
+Host vm561.*
+Hostname 192.168.58.68
+
+Host vm562.*
+Hostname 192.168.58.69
+
+Host vm563.*
+Hostname 192.168.58.70
+
+Host vm564.*
+Hostname 192.168.58.71
+
+Host vm565.*
+Hostname 192.168.58.72
+
+Host vm566.*
+Hostname 192.168.58.73
+
+Host vm567.*
+Hostname 192.168.58.74
+
+Host vm568.*
+Hostname 192.168.58.75
+
+Host vm569.*
+Hostname 192.168.58.76
+
+Host vm570.*
+Hostname 192.168.58.77
+
+Host vm571.*
+Hostname 192.168.58.78
+
+Host vm572.*
+Hostname 192.168.58.79
+
+Host vm573.*
+Hostname 192.168.58.80
+
+Host vm574.*
+Hostname 192.168.58.81
+
+Host vm575.*
+Hostname 192.168.58.82
+
+Host vm576.*
+Hostname 192.168.58.83
+
+Host vm577.*
+Hostname 192.168.58.84
+
+Host vm578.*
+Hostname 192.168.58.85
+
+Host vm579.*
+Hostname 192.168.58.86
+
+Host vm580.*
+Hostname 192.168.58.87
+
+Host vm581.*
+Hostname 192.168.58.88
+
+Host vm582.*
+Hostname 192.168.58.89
+
+Host vm583.*
+Hostname 192.168.58.90
+
+Host vm584.*
+Hostname 192.168.58.91
+
+Host vm585.*
+Hostname 192.168.58.92
+
+Host vm586.*
+Hostname 192.168.58.93
+
+Host vm587.*
+Hostname 192.168.58.94
+
+Host vm588.*
+Hostname 192.168.58.95
+
+Host vm589.*
+Hostname 192.168.58.96
+
+Host vm590.*
+Hostname 192.168.58.97
+
+Host vm591.*
+Hostname 192.168.58.98
+
+Host vm592.*
+Hostname 192.168.58.99
+
+Host vm593.*
+Hostname 192.168.58.100
+
+Host vm594.*
+Hostname 192.168.58.101
+
+Host vm595.*
+Hostname 192.168.58.102
+
+Host vm596.*
+Hostname 192.168.58.103
+
+Host vm597.*
+Hostname 192.168.58.104
+
+Host vm598.*
+Hostname 192.168.58.105
+
+Host vm599.*
+Hostname 192.168.58.106
+
+Host vm600.*
+Hostname 192.168.58.107
+
+Host vm601.*
+Hostname 192.168.58.108
+
+Host vm602.*
+Hostname 192.168.58.109
+
+Host vm603.*
+Hostname 192.168.58.110
+
+Host vm604.*
+Hostname 192.168.58.111
+
+Host vm605.*
+Hostname 192.168.58.112
+
+Host vm606.*
+Hostname 192.168.58.113
+
+Host vm607.*
+Hostname 192.168.58.114
+
+Host vm608.*
+Hostname 192.168.58.115
+
+Host vm609.*
+Hostname 192.168.58.116
+
+Host vm610.*
+Hostname 192.168.58.117
+
+Host vm611.*
+Hostname 192.168.58.118
+
+Host vm612.*
+Hostname 192.168.58.119
+
+Host vm613.*
+Hostname 192.168.58.120
+
+Host vm614.*
+Hostname 192.168.58.121
+
+Host vm615.*
+Hostname 192.168.58.122
+
+Host vm616.*
+Hostname 192.168.58.123
+
+Host vm617.*
+Hostname 192.168.58.124
+
+Host vm618.*
+Hostname 192.168.58.125
+
+Host vm619.*
+Hostname 192.168.58.126
+
+Host vm620.*
+Hostname 192.168.58.127
+
+Host vm621.*
+Hostname 192.168.58.128
+
+Host vm622.*
+Hostname 192.168.58.129
+
+Host vm623.*
+Hostname 192.168.58.130
+
+Host vm624.*
+Hostname 192.168.58.131
+
+Host vm625.*
+Hostname 192.168.58.132
+
+Host vm626.*
+Hostname 192.168.58.133
+
+Host vm627.*
+Hostname 192.168.58.134
+
+Host vm628.*
+Hostname 192.168.58.135
+
+Host vm629.*
+Hostname 192.168.58.136
+
+Host vm630.*
+Hostname 192.168.58.137
+
+Host vm631.*
+Hostname 192.168.58.138
+
+Host vm632.*
+Hostname 192.168.58.139
+
+Host vm633.*
+Hostname 192.168.58.140
+
+Host vm634.*
+Hostname 192.168.58.141
+
+Host vm635.*
+Hostname 192.168.58.142
+
+Host vm636.*
+Hostname 192.168.58.143
+
+Host vm637.*
+Hostname 192.168.58.144
+
+Host vm638.*
+Hostname 192.168.58.145
+
+Host vm639.*
+Hostname 192.168.58.146
+
+Host vm640.*
+Hostname 192.168.58.147
+
+Host vm641.*
+Hostname 192.168.58.148
+
+Host vm642.*
+Hostname 192.168.58.149
+
+Host vm643.*
+Hostname 192.168.58.150
+
+Host vm644.*
+Hostname 192.168.58.151
+
+Host vm645.*
+Hostname 192.168.58.152
+
+Host vm646.*
+Hostname 192.168.58.153
+
+Host vm647.*
+Hostname 192.168.58.154
+
+Host vm648.*
+Hostname 192.168.58.155
+
+Host vm649.*
+Hostname 192.168.58.156
+
+Host vm650.*
+Hostname 192.168.58.157
+
+Host vm651.*
+Hostname 192.168.58.158
+
+Host vm652.*
+Hostname 192.168.58.159
+
+Host vm653.*
+Hostname 192.168.58.160
+
+Host vm654.*
+Hostname 192.168.58.161
+
+Host vm655.*
+Hostname 192.168.58.162
+
+Host vm656.*
+Hostname 192.168.58.163
+
+Host vm657.*
+Hostname 192.168.58.164
+
+Host vm658.*
+Hostname 192.168.58.165
+
+Host vm659.*
+Hostname 192.168.58.166
+
+Host vm660.*
+Hostname 192.168.58.167
+
+Host vm661.*
+Hostname 192.168.58.168
+
+Host vm662.*
+Hostname 192.168.58.169
+
+Host vm663.*
+Hostname 192.168.58.170
+
+Host vm664.*
+Hostname 192.168.58.171
+
+Host vm665.*
+Hostname 192.168.58.172
+
+Host vm666.*
+Hostname 192.168.58.173
+
+Host vm667.*
+Hostname 192.168.58.174
+
+Host vm668.*
+Hostname 192.168.58.175
+
+Host vm669.*
+Hostname 192.168.58.176
+
+Host vm670.*
+Hostname 192.168.58.177
+
+Host vm671.*
+Hostname 192.168.58.178
+
+Host vm672.*
+Hostname 192.168.58.179
+
+Host vm673.*
+Hostname 192.168.58.180
+
+Host vm674.*
+Hostname 192.168.58.181
+
+Host vm675.*
+Hostname 192.168.58.182
+
+Host vm676.*
+Hostname 192.168.58.183
+
+Host vm677.*
+Hostname 192.168.58.184
+
+Host vm678.*
+Hostname 192.168.58.185
+
+Host vm679.*
+Hostname 192.168.58.186
+
+Host vm680.*
+Hostname 192.168.58.187
+
+Host vm681.*
+Hostname 192.168.58.188
+
+Host vm682.*
+Hostname 192.168.58.189
+
+Host vm683.*
+Hostname 192.168.58.190
+
+Host vm684.*
+Hostname 192.168.58.191
+
+Host vm685.*
+Hostname 192.168.58.192
+
+Host vm686.*
+Hostname 192.168.58.193
+
+Host vm687.*
+Hostname 192.168.58.194
+
+Host vm688.*
+Hostname 192.168.58.195
+
+Host vm689.*
+Hostname 192.168.58.196
+
+Host vm690.*
+Hostname 192.168.58.197
+
+Host vm691.*
+Hostname 192.168.58.198
+
+Host vm692.*
+Hostname 192.168.58.199
+
+Host vm693.*
+Hostname 192.168.58.200
+
+Host vm694.*
+Hostname 192.168.58.201
+
+Host vm695.*
+Hostname 192.168.58.202
+
+Host vm696.*
+Hostname 192.168.58.203
+
+Host vm697.*
+Hostname 192.168.58.204
+
+Host vm698.*
+Hostname 192.168.58.205
+
+Host vm699.*
+Hostname 192.168.58.206
+
+Host vm700.*
+Hostname 192.168.58.207
+
+Host vm701.*
+Hostname 192.168.58.208
+
+Host vm702.*
+Hostname 192.168.58.209
+
+Host vm703.*
+Hostname 192.168.58.210
+
+Host vm704.*
+Hostname 192.168.58.211
+
+Host vm705.*
+Hostname 192.168.58.212
+
+Host vm706.*
+Hostname 192.168.58.213
+
+Host vm707.*
+Hostname 192.168.58.214
+
+Host vm708.*
+Hostname 192.168.58.215
+
+Host vm709.*
+Hostname 192.168.58.216
+
+Host vm710.*
+Hostname 192.168.58.217
+
+Host vm711.*
+Hostname 192.168.58.218
+
+Host vm712.*
+Hostname 192.168.58.219
+
+Host vm713.*
+Hostname 192.168.58.220
+
+Host vm714.*
+Hostname 192.168.58.221
+
+Host vm715.*
+Hostname 192.168.58.222
+
+Host vm716.*
+Hostname 192.168.58.223
+
+Host vm717.*
+Hostname 192.168.58.224
+
+Host vm718.*
+Hostname 192.168.58.225
+
+Host vm719.*
+Hostname 192.168.58.226
+
+Host vm720.*
+Hostname 192.168.58.227
+
+Host vm721.*
+Hostname 192.168.58.228
+
+Host vm722.*
+Hostname 192.168.58.229
+
+Host vm723.*
+Hostname 192.168.58.230
+
+Host vm724.*
+Hostname 192.168.58.231
+
+Host vm725.*
+Hostname 192.168.58.232
+
+Host vm726.*
+Hostname 192.168.58.233
+
+Host vm727.*
+Hostname 192.168.58.234
+
+Host vm728.*
+Hostname 192.168.58.235
+
+Host vm729.*
+Hostname 192.168.58.236
+
+Host vm730.*
+Hostname 192.168.58.237
+
+Host vm731.*
+Hostname 192.168.58.238
+
+Host vm732.*
+Hostname 192.168.58.239
+
+Host vm733.*
+Hostname 192.168.58.240
+
+Host vm734.*
+Hostname 192.168.58.241
+
+Host vm735.*
+Hostname 192.168.58.242
+
+Host vm736.*
+Hostname 192.168.58.243
+
+Host vm737.*
+Hostname 192.168.58.244
+
+Host vm738.*
+Hostname 192.168.58.245
+
+Host vm739.*
+Hostname 192.168.58.246
+
+Host vm740.*
+Hostname 192.168.58.247
+
+Host vm741.*
+Hostname 192.168.58.248
+
+Host vm742.*
+Hostname 192.168.58.249
+
+Host vm743.*
+Hostname 192.168.58.250
+
+Host vm744.*
+Hostname 192.168.58.251
+
+Host vm745.*
+Hostname 192.168.58.252
+
+Host vm746.*
+Hostname 192.168.58.253
+
+Host vm747.*
+Hostname 192.168.58.254
+
+Host vm748.*
+Hostname 192.168.58.255
+
+Host vm749.*
+Hostname 192.168.59.0
+
+Host vm750.*
+Hostname 192.168.59.1
+
+Host vm751.*
+Hostname 192.168.59.2
+
+Host vm752.*
+Hostname 192.168.59.3
+
+Host vm753.*
+Hostname 192.168.59.4
+
+Host vm754.*
+Hostname 192.168.59.5
+
+Host vm755.*
+Hostname 192.168.59.6
+
+Host vm756.*
+Hostname 192.168.59.7
+
+Host vm757.*
+Hostname 192.168.59.8
+
+Host vm758.*
+Hostname 192.168.59.9
+
+Host vm759.*
+Hostname 192.168.59.10
+
+Host vm760.*
+Hostname 192.168.59.11
+
+Host vm761.*
+Hostname 192.168.59.12
+
+Host vm762.*
+Hostname 192.168.59.13
+
+Host vm763.*
+Hostname 192.168.59.14
+
+Host vm764.*
+Hostname 192.168.59.15
+
+Host vm765.*
+Hostname 192.168.59.16
+
+Host vm766.*
+Hostname 192.168.59.17
+
+Host vm767.*
+Hostname 192.168.59.18
+
+Host vm768.*
+Hostname 192.168.59.19
+
+Host vm769.*
+Hostname 192.168.59.20
+
+Host vm770.*
+Hostname 192.168.59.21
+
+Host vm771.*
+Hostname 192.168.59.22
+
+Host vm772.*
+Hostname 192.168.59.23
+
+Host vm773.*
+Hostname 192.168.59.24
+
+Host vm774.*
+Hostname 192.168.59.25
+
+Host vm775.*
+Hostname 192.168.59.26
+
+Host vm776.*
+Hostname 192.168.59.27
+
+Host vm777.*
+Hostname 192.168.59.28
+
+Host vm778.*
+Hostname 192.168.59.29
+
+Host vm779.*
+Hostname 192.168.59.30
+
+Host vm780.*
+Hostname 192.168.59.31
+
+Host vm781.*
+Hostname 192.168.59.32
+
+Host vm782.*
+Hostname 192.168.59.33
+
+Host vm783.*
+Hostname 192.168.59.34
+
+Host vm784.*
+Hostname 192.168.59.35
+
+Host vm785.*
+Hostname 192.168.59.36
+
+Host vm786.*
+Hostname 192.168.59.37
+
+Host vm787.*
+Hostname 192.168.59.38
+
+Host vm788.*
+Hostname 192.168.59.39
+
+Host vm789.*
+Hostname 192.168.59.40
+
+Host vm790.*
+Hostname 192.168.59.41
+
+Host vm791.*
+Hostname 192.168.59.42
+
+Host vm792.*
+Hostname 192.168.59.43
+
+Host vm793.*
+Hostname 192.168.59.44
+
+Host vm794.*
+Hostname 192.168.59.45
+
+Host vm795.*
+Hostname 192.168.59.46
+
+Host vm796.*
+Hostname 192.168.59.47
+
+Host vm797.*
+Hostname 192.168.59.48
+
+Host vm798.*
+Hostname 192.168.59.49
+
+Host vm799.*
+Hostname 192.168.59.50
+
+Host vm800.*
+Hostname 192.168.59.51

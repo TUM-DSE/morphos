@@ -118,7 +118,15 @@ fn create_click_configuration(config: &Configuration) -> String {
         r#"
 // need this to initialize the device 0
 FromDevice(0) -> Discard;
-encap_then_out :: EtherEncap(0x0800, $MAC0, {mac_address}) -> ToDevice(0);
+
+// Doesnt work in unikraft for some reason:
+// FastUDPFlows(RATE 10, LIMIT -1, LENGTH 60, SRCETH {mac_address}, DSTETH {mac_address}, SRCIP 172.44.0.2, DSTIP 172.44.0.1, FLOWS 1, FLOWSIZE 10000)
+// // FastUDPFlows(RATE 10, LIMIT -1, LENGTH 60, SRCETH 76:7E:90:D4:99:54, DSTETH {mac_address}, SRCIP 172.44.0.2, DSTIP 172.44.0.1, FLOWS 1, FLOWSIZE 10)
+// -> ToDevice(0);
+// encap_then_out :: Discard;
+
+encap_then_out :: EtherEncap(0x0800, $MAC0, {mac_address})
+-> ToDevice(0);
 
 InfiniteSource(DATA \<0800>, LENGTH 1460, LIMIT -1, BURST 100000)
 -> UDPIPEncap(172.44.0.2, 5678, 172.44.0.1, 5678)

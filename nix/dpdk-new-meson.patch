@@ -1,0 +1,33 @@
+diff --git a/buildtools/gen-pmdinfo-cfile.py b/buildtools/gen-pmdinfo-cfile.py
+index 58fe3ad152..3453e5b4b9 100644
+--- a/buildtools/gen-pmdinfo-cfile.py
++++ b/buildtools/gen-pmdinfo-cfile.py
+@@ -8,13 +8,18 @@
+ import tempfile
+
+ _, tmp_root, ar, archive, output, *pmdinfogen = sys.argv
+-with tempfile.TemporaryDirectory(dir=tmp_root) as temp:
+-    run_ar = lambda command: subprocess.run(
+-        [ar, command, os.path.abspath(archive)],
+-        stdout=subprocess.PIPE, check=True, cwd=temp
+-    )
+-    # Don't use "ar p", because its output is corrupted on Windows.
+-    run_ar("x")
+-    names = run_ar("t").stdout.decode().splitlines()
+-    paths = [os.path.join(temp, name) for name in names]
++archive = os.path.abspath(archive)
++names = subprocess.run([ar, "t", archive],
++    stdout=subprocess.PIPE, check=True).stdout.decode().splitlines()
++with open(archive, "rb") as f:
++    is_thin = f.read(7) == b"!<thin>"
++if is_thin:
++    # Thin archive needs no unpacking, just use the paths within.
++    paths = [os.path.join(archive, name) for name in names]
+     subprocess.run(pmdinfogen + paths + [output], check=True)
++else:
++    with tempfile.TemporaryDirectory(dir=tmp_root) as temp:
++        # Don't use "ar p", because its output is corrupted on Windows.
++        paths = [os.path.join(temp, name) for name in names]
++        subprocess.run([ar, "x", archive], check=True, cwd=temp)
++        subprocess.run(pmdinfogen + paths + [output], check=True)
+

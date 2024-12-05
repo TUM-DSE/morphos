@@ -1,7 +1,7 @@
 use std::path::{Path, PathBuf};
 use tempfile::TempDir;
 
-const MKCPIO_PATH: &str = "../.unikraft/unikraft/support/scripts/mkcpio";
+const MKCPIO_PATH: &str = "../libs/unikraft/support/scripts/mkcpio";
 
 pub struct CpioArchive {
     pub path: PathBuf,

@@ -1,0 +1,21 @@
+diff --git a/userlevel/rte_parse.mk b/userlevel/rte_parse.mk
+index c8a7772a2..a1a511a1b 100644
+--- a/userlevel/rte_parse.mk
++++ b/userlevel/rte_parse.mk
+@@ -21,6 +21,7 @@ ${PARSE_PATH}.sentinel:
+ 	cp -u $(RTE_SDK)/app/test-pmd/testpmd.h $(PARSE_PATH)
+ 	cp -u $(RTE_SDK)/app/test-pmd/config.c $(PARSE_PATH)
+ 	cp -u $(RTE_SDK)/app/test-pmd/cmdline.c $(PARSE_PATH)
++	cp -u $(RTE_SDK)/app/test-pmd/cmdline_cman.c $(PARSE_PATH)
+ 	# Strip the main function off to prevent complilation errors, while linking with Click
+ 	sed -i '$$!N;/main(int/,$$d' $(PARSE_PATH)/testpmd.c
+ 	sed -i 's/\([*(>]\)template\([= .,[;)]\)/\1ptemplate\2/g' $(PARSE_PATH)/config.c $(PARSE_PATH)/testpmd.h
+@@ -44,7 +45,7 @@ test-pmd/%.o: ${PARSE_PATH}.sentinel
+ # Object files present across all DPDK versions
+ PARSE_OBJS = \
+ 	test-pmd/cmdline_flow.o \
+-	test-pmd/macfwd.o test-pmd/cmdline.o test-pmd/txonly.o test-pmd/csumonly.o test-pmd/flowgen.o \
++	test-pmd/macfwd.o test-pmd/cmdline.o test-pmd/cmdline_cman.o test-pmd/txonly.o test-pmd/csumonly.o test-pmd/flowgen.o \
+ 	test-pmd/icmpecho.o test-pmd/ieee1588fwd.o test-pmd/iofwd.o test-pmd/macswap.o \
+ 	test-pmd/rxonly.o \
+ 
