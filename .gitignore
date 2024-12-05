@@ -21,3 +21,4 @@ libs/openssl/
 libs/unikraft/
 
 VMs/
+out*/

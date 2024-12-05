@@ -54,7 +54,7 @@ def setup_parser() -> ArgumentParser:
     parser.add_argument('-b',
                         '--brief',
                         action='store_true',
-                        help='Use test parameters that take less time.',
+                        help='Run a limited set of tests that run faster. (disable incremental, deletes output folder first)',
                         )
     parser.add_argument('-v',
                         '--verbose',

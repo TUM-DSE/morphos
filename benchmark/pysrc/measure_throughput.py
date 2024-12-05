@@ -225,7 +225,7 @@ def main(measurement: Measurement, plan_only: bool = False) -> None:
 
     # set up test plan
     interfaces = [
-          Interface.BRIDGE,
+          Interface.BRIDGE_VHOST,
           ]
     directions = [ "rx", "tx" ]
     systems = [ "linux", "unikraft" ]
@@ -235,9 +235,9 @@ def main(measurement: Measurement, plan_only: bool = False) -> None:
     repetitions = 3
     DURATION_S = 61 if not G.BRIEF else 11
     if G.BRIEF:
-        interfaces = [ Interface.BRIDGE ]
+        interfaces = [ Interface.BRIDGE_VHOST ]
         directions = [ "rx" ]
-        systems = [ "unikraft" ]
+        systems = [ "linux" ]
         vm_nums = [ 1 ]
         # vm_nums = [ 128, 160 ]
         vnfs = [ "empty" ]

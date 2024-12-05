@@ -69,6 +69,16 @@ make sync
 
 ## Running the Benchmarks
 
+You can run the benchmarks:
+
+```
+python3 benchmark/pysrc/measure_throughput.py -c benchmark/conf/autotest_localhost.cfg -vvv
+```
+
+See `-h` for more benchmarking options. When run on other hosts than `adelaide`, the config file and `benchmark/conf/ssh_config_doctor_cluster` may need adjusting.
+
+## Running the Legacy Benchmarks
+
 To run the benchmarks, you can run the following command inside the `benchmarks` directory:
 
 ```bash
