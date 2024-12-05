@@ -75,7 +75,7 @@
             flake = false;
             url = "file+https://codeload.github.com/kohler/click/zip/a5384835a6cac10f8d44da4eeea8eaa8f8e6a0c2";
         };
-        
+
         og-click = {
             url = "git+https://github.com/kohler/click.git";
             flake = false;
@@ -148,7 +148,7 @@
                         inherit pkgs;
                         inherit unstable;
                         inherit inputs;
-                        inherit unikraftDeps;
+                        unikraftDeps = (buildDeps pkgs) ++ (unikraftDeps pkgs) ++ (prevailDeps pkgs);
                     };
 
                     guest-image = make-disk-image {
@@ -163,7 +163,7 @@
                         selfpkgs = flakepkgs;
                         inherit self;
                     };
-                    
+
                     fastclick = pkgs.callPackage ./nix/fastclick.nix {
                         linux = pkgs.linuxPackages_6_6.kernel;
                         selfpkgs = flakepkgs;
@@ -250,7 +250,7 @@
 # KRAFTKIT_NO_CHECK_UPDATES = "true";
                             }).env;
                 };
-                
+
             }
             )) // (let
                     pkgs = nixpkgs.legacyPackages.x86_64-linux;

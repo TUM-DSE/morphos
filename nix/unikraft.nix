@@ -2,7 +2,7 @@
     runMake = (pkgs.buildFHSEnv {
             name = "runMake";
             targetPkgs = pkgs: (
-                    (unikraftDeps pkgs) ++ [
+                    unikraftDeps ++ [
                     unstable.kraft
                     unstable.rustup
                     unstable.bmon
@@ -13,7 +13,7 @@
             });
 in pkgs.stdenv.mkDerivation {
     name = "unikraft";
-    src = ./.;
+    src = ../.;
     updateAutotoolsGnuConfigScriptsPhase = ''
         echo "wft is this. Skip it."
         '';
