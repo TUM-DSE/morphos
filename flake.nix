@@ -282,3 +282,4 @@
                       nixosMachines // packages // homeConfigurations;
             });
 }
+
