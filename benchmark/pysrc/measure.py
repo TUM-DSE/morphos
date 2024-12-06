@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from util import safe_cast, product_dict, randomword
 from typing import Iterator, cast, List, Dict, Callable, Tuple, Any, Self, TypeVar, Iterable, Type, Generic
-from os.path import isfile, join as path_join
+from os.path import isfile, join as path_join, basename
 import os
 from abc import ABC, abstractmethod
 from server import Host, Guest, LoadGen
@@ -135,7 +135,7 @@ class Measurement:
         return vm_boot
 
     @contextmanager
-    def unikraft_vm(self, interface: Interface, click_config: str, vm_log: str = "", run_guest_args = dict()) -> Iterator[Guest]:
+    def unikraft_vm(self, interface: Interface, click_config: str, vm_log: str = "", run_guest_args = dict(), cpio_files: List[str] = []) -> Iterator[Guest]:
         """
         Creates a unikraft-click virtual machine
         """
@@ -168,11 +168,15 @@ class Measurement:
         self.host.exec(f"sudo rm {initrd} || true")
         self.host.exec(f"mkdir -p {tmpdir}")
         self.host.write(click_config, f"{tmpdir}/config.click")
+        for cpio_file in cpio_files:
+            with open(f"{self.host.project_root}/{cpio_file}", 'rb') as file:
+                data = file.read()
+                self.host.write(data, f"{tmpdir}/{basename(cpio_file)}")
         self.host.exec(f"{self.host.project_root}/libs/unikraft/support/scripts/mkcpio {initrd} {tmpdir}")
 
         # start VM
 
-        info(f"Starting VM ({interface.value})")
+        info(f"Starting unikraft VM ({interface.value})")
         self.host.run_unikraft(
                 initrd=initrd,
                 net_type=interface,

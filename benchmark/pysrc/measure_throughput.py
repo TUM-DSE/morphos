@@ -23,7 +23,10 @@ import pandas as pd
 import traceback
 from conf import G
 
-unikraft_tx_config = """
+unikraft_interface = "0"
+
+def click_tx_config(interface: str, extra_processing: str = "") -> str:
+    return f"""
 //Default values for packet length, number of packets and amountfs of time to replay them
 define($L 60, $R 0, $S 100000);
 
@@ -41,11 +44,12 @@ define($blocking true)
 
 InfiniteSource(DATA \<0800>, LENGTH 1460, LIMIT -1, BURST 100000)
 -> UDPIPEncap($myip, 5678, $dstip, 5678)
+{extra_processing}
 -> EtherEncap(0x0800, $mymac, $dmac)
 -> ic0 :: AverageCounter()
--> ToDevice(0);
+-> ToDevice({interface});
 
-fd :: FromDevice(0) -> Print('rx') -> Discard
+fd :: FromDevice({interface}) -> Print('rx') -> Discard
 
 Script(TYPE ACTIVE,
        wait 5ms,
@@ -56,8 +60,10 @@ Script(TYPE ACTIVE,
        )
 """
 
-unikraft_rx_config = """
-FromDevice(0)
+def click_rx_config(interface: str, extra_processing: str = "") -> str:
+    return f"""
+FromDevice({interface})
+{extra_processing}
 -> ic0 :: AverageCounter()
 -> Discard;
 
@@ -69,7 +75,7 @@ Script(TYPE ACTIVE,
        wait 1s,
        goto start
        )
-"""
+    """
 
 bmon_format = "format:fmt=\$(attr:rxrate:packets)\t\$(attr:rxrate:bytes)\n"
 
@@ -82,7 +88,7 @@ class ThroughputTest(AbstractBenchTest):
     interface: str # network interface used
     size: int # packet size
     vnf: str # workload
-    system: str # linux | unikraft
+    system: str # linux | uk | ukebpf | ukebpfjit
 
     def test_infix(self):
         return f"throughput_{self.system}_{self.interface}_{self.direction}_{self.vnf}_{self.size}B"
@@ -94,8 +100,35 @@ class ThroughputTest(AbstractBenchTest):
         """
         estimate time needed to run this benchmark excluding boot time in seconds
         """
-        overheads = 35
+        overheads = 5
         return (self.repetitions * (DURATION_S + 2) ) + overheads
+
+
+    def click_config(self) -> Tuple[List[str], str]:
+        files = [] # relative to project root
+        processing = ""
+        match (self.system, self.vnf):
+            case (_, "empty"):
+                files = []
+                processing = ""
+
+            case ("linux", "filter"):
+                files = []
+                processing = "-> IPFilter(deny dst port 1234, allow all)"
+            case ("uk", "filter"):
+                files = []
+                processing = "-> IPFilter(deny dst port 1234, allow all)"
+            case ("ukebpf", "filter"):
+                files = [ "benchmark/bpfilters/target-port", "benchmark/bpfilters/target-port.sig" ]
+                processing = "-> BPFilter(ID 1, FILE target-port, SIGNATURE target-port.sig, JIT false)"
+            case ("ukebpfjit", "filter"):
+                files = [ "benchmark/bpfilters/target-port", "benchmark/bpfilters/target-port.sig" ]
+                processing = "-> BPFilter(ID 1, FILE target-port, SIGNATURE target-port.sig, JIT true)"
+
+            case _:
+                raise ValueError(f"Unknown system/vnf combination: {self.system}/{self.vnf}")
+
+        return files, processing
 
     def start_pktgen(self, guest, loadgen, host, remote_pktgen_log):
         info("Starting pktgen")
@@ -118,7 +151,9 @@ class ThroughputTest(AbstractBenchTest):
 
         click_args = { "R": 0 }
         guest.kill_click()
-        guest.start_click("benchmark/configurations/linux-tx.click", remote_click_output, script_args=click_args, dpdk=False)
+        _, element = self.click_config()
+        guest.write(click_tx_config(guest.test_iface, extra_processing=element), "/tmp/linux.click")
+        guest.start_click("/tmp/linux.click", remote_click_output, script_args=click_args, dpdk=False)
 
         info("Start measuring with bmon")
         # count packets that actually arrive, but cut first line because it is always zero
@@ -148,7 +183,9 @@ class ThroughputTest(AbstractBenchTest):
 
         click_args = {}
         guest.kill_click()
-        guest.start_click("benchmark/configurations/linux-rx.click", remote_click_output, script_args=click_args, dpdk=False)
+        _, element = self.click_config()
+        guest.write(click_rx_config(guest.test_iface, extra_processing=element), "/tmp/linux.click")
+        guest.start_click("/tmp/linux.click", remote_click_output, script_args=click_args, dpdk=False)
         # start network load
         self.start_pktgen(guest, loadgen, host, remote_pktgen_log)
 
@@ -228,7 +265,7 @@ def main(measurement: Measurement, plan_only: bool = False) -> None:
           Interface.BRIDGE_VHOST,
           ]
     directions = [ "rx", "tx" ]
-    systems = [ "linux", "unikraft" ]
+    systems = [ "linux", "uk", "ukebpfjit" ]
     vm_nums = [ 1 ]
     sizes = [ 64 ]
     vnfs = [ "empty" ]
@@ -236,11 +273,11 @@ def main(measurement: Measurement, plan_only: bool = False) -> None:
     DURATION_S = 61 if not G.BRIEF else 11
     if G.BRIEF:
         interfaces = [ Interface.BRIDGE_VHOST ]
-        directions = [ "rx" ]
-        systems = [ "linux" ]
+        directions = [ "tx" ]
+        systems = [ "ukebpfjit" ]
         vm_nums = [ 1 ]
         # vm_nums = [ 128, 160 ]
-        vnfs = [ "empty" ]
+        vnfs = [ "filter" ]
         DURATION_S = 10
         repetitions = 1
 
@@ -282,19 +319,20 @@ def main(measurement: Measurement, plan_only: bool = False) -> None:
             test = a_tests[0]
             info(f"Running {test}")
 
-            if system == "unikraft":
+            if system in [ "uk", "ukebpf", "ukebpfjit" ]:
+                files, element = test.click_config()
                 click_config = ""
                 if test.direction == "tx":
-                    click_config = unikraft_tx_config
+                    click_config = click_tx_config(unikraft_interface, extra_processing=element)
                 elif test.direction == "rx":
-                    click_config = unikraft_rx_config
+                    click_config = click_rx_config(unikraft_interface, extra_processing=element)
 
                 remote_unikraft_log_raw  = "/tmp/unikraft.log" # will be cleared sometimes
                 remote_unikraft_init_log  = f"{remote_unikraft_log_raw}.init" # contains the startup log
                 host.exec(f"sudo rm {remote_unikraft_log_raw} || true")
                 host.exec(f"sudo rm {remote_unikraft_init_log} || true")
 
-                with measurement.unikraft_vm(interface, click_config, remote_unikraft_log_raw) as guest:
+                with measurement.unikraft_vm(interface, click_config, vm_log=remote_unikraft_log_raw, cpio_files=files) as guest:
                     host.exec(f"sudo cp {remote_unikraft_log_raw} {remote_unikraft_init_log}")
 
                     for repetition in range(repetitions):

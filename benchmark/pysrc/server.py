@@ -260,13 +260,15 @@ class Server(ABC):
         else:
             return self.__exec_ssh(command)
 
-    def write(self: 'Server', content: str, path: str, verbose: bool = False) -> None:
+    def write(self: 'Server', content: str | bytes, path: str, verbose: bool = False) -> None:
         if verbose:
             debug(f'Executing command on {self.log_name()}: Writing to file {path} the following:\n{content}')
         else:
             debug(f'Executing command on {self.log_name()}: Writing to file {path}')
         # encode so we dont have to fuck aroudn with quotes (they get removed somewhere)
-        b64 = base64.b64encode(bytes(content, 'utf-8')).decode("utf-8")
+        if isinstance(content, str):
+            content = bytes(content, 'utf-8')
+        b64 = base64.b64encode(content).decode("utf-8")
         self.exec(f"echo {b64} | base64 -d > {path}", echo=False)
 
     def whoami(self: 'Server') -> str:
@@ -1138,12 +1140,11 @@ class Server(ABC):
         script_args: arguements to override click scripts define() directive variables
         """
         click_bin = f"{self.project_root}/nix/builds/click/bin/click"
-        click_program = f"{self.project_root}/{program}"
         args = ' '.join([f'{key}={value}' for key, value in script_args.items()])
         dpdk_args = ""
         if dpdk:
             dpdk_args = f'--dpdk \'-l 0\' --'
-        self.tmux_new('click', f'{click_bin} {dpdk_args} {click_program} {args} 2>&1 | tee {outfile}; echo AUTOTEST_DONE >> {outfile}; sleep 999');
+        self.tmux_new('click', f'{click_bin} {dpdk_args} {program} {args} 2>&1 | tee {outfile}; echo AUTOTEST_DONE >> {outfile}; sleep 999');
 
 
     def stop_click(self):
