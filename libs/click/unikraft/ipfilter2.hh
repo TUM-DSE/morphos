@@ -117,7 +117,7 @@ class IPFilter2 : public Element { public:
 
     const char *class_name() const		{ return "IPFilter2"; }
     const char *port_count() const		{ return "1/-"; }
-    const char *processing() const		{ return PUSH; }
+    const char *processing() const		{ return PULL; }
     // this element does not need AlignmentInfo; override Classifier's "A" flag
     const char *flags() const			{ return ""; }
     bool can_live_reconfigure() const		{ return true; }
@@ -126,6 +126,7 @@ class IPFilter2 : public Element { public:
     void add_handlers() CLICK_COLD;
 
     void push(int port, Packet *);
+		Packet *pull(int i);
 
     typedef Classification::Wordwise::CompressedProgram IPFilter2Program;
     static void parse_program(IPFilter2Program &zprog,

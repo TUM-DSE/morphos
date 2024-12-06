@@ -96,3 +96,10 @@ build-dependencies:
   mkdir -p {{proot}}/nix/builds
   nix build .#click -o {{proot}}/nix/builds/click
   nix build .#linux-pktgen -o {{proot}}/nix/builds/linux-pktgen
+
+build-click-og:
+  nix develop --unpack .#click
+  mv source libs/click-og
+  cd libs/click-og && nix develop .#click --command bash -c 'eval "$postPatch"'
+  cd libs/click-og && nix develop .#click --command bash -c './configure'
+  cd libs/click-og && nix develop .#click --command bash -c 'make -j$(nproc)'

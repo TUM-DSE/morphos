@@ -90,7 +90,7 @@ IPFilter2::lookup(String word, int type, int proto, uint32_t &data,
 {
     // type queries always win if they occur
     if (type == 0 || type == TYPE_TYPE)
-	if (NameInfo::query(NameInfo::T_IPFILTER2_TYPE, context, word, &data, sizeof(uint32_t)))
+	if (NameInfo::query(NameInfo::T_IPFILTER_TYPE, context, word, &data, sizeof(uint32_t)))
 	    return (data == TYPE_SYNTAX ? -1 : TYPE_TYPE);
 
     // query each relevant database
@@ -148,7 +148,7 @@ static NameDB *dbs[2];
 void
 IPFilter2::static_initialize()
 {
-    dbs[0] = new StaticNameDB(NameInfo::T_IPFILTER2_TYPE, String(), type_entries, sizeof(type_entries) / sizeof(type_entries[0]));
+    dbs[0] = new StaticNameDB(NameInfo::T_IPFILTER_TYPE, String(), type_entries, sizeof(type_entries) / sizeof(type_entries[0]));
     dbs[1] = new StaticNameDB(NameInfo::T_TCP_OPT, String(), tcp_opt_entries, sizeof(tcp_opt_entries) / sizeof(tcp_opt_entries[0]));
     NameInfo::installdb(dbs[0], 0);
     NameInfo::installdb(dbs[1], 0);
@@ -1390,6 +1390,19 @@ void
 IPFilter2::push(int, Packet *p)
 {
     checked_output_push(match(_zprog, p), p);
+}
+
+Packet *IPFilter2::pull(int i) {
+    Packet* p = checked_input_pull(0);
+    if (match(_zprog, p) == i) {
+        return p;
+    } else {
+        // all packets that are not for the pulling element are dropped.
+        // This is fine, because we only use it as a filter with a single output.
+        // (we don't actully support pull)
+        p->kill();
+        return 0;
+    }
 }
 
 CLICK_ENDDECLS

@@ -19,6 +19,7 @@ libs/libunwind/
 libs/musl/
 libs/openssl/
 libs/unikraft/
+libs/click-og/
 
 VMs/
 out*/
