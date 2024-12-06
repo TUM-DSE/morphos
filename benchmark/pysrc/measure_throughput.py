@@ -151,21 +151,24 @@ class ThroughputTest(AbstractBenchTest):
         if self.direction == "rx" and self.vnf == "filter":
             processing += rx_ip_check
 
-        match (self.system, self.vnf):
-            case (_, "empty"):
+        match (self.system, self.vnf, self.direction):
+            case (_, "empty", _):
                 files = []
                 processing += ""
 
-            case ("linux", "filter"):
+            case ("linux", "filter", "rx"):
                 files = []
                 processing += "-> IPFilter(deny dst port 1234, allow all)" # push/pull mismatch for tx
-            case ("uk", "filter"):
+            case ("linux", "filter", "tx"):
+                files = []
+                processing += "-> IPFilter2(deny dst port 1234, allow all)" # push/pull mismatch for tx
+            case ("uk", "filter", _):
                 files = []
                 processing += "-> IPFilter(deny dst port 1234, allow all)"
-            case ("ukebpf", "filter"):
+            case ("ukebpf", "filter", _):
                 files = [ "benchmark/bpfilters/target-port", "benchmark/bpfilters/target-port.sig" ]
                 processing += "-> BPFilter(ID 1, FILE target-port, SIGNATURE target-port.sig, JIT false)"
-            case ("ukebpfjit", "filter"):
+            case ("ukebpfjit", "filter", _):
                 files = [ "benchmark/bpfilters/target-port", "benchmark/bpfilters/target-port.sig" ]
                 processing += "-> BPFilter(ID 1, FILE target-port, SIGNATURE target-port.sig, JIT true)"
 
@@ -343,7 +346,7 @@ def main(measurement: Measurement, plan_only: bool = False) -> None:
     tests = ThroughputTest.list_tests(test_matrix, exclude_test=exclude)
 
 
-    args_reboot = ["interface", "num_vms", "direction", "system"]
+    args_reboot = ["interface", "num_vms", "direction", "system", "vnf"]
     info(f"ThroughputTest execution plan:")
     ThroughputTest.estimate_time2(tests, args_reboot)
 
@@ -355,7 +358,7 @@ def main(measurement: Measurement, plan_only: bool = False) -> None:
             args_reboot = args_reboot,
             brief = G.BRIEF
             ) as (bench, bench_tests):
-        for [num_vms, interface, direction, system], a_tests in bench.multi_iterator(bench_tests, ["num_vms", "interface", "direction", "system"]):
+        for [num_vms, interface, direction, system, vnf], a_tests in bench.multi_iterator(bench_tests, ["num_vms", "interface", "direction", "system", "vnf"]):
             interface = Interface(interface)
             info("Booting VM for this test matrix:")
             info(ThroughputTest.test_matrix_string(a_tests))
