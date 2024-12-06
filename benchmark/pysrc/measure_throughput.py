@@ -112,7 +112,7 @@ class ThroughputTest(AbstractBenchTest):
                 lines = f.readlines()
             lines = [ line for line in lines if "Rx rate: " in line ]
             # pps values
-            values = [ int(line.split("Rx rate: ")[1].strip()) for line in lines ]
+            values = [ float(line.split("Rx rate: ")[1].strip()) for line in lines ]
             values = values[4:] # remove first 4 values, they are not stable
 
         elif self.direction == "tx":
@@ -139,23 +139,35 @@ class ThroughputTest(AbstractBenchTest):
     def click_config(self) -> Tuple[List[str], str]:
         files = [] # relative to project root
         processing = ""
+
+        rx_ip_check = """
+            // stripping only makes sense, once we've looked at the ethernet header
+            -> Classifier(12/0800)
+            // check ip header doesn't want ethernet header
+            -> Strip(14)
+            // some elements like IPFilter segfault with some packets if we don't check them
+            -> CheckIPHeader
+        """
+        if self.direction == "rx" and self.vnf == "filter":
+            processing += rx_ip_check
+
         match (self.system, self.vnf):
             case (_, "empty"):
                 files = []
-                processing = ""
+                processing += ""
 
             case ("linux", "filter"):
                 files = []
-                processing = "-> IPFilter(deny dst port 1234, allow all)"
+                processing += "-> IPFilter(deny dst port 1234, allow all)" # push/pull mismatch for tx
             case ("uk", "filter"):
                 files = []
-                processing = "-> IPFilter(deny dst port 1234, allow all)"
+                processing += "-> IPFilter(deny dst port 1234, allow all)"
             case ("ukebpf", "filter"):
                 files = [ "benchmark/bpfilters/target-port", "benchmark/bpfilters/target-port.sig" ]
-                processing = "-> BPFilter(ID 1, FILE target-port, SIGNATURE target-port.sig, JIT false)"
+                processing += "-> BPFilter(ID 1, FILE target-port, SIGNATURE target-port.sig, JIT false)"
             case ("ukebpfjit", "filter"):
                 files = [ "benchmark/bpfilters/target-port", "benchmark/bpfilters/target-port.sig" ]
-                processing = "-> BPFilter(ID 1, FILE target-port, SIGNATURE target-port.sig, JIT true)"
+                processing += "-> BPFilter(ID 1, FILE target-port, SIGNATURE target-port.sig, JIT true)"
 
             case _:
                 raise ValueError(f"Unknown system/vnf combination: {self.system}/{self.vnf}")
@@ -300,13 +312,14 @@ def main(measurement: Measurement, plan_only: bool = False) -> None:
     systems = [ "linux", "uk", "ukebpfjit" ]
     vm_nums = [ 1 ]
     sizes = [ 64 ]
-    vnfs = [ "empty" ]
+    vnfs = [ "empty", "filter" ]
     repetitions = 3
     DURATION_S = 61 if not G.BRIEF else 11
     if G.BRIEF:
         interfaces = [ Interface.BRIDGE_VHOST ]
         directions = [ "tx" ]
-        systems = [ "ukebpfjit" ]
+        # systems = [ "linux", "uk", "ukebpfjit" ]
+        systems = [ "linux" ]
         vm_nums = [ 1 ]
         # vm_nums = [ 128, 160 ]
         vnfs = [ "filter" ]
