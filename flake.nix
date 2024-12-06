@@ -180,6 +180,13 @@
                         inherit (flakepkgs) linux-firmware-pinned;
                     };
 
+                    dpdk24 = pkgs.callPackage ./nix/dpdk24.nix {
+                        kernel = pkgs.linuxPackages_6_6.kernel;
+                        inherit (flakepkgs) linux-firmware-pinned;
+                    };
+
+                    vpp = unstable.vpp.override { dpdk = flakepkgs.dpdk24; };
+
                     linux-pktgen = pkgs.callPackage ./nix/linux-pktgen.nix {
                         kernel = pkgs.linuxPackages_6_6.kernel;
                     };
