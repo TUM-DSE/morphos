@@ -104,6 +104,38 @@ class ThroughputTest(AbstractBenchTest):
         return (self.repetitions * (DURATION_S + 2) ) + overheads
 
 
+    def parse_results(self, repetition: int) -> DataFrame:
+        values = []
+        if self.direction == "rx":
+            # parse click log
+            with open(self.output_filepath(repetition), 'r') as f:
+                lines = f.readlines()
+            lines = [ line for line in lines if "Rx rate: " in line ]
+            # pps values
+            values = [ int(line.split("Rx rate: ")[1].strip()) for line in lines ]
+            values = values[4:] # remove first 4 values, they are not stable
+
+        elif self.direction == "tx":
+            # parse click log
+            with open(self.output_filepath(repetition), 'r') as f:
+                lines = f.readlines()
+            # pps values
+            values = [ float(line.split("\t")[0].strip()) for line in lines ]
+            values = values[4:] # remove first 4 values, they are not stable
+
+        else:
+            raise ValueError(f"Unknown direction: {self.direction}")
+
+        data = []
+        for value in values:
+            data += [{
+                **asdict(self), # put selfs member variables and values into this dict
+                "repetition": repetition,
+                "pps": value,
+            }]
+        return DataFrame(data=data)
+
+
     def click_config(self) -> Tuple[List[str], str]:
         files = [] # relative to project root
         processing = ""
@@ -359,6 +391,29 @@ def main(measurement: Measurement, plan_only: bool = False) -> None:
 
 
             bench.done(test)
+
+    # parse all results
+    all_dfs = []
+    for test in tests:
+        for repetition in range(test.repetitions):
+            local_csv_file = test.output_filepath(repetition, "csv")
+            with open(local_csv_file, 'w') as file:
+                try:
+                    df = test.parse_results(repetition)
+                    raw_data = df.to_csv()
+                    all_dfs += [ df ]
+                except Exception as e:
+                    raw_data = str(e)
+                file.write(raw_data)
+
+    # summarize results
+    all_data = pd.concat(all_dfs)
+    del all_data["repetition"]
+    all_data['mpps'] = all_data['pps'].apply(lambda pps: pps / 1_000_000)
+    del all_data["pps"]
+    df = all_data.groupby([ col for col in all_data.columns if col != "mpps" ]).describe()
+    with open(path_join(G.OUT_DIR, f"throughput_summary.log"), 'w') as file:
+        file.write(df.to_string())
 
 
 if __name__ == "__main__":
