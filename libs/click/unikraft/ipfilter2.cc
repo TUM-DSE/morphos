@@ -32,30 +32,30 @@
 CLICK_DECLS
 
 static const StaticNameDB::Entry type_entries[] = {
-    { "ce", IPFilter::TYPE_IPCE },
-    { "dest", IPFilter::TYPE_SYNTAX },
-    { "dscp", IPFilter::FIELD_DSCP },
-    { "dst", IPFilter::TYPE_SYNTAX },
-    { "ect", IPFilter::TYPE_IPECT },
-    { "ether", IPFilter::TYPE_SYNTAX },
-    { "frag", IPFilter::TYPE_IPFRAG },
-    { "hl", IPFilter::FIELD_HL },
-    { "host", IPFilter::TYPE_HOST },
-    { "id", IPFilter::FIELD_ID },
-    { "ip", IPFilter::TYPE_SYNTAX },
-    { "len", IPFilter::FIELD_IPLEN },
-    { "net", IPFilter::TYPE_NET },
-    { "not", IPFilter::TYPE_SYNTAX },
-    { "opt", IPFilter::TYPE_TCPOPT },
-    { "port", IPFilter::TYPE_PORT },
-    { "proto", IPFilter::TYPE_PROTO },
-    { "src", IPFilter::TYPE_SYNTAX },
-    { "tos", IPFilter::FIELD_TOS },
-    { "ttl", IPFilter::FIELD_TTL },
-    { "type", IPFilter::FIELD_ICMP_TYPE },
-    { "unfrag", IPFilter::TYPE_IPUNFRAG },
-    { "vers", IPFilter::FIELD_VERSION },
-    { "win", IPFilter::FIELD_TCP_WIN }
+    { "ce", IPFilter2::TYPE_IPCE },
+    { "dest", IPFilter2::TYPE_SYNTAX },
+    { "dscp", IPFilter2::FIELD_DSCP },
+    { "dst", IPFilter2::TYPE_SYNTAX },
+    { "ect", IPFilter2::TYPE_IPECT },
+    { "ether", IPFilter2::TYPE_SYNTAX },
+    { "frag", IPFilter2::TYPE_IPFRAG },
+    { "hl", IPFilter2::FIELD_HL },
+    { "host", IPFilter2::TYPE_HOST },
+    { "id", IPFilter2::FIELD_ID },
+    { "ip", IPFilter2::TYPE_SYNTAX },
+    { "len", IPFilter2::FIELD_IPLEN },
+    { "net", IPFilter2::TYPE_NET },
+    { "not", IPFilter2::TYPE_SYNTAX },
+    { "opt", IPFilter2::TYPE_TCPOPT },
+    { "port", IPFilter2::TYPE_PORT },
+    { "proto", IPFilter2::TYPE_PROTO },
+    { "src", IPFilter2::TYPE_SYNTAX },
+    { "tos", IPFilter2::FIELD_TOS },
+    { "ttl", IPFilter2::FIELD_TTL },
+    { "type", IPFilter2::FIELD_ICMP_TYPE },
+    { "unfrag", IPFilter2::TYPE_IPUNFRAG },
+    { "vers", IPFilter2::FIELD_VERSION },
+    { "win", IPFilter2::FIELD_TCP_WIN }
 };
 
 static const StaticNameDB::Entry tcp_opt_entries[] = {
@@ -68,15 +68,15 @@ static const StaticNameDB::Entry tcp_opt_entries[] = {
 };
 
 static const uint32_t db2type[] = {
-    IPFilter::TYPE_PROTO, IPFilter::TYPE_PORT, IPFilter::TYPE_PORT,
-    IPFilter::TYPE_TCPOPT, IPFilter::FIELD_ICMP_TYPE
+    IPFilter2::TYPE_PROTO, IPFilter2::TYPE_PORT, IPFilter2::TYPE_PORT,
+    IPFilter2::TYPE_TCPOPT, IPFilter2::FIELD_ICMP_TYPE
 };
 
 static String
 unparse_word(int type, int proto, const String &word)
 {
-    String tn = IPFilter::Primitive::unparse_type(0, type);
-    String tr = IPFilter::Primitive::unparse_transp_proto(proto);
+    String tn = IPFilter2::Primitive::unparse_type(0, type);
+    String tr = IPFilter2::Primitive::unparse_transp_proto(proto);
     if (tn)
 	tn += " ";
     if (tr || (word && tn))
@@ -85,12 +85,12 @@ unparse_word(int type, int proto, const String &word)
 }
 
 int
-IPFilter::lookup(String word, int type, int proto, uint32_t &data,
+IPFilter2::lookup(String word, int type, int proto, uint32_t &data,
 		 const Element *context, ErrorHandler *errh)
 {
     // type queries always win if they occur
     if (type == 0 || type == TYPE_TYPE)
-	if (NameInfo::query(NameInfo::T_IPFILTER_TYPE, context, word, &data, sizeof(uint32_t)))
+	if (NameInfo::query(NameInfo::T_IPFILTER2_TYPE, context, word, &data, sizeof(uint32_t)))
 	    return (data == TYPE_SYNTAX ? -1 : TYPE_TYPE);
 
     // query each relevant database
@@ -146,27 +146,27 @@ IPFilter::lookup(String word, int type, int proto, uint32_t &data,
 static NameDB *dbs[2];
 
 void
-IPFilter::static_initialize()
+IPFilter2::static_initialize()
 {
-    dbs[0] = new StaticNameDB(NameInfo::T_IPFILTER_TYPE, String(), type_entries, sizeof(type_entries) / sizeof(type_entries[0]));
+    dbs[0] = new StaticNameDB(NameInfo::T_IPFILTER2_TYPE, String(), type_entries, sizeof(type_entries) / sizeof(type_entries[0]));
     dbs[1] = new StaticNameDB(NameInfo::T_TCP_OPT, String(), tcp_opt_entries, sizeof(tcp_opt_entries) / sizeof(tcp_opt_entries[0]));
     NameInfo::installdb(dbs[0], 0);
     NameInfo::installdb(dbs[1], 0);
 }
 
 void
-IPFilter::static_cleanup()
+IPFilter2::static_cleanup()
 {
     delete dbs[0];
     delete dbs[1];
 }
 
 
-IPFilter::IPFilter()
+IPFilter2::IPFilter2()
 {
 }
 
-IPFilter::~IPFilter()
+IPFilter2::~IPFilter2()
 {
 }
 
@@ -175,7 +175,7 @@ IPFilter::~IPFilter()
 //
 
 void
-IPFilter::Primitive::clear()
+IPFilter2::Primitive::clear()
 {
   _type = _srcdst = 0;
   _transp_proto = UNKNOWN;
@@ -185,7 +185,7 @@ IPFilter::Primitive::clear()
 }
 
 void
-IPFilter::Primitive::set_type(int x, ErrorHandler *errh)
+IPFilter2::Primitive::set_type(int x, ErrorHandler *errh)
 {
   if (_type)
     errh->error("type specified twice");
@@ -193,7 +193,7 @@ IPFilter::Primitive::set_type(int x, ErrorHandler *errh)
 }
 
 void
-IPFilter::Primitive::set_srcdst(int x, ErrorHandler *errh)
+IPFilter2::Primitive::set_srcdst(int x, ErrorHandler *errh)
 {
   if (_srcdst)
     errh->error("%<src%> or %<dst%> specified twice");
@@ -201,7 +201,7 @@ IPFilter::Primitive::set_srcdst(int x, ErrorHandler *errh)
 }
 
 void
-IPFilter::Primitive::set_transp_proto(int x, ErrorHandler *errh)
+IPFilter2::Primitive::set_transp_proto(int x, ErrorHandler *errh)
 {
   if (_transp_proto != UNKNOWN && _transp_proto != x)
     errh->error("transport protocol specified twice");
@@ -209,7 +209,7 @@ IPFilter::Primitive::set_transp_proto(int x, ErrorHandler *errh)
 }
 
 int
-IPFilter::Primitive::set_mask(uint32_t full_mask, int shift, uint32_t provided_mask, ErrorHandler *errh)
+IPFilter2::Primitive::set_mask(uint32_t full_mask, int shift, uint32_t provided_mask, ErrorHandler *errh)
 {
     uint32_t data = _u.u;
     uint32_t this_mask = (provided_mask ? provided_mask : full_mask);
@@ -259,7 +259,7 @@ IPFilter::Primitive::set_mask(uint32_t full_mask, int shift, uint32_t provided_m
 }
 
 String
-IPFilter::Primitive::unparse_type(int srcdst, int type)
+IPFilter2::Primitive::unparse_type(int srcdst, int type)
 {
   StringAccum sa;
 
@@ -311,7 +311,7 @@ IPFilter::Primitive::unparse_type(int srcdst, int type)
 }
 
 String
-IPFilter::Primitive::unparse_transp_proto(int transp_proto)
+IPFilter2::Primitive::unparse_transp_proto(int transp_proto)
 {
   switch (transp_proto) {
    case UNKNOWN: return "";
@@ -327,13 +327,13 @@ IPFilter::Primitive::unparse_transp_proto(int transp_proto)
 }
 
 String
-IPFilter::Primitive::unparse_type() const
+IPFilter2::Primitive::unparse_type() const
 {
   return unparse_type(_srcdst, _type);
 }
 
 String
-IPFilter::Primitive::unparse_op() const
+IPFilter2::Primitive::unparse_op() const
 {
   if (_op == OP_GT)
     return (_op_negated ? "<=" : ">");
@@ -344,7 +344,7 @@ IPFilter::Primitive::unparse_op() const
 }
 
 void
-IPFilter::Primitive::simple_negate()
+IPFilter2::Primitive::simple_negate()
 {
   assert(negation_is_simple());
   _op_negated = !_op_negated;
@@ -353,13 +353,13 @@ IPFilter::Primitive::simple_negate()
 }
 
 int
-IPFilter::Primitive::type_error(ErrorHandler *errh, const char *msg) const
+IPFilter2::Primitive::type_error(ErrorHandler *errh, const char *msg) const
 {
     return errh->error("%<%s%>: %s", unparse_type().c_str(), msg);
 }
 
 int
-IPFilter::Primitive::check(const Primitive &prev_prim, int header,
+IPFilter2::Primitive::check(const Primitive &prev_prim, int header,
 			   int mask_dt, const PrimitiveData &mask,
 			   ErrorHandler *errh)
 {
@@ -616,19 +616,19 @@ add_exprs_for_proto(int32_t proto, int32_t mask, Classification::Wordwise::Progr
 {
     if (mask == 0xFF && proto == IP_PROTO_TCP_OR_UDP) {
 	p.start_subtree(tree);
-	p.add_insn(tree, IPFilter::offset_net + 8, htonl(IP_PROTO_TCP << 16), htonl(0x00FF0000));
-	p.add_insn(tree, IPFilter::offset_net + 8, htonl(IP_PROTO_UDP << 16), htonl(0x00FF0000));
+	p.add_insn(tree, IPFilter2::offset_net + 8, htonl(IP_PROTO_TCP << 16), htonl(0x00FF0000));
+	p.add_insn(tree, IPFilter2::offset_net + 8, htonl(IP_PROTO_UDP << 16), htonl(0x00FF0000));
 	p.finish_subtree(tree, Classification::c_or);
     } else if (mask == 0xFF && proto >= 256)
 	/* nada */;
     else
-	p.add_insn(tree, IPFilter::offset_net + 8, htonl(proto << 16), htonl(mask << 16));
+	p.add_insn(tree, IPFilter2::offset_net + 8, htonl(proto << 16), htonl(mask << 16));
 }
 
 void
-IPFilter::Primitive::add_comparison_exprs(Classification::Wordwise::Program &p, Vector<int> &tree, int offset, int shift, bool swapped, bool op_negate) const
+IPFilter2::Primitive::add_comparison_exprs(Classification::Wordwise::Program &p, Vector<int> &tree, int offset, int shift, bool swapped, bool op_negate) const
 {
-  assert(_op == IPFilter::OP_EQ || _op == IPFilter::OP_GT);
+  assert(_op == IPFilter2::OP_EQ || _op == IPFilter2::OP_GT);
 
   uint32_t mask = _mask.u;
   uint32_t u = _u.u & mask;
@@ -637,7 +637,7 @@ IPFilter::Primitive::add_comparison_exprs(Classification::Wordwise::Program &p, 
     u = ntohl(u);
   }
 
-  if (_op == IPFilter::OP_EQ) {
+  if (_op == IPFilter2::OP_EQ) {
     p.add_insn(tree, offset, htonl(u << shift), htonl(mask << shift));
     if (_op_negated && op_negate)
       p.negate_subtree(tree, true);
@@ -693,7 +693,7 @@ IPFilter::Primitive::add_comparison_exprs(Classification::Wordwise::Program &p, 
 }
 
 void
-IPFilter::Primitive::compile(Classification::Wordwise::Program &p, Vector<int> &tree) const
+IPFilter2::Primitive::compile(Classification::Wordwise::Program &p, Vector<int> &tree) const
 {
   p.start_subtree(tree);
 
@@ -855,7 +855,7 @@ separate_text(const String &text, Vector<String> &words)
  */
 
 int
-IPFilter::Parser::parse_expr_iterative(int pos)
+IPFilter2::Parser::parse_expr_iterative(int pos)
 {
     Vector<parse_state> stk;
     stk.push_back(parse_state(s_expr0));
@@ -970,7 +970,7 @@ IPFilter::Parser::parse_expr_iterative(int pos)
 }
 
 static int
-parse_brackets(IPFilter::Primitive& prim, const Vector<String>& words, int pos,
+parse_brackets(IPFilter2::Primitive& prim, const Vector<String>& words, int pos,
 	       ErrorHandler* errh)
 {
   int first_pos = pos + 1;
@@ -1012,18 +1012,18 @@ parse_brackets(IPFilter::Primitive& prim, const Vector<String>& words, int pos,
       errh->error("field [%d:%d] does not fit in a single word", fieldpos/multiplier, len/multiplier);
   else {
     int transp = prim._transp_proto;
-    if (transp == IPFilter::UNKNOWN)
+    if (transp == IPFilter2::UNKNOWN)
       transp = 0;
-    prim.set_type(IPFilter::TYPE_FIELD
-		  | (transp << IPFilter::FIELD_PROTO_SHIFT)
-		  | (fieldpos << IPFilter::FIELD_OFFSET_SHIFT)
-		  | ((len - 1) << IPFilter::FIELD_LENGTH_SHIFT), errh);
+    prim.set_type(IPFilter2::TYPE_FIELD
+		  | (transp << IPFilter2::FIELD_PROTO_SHIFT)
+		  | (fieldpos << IPFilter2::FIELD_OFFSET_SHIFT)
+		  | ((len - 1) << IPFilter2::FIELD_LENGTH_SHIFT), errh);
   }
   return pos;
 }
 
 int
-IPFilter::Parser::parse_test(int pos, bool negated)
+IPFilter2::Parser::parse_test(int pos, bool negated)
 {
     if (pos >= _words.size())
 	return pos;
@@ -1208,7 +1208,7 @@ IPFilter::Parser::parse_test(int pos, bool negated)
 }
 
 void
-IPFilter::parse_program(Classification::Wordwise::CompressedProgram &zprog,
+IPFilter2::parse_program(Classification::Wordwise::CompressedProgram &zprog,
 			const Vector<String> &conf, int noutputs,
 			const Element *context, ErrorHandler *errh)
 {
@@ -1292,9 +1292,9 @@ IPFilter::parse_program(Classification::Wordwise::CompressedProgram &zprog,
 }
 
 int
-IPFilter::configure(Vector<String> &conf, ErrorHandler *errh)
+IPFilter2::configure(Vector<String> &conf, ErrorHandler *errh)
 {
-    IPFilterProgram zprog;
+    IPFilter2Program zprog;
     parse_program(zprog, conf, noutputs(), this, errh);
     if (!errh->nerrors()) {
 	_zprog = zprog;
@@ -1304,14 +1304,14 @@ IPFilter::configure(Vector<String> &conf, ErrorHandler *errh)
 }
 
 String
-IPFilter::program_string(Element *e, void *)
+IPFilter2::program_string(Element *e, void *)
 {
-    IPFilter *ipf = static_cast<IPFilter *>(e);
+    IPFilter2 *ipf = static_cast<IPFilter2 *>(e);
     return ipf->_zprog.unparse();
 }
 
 void
-IPFilter::add_handlers()
+IPFilter2::add_handlers()
 {
     add_read_handler("program", program_string);
 }
@@ -1322,7 +1322,7 @@ IPFilter::add_handlers()
 //
 
 int
-IPFilter::length_checked_match(const IPFilterProgram &zprog, const Packet *p,
+IPFilter2::length_checked_match(const IPFilter2Program &zprog, const Packet *p,
 			       int packet_length)
 {
     const unsigned char *neth_data = p->network_header();
@@ -1387,12 +1387,12 @@ IPFilter::length_checked_match(const IPFilterProgram &zprog, const Packet *p,
 }
 
 void
-IPFilter::push(int, Packet *p)
+IPFilter2::push(int, Packet *p)
 {
     checked_output_push(match(_zprog, p), p);
 }
 
 CLICK_ENDDECLS
 ELEMENT_REQUIRES(Classification)
-EXPORT_ELEMENT(IPFilter)
+EXPORT_ELEMENT(IPFilter2)
 

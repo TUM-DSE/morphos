@@ -1,5 +1,5 @@
-#ifndef CLICK_IPFILTER_HH
-#define CLICK_IPFILTER_HH
+#ifndef CLICK_IPFILTER2_HH
+#define CLICK_IPFILTER2_HH
 #include "elements/standard/classification.hh"
 #include <click/element.hh>
 CLICK_DECLS
@@ -7,7 +7,7 @@ CLICK_DECLS
 /*
 =c
 
-IPFilter(ACTION_1 PATTERN_1, ..., ACTION_N PATTERN_N)
+IPFilter2(ACTION_1 PATTERN_1, ..., ACTION_N PATTERN_N)
 
 =s ip
 
@@ -15,7 +15,7 @@ filters IP packets by contents
 
 =d
 
-Filters IP packets. IPFilter can have an arbitrary number of filters, which
+Filters IP packets. IPFilter2 can have an arbitrary number of filters, which
 are ACTION-PATTERN pairs. The ACTIONs describe what to do with packets,
 while the PATTERNs are tcpdump(1)-like patterns; see IPClassifier(n) for a
 description of their syntax. Packets are tested against the filters in
@@ -27,27 +27,27 @@ sent out on that port; 'C<allow>', which is equivalent to 'C<0>'; or 'C<drop>'
 , which means drop the packet. You can also say 'C<deny>' instead of
 'C<drop>'.
 
-The IPFilter element has an arbitrary number of outputs. Input packets must
+The IPFilter2 element has an arbitrary number of outputs. Input packets must
 have their IP header annotation set; CheckIPHeader and MarkIPHeader do
 this.
 
 =n
 
-Every IPFilter element has an equivalent corresponding IPClassifier element
+Every IPFilter2 element has an equivalent corresponding IPClassifier element
 and vice versa. Use the element whose syntax is more convenient for your
 needs.
 
 =e
 
-This large IPFilter implements the incoming packet filtering rules for the
+This large IPFilter2 implements the incoming packet filtering rules for the
 "Interior router" described on pp691-692 of I<Building Internet Firewalls,
 Second Edition> (Elizabeth D. Zwicky, Simon Cooper, and D. Brent Chapman,
 O'Reilly and Associates, 2000). The captialized words (C<INTERNALNET>,
 C<BASTION>, etc.) are addresses that have been registered with
 AddressInfo(n). The rule FTP-7 has a port range that cannot be implemented
-with IPFilter.
+with IPFilter2.
 
-  IPFilter(// Spoof-1:
+  IPFilter2(// Spoof-1:
            deny src INTERNALNET,
            // HTTP-2:
            allow src BASTION && dst INTERNALNET
@@ -97,7 +97,7 @@ with IPFilter.
            deny all);
 
 =h program read-only
-Returns a human-readable definition of the program the IPFilter element
+Returns a human-readable definition of the program the IPFilter2 element
 is using to classify packets. At each step in the program, four bytes
 of packet data are ANDed with a mask and compared against four bytes of
 classifier pattern.
@@ -107,15 +107,15 @@ classifier pattern.
 IPClassifier, Classifier, CheckIPHeader, MarkIPHeader, CheckIPHeader2,
 AddressInfo, tcpdump(1) */
 
-class IPFilter : public Element { public:
+class IPFilter2 : public Element { public:
 
-    IPFilter() CLICK_COLD;
-    ~IPFilter() CLICK_COLD;
+    IPFilter2() CLICK_COLD;
+    ~IPFilter2() CLICK_COLD;
 
     static void static_initialize();
     static void static_cleanup();
 
-    const char *class_name() const		{ return "IPFilter"; }
+    const char *class_name() const		{ return "IPFilter2"; }
     const char *port_count() const		{ return "1/-"; }
     const char *processing() const		{ return PUSH; }
     // this element does not need AlignmentInfo; override Classifier's "A" flag
@@ -127,11 +127,11 @@ class IPFilter : public Element { public:
 
     void push(int port, Packet *);
 
-    typedef Classification::Wordwise::CompressedProgram IPFilterProgram;
-    static void parse_program(IPFilterProgram &zprog,
+    typedef Classification::Wordwise::CompressedProgram IPFilter2Program;
+    static void parse_program(IPFilter2Program &zprog,
 			      const Vector<String> &conf, int noutputs,
 			      const Element *context, ErrorHandler *errh);
-    static inline int match(const IPFilterProgram &zprog, const Packet *p);
+    static inline int match(const IPFilter2Program &zprog, const Packet *p);
 
     enum {
 	TYPE_NONE	= 0,		// data types
@@ -252,7 +252,7 @@ class IPFilter : public Element { public:
 
   protected:
 
-    IPFilterProgram _zprog;
+    IPFilter2Program _zprog;
 
   private:
 
@@ -293,7 +293,7 @@ class IPFilter : public Element { public:
 	int parse_test(int pos, bool negated);
     };
 
-    static int length_checked_match(const IPFilterProgram &zprog,
+    static int length_checked_match(const IPFilter2Program &zprog,
 				    const Packet *p, int packet_length);
 
     static String program_string(Element *e, void *user_data);
@@ -302,13 +302,13 @@ class IPFilter : public Element { public:
 
 
 inline bool
-IPFilter::Primitive::has_transp_proto() const
+IPFilter2::Primitive::has_transp_proto() const
 {
     return _transp_proto >= 0;
 }
 
 inline bool
-IPFilter::Primitive::negation_is_simple() const
+IPFilter2::Primitive::negation_is_simple() const
 {
     if (_type == TYPE_PROTO)
 	return true;
@@ -319,7 +319,7 @@ IPFilter::Primitive::negation_is_simple() const
 }
 
 inline int
-IPFilter::match(const IPFilterProgram &zprog, const Packet *p)
+IPFilter2::match(const IPFilter2Program &zprog, const Packet *p)
 {
     int packet_length = p->network_length(),
 	network_header_length = p->network_header_length();
