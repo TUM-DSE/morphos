@@ -1,91 +1,60 @@
-Host vm.local
-Hostname 192.168.56.20
-User root
+Host *
 StrictHostKeyChecking=no
-IdentityFile /home/okelmann/appclick-ubpf/nix/ssh_key
 UserKnownHostsFile=/dev/null
 IdentityAgent=/dev/null
 StrictHostKeyChecking=no
 LogLevel=ERROR
+
+Host vm.local
+Hostname 192.168.56.20
+User root
 
 Host guest.vmux.local
 Hostname 192.168.56.20
 User root
-StrictHostKeyChecking=no
-IdentityFile /scratch/okelmann/vmuxIO/nix/ssh_key
-UserKnownHostsFile=/dev/null
-IdentityAgent=/dev/null
-StrictHostKeyChecking=no
-LogLevel=ERROR
+
+Host adelaide.christina
+Hostname adelaide.dos.cit.tum.de
+IdentityFile /root/.ssh/lawful_access
 
 Host rose.christina
 Hostname rose.dos.cit.tum.de
 IdentityFile /root/.ssh/lawful_access
-StrictHostKeyChecking=no
-UserKnownHostsFile=/dev/null
-IdentityAgent=/dev/null
-StrictHostKeyChecking=no
-LogLevel=ERROR
+
+Host rose.christina
+Hostname rose.dos.cit.tum.de
+IdentityFile /root/.ssh/lawful_access
 
 Host wilfred.christina
 Hostname wilfred.dos.cit.tum.de
 IdentityFile /root/.ssh/lawful_access
-StrictHostKeyChecking=no
-UserKnownHostsFile=/dev/null
-IdentityAgent=/dev/null
-StrictHostKeyChecking=no
-LogLevel=ERROR
 
 Host river.christina
 Hostname river.dos.cit.tum.de
 IdentityFile /root/.ssh/lawful_access
-StrictHostKeyChecking=no
-UserKnownHostsFile=/dev/null
-IdentityAgent=/dev/null
-LogLevel=ERROR
 
 Host amy.christina
 Hostname amy.dos.cit.tum.de
 IdentityFile /root/.ssh/lawful_access
-StrictHostKeyChecking=no
-UserKnownHostsFile=/dev/null
-IdentityAgent=/dev/null
-LogLevel=ERROR
 
 Host vm*.rose.christina
 ProxyJump rose.christina
 User root
-StrictHostKeyChecking=no
 IdentityFile /scratch/okelmann/vmuxIO/nix/ssh_key
-UserKnownHostsFile=/dev/null
-IdentityAgent=/dev/null
-LogLevel=ERROR
 
 Host vm*.amy.christina
 ProxyJump amy.christina
 User root
-StrictHostKeyChecking=no
 IdentityFile /scratch/okelmann/vmuxIO/nix/ssh_key
-UserKnownHostsFile=/dev/null
-IdentityAgent=/dev/null
-LogLevel=ERROR
 
 Host vm.river.christina
 ProxyJump river.christina
 User root
-StrictHostKeyChecking=no
 IdentityFile /scratch/okelmann/vmuxIO/nix/ssh_key
-UserKnownHostsFile=/dev/null
-IdentityAgent=/dev/null
-LogLevel=ERROR
 
 Host christina.christina
 Hostname christina.dos.cit.tum.de
 IdentityFile /root/.ssh/lawful_access
-StrictHostKeyChecking=no
-UserKnownHostsFile=/dev/null
-IdentityAgent=/dev/null
-LogLevel=ERROR
 
 
 # generate vm*.* hosts with:
