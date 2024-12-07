@@ -1,0 +1,26 @@
+From d63144399f53a642eee7293126da4461ccc24e26 Mon Sep 17 00:00:00 2001
+From: Pogobanane <aenderboy@gmx.de>
+Date: Sat, 7 Dec 2024 21:48:17 +0000
+Subject: [PATCH] virtio_net: disable irq check (so that we can recover from
+ irq loss)
+
+---
+ drivers/virtio/net/virtio_net.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/drivers/virtio/net/virtio_net.c b/drivers/virtio/net/virtio_net.c
+index abb7bb5..f9da0a4 100644
+--- a/drivers/virtio/net/virtio_net.c
++++ b/drivers/virtio/net/virtio_net.c
+@@ -620,7 +620,7 @@ static int virtio_netdev_recv(struct uk_netdev *dev,
+ 	vndev = to_virtionetdev(dev);
+ 
+ 	/* Queue interrupts have to be off when calling receive */
+-	UK_ASSERT(!(queue->intr_enabled & VTNET_INTR_EN));
++	// UK_ASSERT(!(queue->intr_enabled & VTNET_INTR_EN));
+ 
+ 	rc = virtio_netdev_rxq_dequeue(vndev, queue, pkt);
+ 	if (unlikely(rc < 0)) {
+-- 
+2.42.0
+
