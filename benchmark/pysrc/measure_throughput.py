@@ -63,7 +63,7 @@ Script(TYPE ACTIVE,
 
 def click_rx_config(interface: str, extra_processing: str = "") -> str:
     return f"""
-FromDevice({interface})
+from :: FromDevice({interface})
 {extra_processing}
 -> ic0 :: AverageCounter()
 -> Discard;
@@ -71,8 +71,9 @@ FromDevice({interface})
 Script(TYPE ACTIVE,
        wait 5ms,
        label start,
-       print "Rx rate: $(ic0.count)",
+       print "Rx rate: $(ic0.rate)",
        write ic0.reset 1,
+       write from.reset 1,
        wait 1s,
        goto start
        )

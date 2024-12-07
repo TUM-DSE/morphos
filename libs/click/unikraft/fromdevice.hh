@@ -58,6 +58,7 @@ public:
 
     int configure(Vector<String> &, ErrorHandler *);
     int initialize(ErrorHandler *);
+    void add_handlers() CLICK_COLD;
     void cleanup(CleanupStage);
 
     bool run_task(Task *);
