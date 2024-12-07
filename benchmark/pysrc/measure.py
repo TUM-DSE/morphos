@@ -157,8 +157,12 @@ class Measurement:
         debug(f"Setting up interface {interface.value}")
         setup_host_interface(self.host, interface)
 
+        # network sidecars
         if interface.needs_vmux():
             self.host.start_vmux(interface)
+        breakpoint()
+        if interface.needs_vpp():
+            self.host.start_vpp()
 
         # prepare initrd
 
@@ -195,6 +199,8 @@ class Measurement:
         self.host.kill_unikraft()
         if interface.needs_vmux():
             self.host.stop_vmux()
+        if interface.needs_vpp():
+            self.host.stop_vpp()
         self.host.cleanup_network()
         self.host.exec(f"sudo rm -r {tmpdir} || true")
         self.host.exec(f"sudo rm {initrd} || true")

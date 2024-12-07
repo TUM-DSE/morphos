@@ -1203,6 +1203,34 @@ class Server(ABC):
         self.tmux_kill("ptpclient")
 
 
+    def start_vpp(self: 'Server'):
+        self.tmux_kill('vpp')
+
+        vpp_bin = f"{self.project_root}/nix/builds/vpp/bin/vpp"
+        # escape { with {{
+        config = f"""
+        unix {{
+            cli-listen /tmp/vpp-cli
+            log /tmp/vpp.log
+            nodaemon
+        }}
+
+        dpdk {{
+            socket-mem 1024,1024
+            dev {self.test_iface_addr}
+            uio-driver vfio-pci
+        }}
+        """
+        remote_config_file = "/tmp/vpp.conf"
+        self.exec(f"sudo rm {remote_config_file} || true")
+        self.write(config, remote_config_file)
+        cmd = f"sudo {vpp_bin} -c {remote_config_file} | tee /tmp/foo.log"
+        self.tmux_new('vpp', cmd)
+
+
+    def stop_vpp(self: 'Server'):
+        self.tmux_kill('vpp')
+
 
 class BatchExec:
     """
