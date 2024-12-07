@@ -4,3 +4,6 @@
 [submodule "baseline/click"]
 	path = baseline/click
 	url = git@github.com:kohler/click.git
+[submodule "libs/unikraft"]
+	path = libs/unikraft
+	url = https://github.com/unikraft/unikraft.git
