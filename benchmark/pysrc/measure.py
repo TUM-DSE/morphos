@@ -224,11 +224,13 @@ class Measurement:
 
         self.host.detect_test_iface()
 
-        debug(f"Setting up interface {interface.value}")
+        info(f"Setting up interface {interface.value}")
         setup_host_interface(self.host, interface)
 
         if interface.needs_vmux():
             self.host.start_vmux(interface)
+        if interface.needs_vpp():
+            self.host.start_vpp()
 
         # start VM
 
@@ -250,6 +252,8 @@ class Measurement:
         self.host.kill_guest()
         if interface.needs_vmux():
             self.host.stop_vmux()
+        if interface.needs_vpp():
+            self.host.stop_vpp()
         self.host.cleanup_network()
 
 
@@ -284,11 +288,13 @@ class Measurement:
 
         if interface in unbatched_interfaces:
             # vmux taps need to be there all from the start (no batching)
-            debug(f"Setting up interface {interface.value} for {num} VMs")
+            info(f"Setting up interface {interface.value} for {num} VMs")
             setup_host_interface(self.host, interface, vm_range=range(1, num+1))
 
         if interface.needs_vmux():
             self.host.start_vmux(interface, num_vms=num)
+        if interface.needs_vpp():
+            self.host.start_vpp()
 
         # start VMs in batches of batch
         range_ = MultiHost.range(num)
@@ -301,7 +307,7 @@ class Measurement:
             info(f"Starting VM {vm_range.start}-{vm_range.stop - 1}")
 
             if interface not in unbatched_interfaces:
-                debug(f"Setting up interface {interface.value} for {num} VMs")
+                info(f"Setting up interface {interface.value} for {num} VMs")
                 setup_host_interface(self.host, interface, vm_range=vm_range)
 
             # start VM
@@ -334,6 +340,8 @@ class Measurement:
         self.host.kill_guest()
         if interface in [ Interface.VMUX_PT, Interface.VMUX_EMU ]:
             self.host.stop_vmux()
+        if interface.needs_vpp():
+            self.host.stop_vpp()
         self.host.cleanup_network()
 
 
