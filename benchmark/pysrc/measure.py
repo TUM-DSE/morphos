@@ -181,6 +181,7 @@ class Measurement:
                 initrd=initrd,
                 net_type=interface,
                 vm_log_path=vm_log,
+                qemu_build_dir=self.config.get('host', 'qemu_path', fallback=None),
                 **run_guest_args
                 )
 
@@ -230,6 +231,7 @@ class Measurement:
         self.host.run_guest(
                 net_type=interface,
                 machine_type='pc',
+                qemu_build_dir=self.config.get('host', 'qemu_path', fallback=None),
                 **run_guest_args
                 )
 
@@ -306,6 +308,7 @@ class Measurement:
                 self.host.run_guest(
                         net_type=interface,
                         machine_type='pc',
+                        qemu_build_dir=self.config.get('host', 'qemu_path', fallback=None),
                         vm_number=i
                         )
 

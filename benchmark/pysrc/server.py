@@ -1803,7 +1803,8 @@ class Host(Server):
     def run_unikraft(self: 'Host',
                      initrd: str,
                      net_type: Interface,
-                     vm_log_path: str = ''
+                     vm_log_path: str = '',
+                     qemu_build_dir: str = None,
                     ) -> None:
         vm_number = 0
         project_root = str(Path(self.project_root)) # nix wants nicely formatted paths
@@ -1813,6 +1814,8 @@ class Host(Server):
         vhost = net_type.is_vhost()
         dev_type = 'pci'
         qemu_bin_path = 'qemu-system-x86_64'
+        if qemu_build_dir:
+            qemu_bin_path = path_join(qemu_build_dir, qemu_bin_path)
         unikraft_bin = f'{project_root}/.unikraft/build/click_qemu-x86_64'
 
         nix_shell = f"nix shell --inputs-from {project_root} nixpkgs#numactl --command"

@@ -94,8 +94,9 @@ benchmark:
 
 build-dependencies:
   mkdir -p {{proot}}/nix/builds
-  nix build .#click -o {{proot}}/nix/builds/click
   nix build .#linux-pktgen -o {{proot}}/nix/builds/linux-pktgen
+  nix build --inputs-from . nixpkgs#qemu -o {{proot}}/nix/builds/qemu
+  nix build .#click -o {{proot}}/nix/builds/click
 
 build-click-og:
   nix develop --unpack .#click
