@@ -1,0 +1,26 @@
+From ed7f7811c444b0464ee57b054aa02d375e8e29b4 Mon Sep 17 00:00:00 2001
+From: Pogobanane <aenderboy@gmx.de>
+Date: Sat, 7 Dec 2024 21:57:52 +0000
+Subject: [PATCH] Router: add state variable for debugging
+
+---
+ include/click/router.hh | 3 +++
+ 1 file changed, 3 insertions(+)
+
+diff --git a/include/click/router.hh b/include/click/router.hh
+index e4eb40c..1d49e20 100644
+--- a/include/click/router.hh
++++ b/include/click/router.hh
+@@ -22,6 +22,9 @@ class NameInfo;
+ 
+ class Router { public:
+ 
++    // state variable for debugging
++    volatile unsigned long long foobar = 0;
++
+     /** @name Public Member Functions */
+     //@{
+     // MASTER
+-- 
+2.42.0
+
