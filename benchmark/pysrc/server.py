@@ -428,6 +428,10 @@ class Server(ABC):
         _ = self.exec(f'tmux -L {self.tmux_socket}' +
                       f' send-keys -t {session_name} {keys}')
 
+    def tmux_is_alive(self: 'Server', session_name: str) -> bool:
+        return self.test(f'tmux -L {self.tmux_socket}' +
+                      f' list-sessions | grep {session_name}')
+
     def __copy_local(self: 'Server', source: str, destination: str, recursive: bool = False) -> None:
         """
         Copy a file from the localhost to the server.
@@ -1215,6 +1219,7 @@ class Server(ABC):
 
         remote_config_file = "/tmp/vpp.conf"
         remote_startup_file = "/tmp/vpp.exec"
+        remote_socket = MultiHost.vhost_user_sock(0)
         vpp_bin = f"{self.project_root}/nix/builds/vpp/bin/vpp"
         pnic_interface = "pNIC0"
         vhost_user_interface = "VirtualEthernet0/0/0"
@@ -1237,7 +1242,7 @@ class Server(ABC):
         }}
         """
         startup_exec = f"""
-            create vhost-user socket {MultiHost.vhost_user_sock(0)}
+            create vhost-user socket {remote_socket}
             set int state {pnic_interface} up
             set int state {vhost_user_interface} up
             set int l2 xconnect {pnic_interface} {vhost_user_interface}
@@ -1248,6 +1253,12 @@ class Server(ABC):
         self.exec(f"sudo rm {remote_startup_file} || true")
         self.write(config, remote_config_file)
         self.write(startup_exec, remote_startup_file)
+
+        # sockets have to pre-exist.
+        self.exec(f"sudo rm {remote_socket} || true")
+        self.exec(f'python -c "import socket as s; sock = s.socket(s.AF_UNIX); sock.bind(\'{remote_socket}\')"')
+
+        # start vpp
         cmd = f"sudo {vpp_bin} -c {remote_config_file} | tee /tmp/foo.log"
         self.tmux_new('vpp', cmd)
 

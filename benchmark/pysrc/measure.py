@@ -154,7 +154,7 @@ class Measurement:
 
         self.host.detect_test_iface()
 
-        debug(f"Setting up interface {interface.value}")
+        info(f"Setting up interface {interface.value}")
         setup_host_interface(self.host, interface)
 
         # network sidecars

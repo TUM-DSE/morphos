@@ -24,8 +24,9 @@ import traceback
 from conf import G
 
 unikraft_interface = "0"
+safe_vpp_warmup = False # without we rarely get excessive standard deviations
 
-def click_tx_config(interface: str, dst_mac: str = "90:e2:ba:c3:76:6e", extra_processing: str = "") -> str:
+def click_tx_config(interface: str, size: int = 1460, dst_mac: str = "90:e2:ba:c3:76:6e", extra_processing: str = "") -> str:
     return f"""
 //Default values for packet length, number of packets and amountfs of time to replay them
 define($L 60, $R 0, $S 100000);
@@ -42,7 +43,7 @@ define($verbose 3)
 define($blocking true)
 
 
-InfiniteSource(DATA \<0800>, LENGTH 1460, LIMIT -1, BURST 100000)
+InfiniteSource(DATA \<0800>, LENGTH {size}, LIMIT -1, BURST 100000)
 -> UDPIPEncap($myip, 5678, $dstip, 5678)
 {extra_processing}
 -> EtherEncap(0x0800, $mymac, $dmac)
@@ -105,6 +106,10 @@ class ThroughputTest(AbstractBenchTest):
 
 
     def parse_results(self, repetition: int) -> DataFrame:
+        warmup = 4 # how many seconds to skip at the beginning
+        if safe_vpp_warmup and Interface(self.interface).needs_vpp():
+            warmup = 10 # vpp implements active queue management which delays packet bursts
+
         values = []
         if self.direction == "rx":
             # parse click log
@@ -113,7 +118,7 @@ class ThroughputTest(AbstractBenchTest):
             lines = [ line for line in lines if "Rx rate: " in line ]
             # pps values
             values = [ float(line.split("Rx rate: ")[1].strip()) for line in lines ]
-            values = values[4:] # remove first 4 values, they are not stable
+            values = values[warmup:]
 
         elif self.direction == "tx":
             # parse click log
@@ -121,7 +126,7 @@ class ThroughputTest(AbstractBenchTest):
                 lines = f.readlines()
             # pps values
             values = [ float(line.split("\t")[0].strip()) for line in lines ]
-            values = values[4:] # remove first 4 values, they are not stable
+            values = values[warmup:]
 
         else:
             raise ValueError(f"Unknown direction: {self.direction}")
@@ -179,10 +184,34 @@ class ThroughputTest(AbstractBenchTest):
 
     def start_pktgen(self, guest, loadgen, host, remote_pktgen_log):
         info("Starting pktgen")
+
+        batch = 32
+        threads = 2
+
+        # when doing localhost measurements, pktgen attaches to virtual devices.
+        # They don't support batching and likely only have 1 queue (thread support).
+        # Therefore, we enable fast pktgen only for non-localhost measurements.
+        if host.fqdn == "localhost":
+            batch = 1
+            threads = 1
+
         pktgen_cmd = f"{loadgen.project_root}/nix/builds/linux-pktgen/bin/pktgen_sample03_burst_single_flow" + \
-            f" -i {host.test_bridge} -s {self.size} -d {guest.test_iface_ip_net} -m {guest.test_iface_mac} -b 1 | tee {remote_pktgen_log}; sleep 10";
+            f" -i {loadgen.test_iface} -s {self.size} -d {guest.test_iface_ip_net} -m {guest.test_iface_mac} -b {batch} -t {threads} | tee {remote_pktgen_log}";
         loadgen.tmux_kill("pktgen")
-        loadgen.tmux_new("pktgen", pktgen_cmd)
+
+        # sometimes, pktgen returns immediately with 0 packets sent
+        # i believe this happens, when the link is not ready due to peer reset
+        for i in range(5):
+            if i >= 4:
+                raise Exception("Failed to start pktgen")
+
+            # start pktgen
+            loadgen.tmux_new("pktgen", pktgen_cmd)
+
+            time.sleep(1)
+            if loadgen.tmux_is_alive("pktgen"):
+                break
+            debug("Pktgen exited immediately, restarting")
 
     def stop_pktgen(self, loadgen):
         loadgen.exec("sudo pkill -SIGINT pktgen")
@@ -199,7 +228,8 @@ class ThroughputTest(AbstractBenchTest):
         click_args = { "R": 0 }
         guest.kill_click()
         _, element = self.click_config()
-        guest.write(click_tx_config(guest.test_iface, dst_mac=loadgen.test_iface_mac, extra_processing=element), "/tmp/linux.click")
+        config = click_tx_config(guest.test_iface, size=self.size, dst_mac=loadgen.test_iface_mac, extra_processing=element)
+        guest.write(config, "/tmp/linux.click")
         guest.start_click("/tmp/linux.click", remote_click_output, script_args=click_args, dpdk=False)
 
         info("Start measuring with bmon")
@@ -309,26 +339,29 @@ def main(measurement: Measurement, plan_only: bool = False) -> None:
 
     # set up test plan
     interfaces = [
-          Interface.BRIDGE_VHOST,
+          Interface.VPP,
+          # Interface.BRIDGE_VHOST,
           ]
     directions = [ "rx", "tx" ]
     systems = [ "linux", "uk", "ukebpfjit" ]
     vm_nums = [ 1 ]
     sizes = [ 64 ]
     vnfs = [ "empty", "filter" ]
-    repetitions = 3
-    DURATION_S = 61 if not G.BRIEF else 11
+    repetitions = 1
+    DURATION_S = 15 # 71 if not G.BRIEF else 15
+    if safe_vpp_warmup:
+        DURATION_S = max(30, DURATION_S)
     if G.BRIEF:
         # interfaces = [ Interface.BRIDGE ]
         # interfaces = [ Interface.BRIDGE_VHOST ]
         interfaces = [ Interface.VPP ]
-        directions = [ "tx" ]
+        # interfaces = [ Interface.BRIDGE_VHOST, Interface.VPP ]
+        directions = [ "rx" ]
         # systems = [ "linux", "uk", "ukebpfjit" ]
         systems = [ "uk" ]
         vm_nums = [ 1 ]
         # vm_nums = [ 128, 160 ]
-        vnfs = [ "filter" ]
-        DURATION_S = 10
+        vnfs = [ "empty" ]
         repetitions = 1
 
     def exclude(test):
@@ -373,7 +406,7 @@ def main(measurement: Measurement, plan_only: bool = False) -> None:
                 files, element = test.click_config()
                 click_config = ""
                 if test.direction == "tx":
-                    click_config = click_tx_config(unikraft_interface, dst_mac=loadgen.test_iface_mac, extra_processing=element)
+                    click_config = click_tx_config(unikraft_interface, size=test.size, dst_mac=loadgen.test_iface_mac, extra_processing=element)
                 elif test.direction == "rx":
                     click_config = click_rx_config(unikraft_interface, extra_processing=element)
 
@@ -382,15 +415,15 @@ def main(measurement: Measurement, plan_only: bool = False) -> None:
                 host.exec(f"sudo rm {remote_unikraft_log_raw} || true")
                 host.exec(f"sudo rm {remote_unikraft_init_log} || true")
 
-                with measurement.unikraft_vm(interface, click_config, vm_log=remote_unikraft_log_raw, cpio_files=files) as guest:
-                    host.exec(f"sudo cp {remote_unikraft_log_raw} {remote_unikraft_init_log}")
+                for repetition in range(repetitions): # restarting click for each repetition means restarting unikraft
+                    with measurement.unikraft_vm(interface, click_config, vm_log=remote_unikraft_log_raw, cpio_files=files) as guest:
+                        host.exec(f"sudo cp {remote_unikraft_log_raw} {remote_unikraft_init_log}")
 
-                    for repetition in range(repetitions):
                         if test.direction == "tx":
                             test.run_unikraft_tx(repetition, guest, loadgen, host, remote_unikraft_log_raw)
                         elif test.direction == "rx":
                             test.run_unikraft_rx(repetition, guest, loadgen, host, remote_unikraft_log_raw)
-                # end VM
+                    # end VM
 
             elif system == "linux":
                 # boot VMs
@@ -422,6 +455,7 @@ def main(measurement: Measurement, plan_only: bool = False) -> None:
                     all_dfs += [ df ]
                 except Exception as e:
                     raw_data = str(e)
+                    error(f"Error parsing results of {local_csv_file}: {e}")
                 file.write(raw_data)
 
     # summarize results
