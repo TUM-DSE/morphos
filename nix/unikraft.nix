@@ -20,12 +20,19 @@ in pkgs.stdenv.mkDerivation {
     postUnpack = ''
         # srcsUnpack src_absolute destination_relative
         function srcsUnpack () {
-            mkdir -p $(dirname $sourceRoot/$2)
-            cp -r $1 $sourceRoot/$2
-            # chmod -R u+w $sourceRoot/$2
+            if [[ -d $1 ]]; then
+                mkdir -p $sourceRoot/$2
+                cp -r $1/* $sourceRoot/$2
+            else
+                mkdir -p $(dirname $sourceRoot/$2)
+                cp -r $1 $sourceRoot/$2
+            fi
+            chmod -R u+w $sourceRoot/$2
         }
+
         srcsUnpack ${inputs.unikraft} libs/unikraft
-        pushd libs/unikraft
+        pushd $sourceRoot/libs/unikraft
+        echo Patching $(pwd)
         patch -p1 < ../../nix/unikraft.disable-assert.patch
         popd
 
