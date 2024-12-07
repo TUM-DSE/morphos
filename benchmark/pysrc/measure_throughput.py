@@ -25,14 +25,14 @@ from conf import G
 
 unikraft_interface = "0"
 
-def click_tx_config(interface: str, extra_processing: str = "") -> str:
+def click_tx_config(interface: str, dst_mac: str = "90:e2:ba:c3:76:6e", extra_processing: str = "") -> str:
     return f"""
 //Default values for packet length, number of packets and amountfs of time to replay them
 define($L 60, $R 0, $S 100000);
 
 //You do not need to change these to the real ones, just have the dmac match the receiver's one
 define($mymac 90:e2:ba:c3:79:66)
-define($dmac 90:e2:ba:c3:76:6e)
+define($dmac {dst_mac})
 //Ip are just for a convenient payload as this is l2
 define($myip 192.168.130.13)
 define($dstip 192.168.128.13)
@@ -199,12 +199,12 @@ class ThroughputTest(AbstractBenchTest):
         click_args = { "R": 0 }
         guest.kill_click()
         _, element = self.click_config()
-        guest.write(click_tx_config(guest.test_iface, extra_processing=element), "/tmp/linux.click")
+        guest.write(click_tx_config(guest.test_iface, dst_mac=loadgen.test_iface_mac, extra_processing=element), "/tmp/linux.click")
         guest.start_click("/tmp/linux.click", remote_click_output, script_args=click_args, dpdk=False)
 
         info("Start measuring with bmon")
         # count packets that actually arrive, but cut first line because it is always zero
-        monitor_cmd = f"bmon -p {host.test_tap} -o '{bmon_format}' | tee {remote_monitor_file}"
+        monitor_cmd = f"bmon -p {loadgen.test_iface} -o '{bmon_format}' | tee {remote_monitor_file}"
         loadgen.tmux_kill("monitor")
         loadgen.tmux_new("monitor", monitor_cmd)
 
@@ -261,7 +261,7 @@ class ThroughputTest(AbstractBenchTest):
         host.exec(f"sudo truncate -s 0 {remote_unikraft_log_raw}")
 
         info("Start measuring with bmon")
-        monitor_cmd = f"bmon -p {host.test_tap} -o '{bmon_format}' | tee {remote_monitor_file}"
+        monitor_cmd = f"bmon -p {loadgen.test_iface} -o '{bmon_format}' | tee {remote_monitor_file}"
         loadgen.tmux_kill("monitor")
         loadgen.tmux_new("monitor", monitor_cmd)
 
@@ -322,7 +322,7 @@ def main(measurement: Measurement, plan_only: bool = False) -> None:
         interfaces = [ Interface.BRIDGE_VHOST ]
         directions = [ "tx" ]
         # systems = [ "linux", "uk", "ukebpfjit" ]
-        systems = [ "linux" ]
+        systems = [ "uk" ]
         vm_nums = [ 1 ]
         # vm_nums = [ 128, 160 ]
         vnfs = [ "filter" ]
@@ -371,7 +371,7 @@ def main(measurement: Measurement, plan_only: bool = False) -> None:
                 files, element = test.click_config()
                 click_config = ""
                 if test.direction == "tx":
-                    click_config = click_tx_config(unikraft_interface, extra_processing=element)
+                    click_config = click_tx_config(unikraft_interface, dst_mac=loadgen.test_iface_mac, extra_processing=element)
                 elif test.direction == "rx":
                     click_config = click_rx_config(unikraft_interface, extra_processing=element)
 
