@@ -215,17 +215,15 @@ class Server(ABC):
         exec : Execute command on the server.
         __exec_local : Execute a command on the localhost.
         """
-        options = ""
-        if self.ssh_config is not None:
-            options = f" -F {self.ssh_config}"
-
-        sudo = ""
+        argv = []
         if self.ssh_as_root == True:
-            sudo = "sudo "
+            argv += ["sudo"]
+        argv += ["ssh"]
+        if self.ssh_config is not None:
+            argv += ["-F", f"{self.ssh_config}"]
+        argv += [self.fqdn, command]
 
-        return check_output(f"{sudo}ssh{options} {self.fqdn} '{command}'"
-                            # + " 2>&1 | tee /tmp/foo"
-                            , stderr=STDOUT, shell=True).decode('utf-8')
+        return check_output(argv, stderr=STDOUT).decode('utf-8')
 
     def exec(self: 'Server', command: str, echo: bool = True) -> str:
         """
