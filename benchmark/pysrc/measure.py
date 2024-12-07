@@ -160,7 +160,6 @@ class Measurement:
         # network sidecars
         if interface.needs_vmux():
             self.host.start_vmux(interface)
-        breakpoint()
         if interface.needs_vpp():
             self.host.start_vpp()
 

@@ -1203,32 +1203,57 @@ class Server(ABC):
         self.tmux_kill("ptpclient")
 
 
+    # sudo vpp -c ./vpp.conf
+    # sudo vppctl -s /tmp/vpp-cli
+    # show log
+    # show interface
+    # create vhost-user socket /tmp/vhost-user0
+    # set int state VirtualEthernet0/0/0 up
+    # set interface l2 xconnect GigabitEthernet0/8/0.300 GigabitEthernet0/9/0.300
     def start_vpp(self: 'Server'):
         self.tmux_kill('vpp')
 
+        remote_config_file = "/tmp/vpp.conf"
+        remote_startup_file = "/tmp/vpp.exec"
         vpp_bin = f"{self.project_root}/nix/builds/vpp/bin/vpp"
+        pnic_interface = "pNIC0"
+        vhost_user_interface = "VirtualEthernet0/0/0"
+
         # escape { with {{
         config = f"""
         unix {{
             cli-listen /tmp/vpp-cli
             log /tmp/vpp.log
+            startup-config {remote_startup_file}
             nodaemon
         }}
 
         dpdk {{
             socket-mem 1024,1024
-            dev {self.test_iface_addr}
+            dev {self.test_iface_addr} {{
+                name {pnic_interface}
+            }}
             uio-driver vfio-pci
         }}
         """
-        remote_config_file = "/tmp/vpp.conf"
+        startup_exec = f"""
+            create vhost-user socket {MultiHost.vhost_user_sock(0)}
+            set int state {pnic_interface} up
+            set int state {vhost_user_interface} up
+            set int l2 xconnect {pnic_interface} {vhost_user_interface}
+            set int l2 xconnect {vhost_user_interface} {pnic_interface}
+        """
+
         self.exec(f"sudo rm {remote_config_file} || true")
+        self.exec(f"sudo rm {remote_startup_file} || true")
         self.write(config, remote_config_file)
+        self.write(startup_exec, remote_startup_file)
         cmd = f"sudo {vpp_bin} -c {remote_config_file} | tee /tmp/foo.log"
         self.tmux_new('vpp', cmd)
 
 
     def stop_vpp(self: 'Server'):
+        self.exec("sudo pkill vpp || true") # tmux doesn't kill it properly
         self.tmux_kill('vpp')
 
 
@@ -1690,18 +1715,6 @@ class Host(Server):
         # Build test network parameters
         test_net_config = self._test_network_qemu_args(net_type, ioregionfd, vhost, dev_type, vm_number, rx_queue_size, tx_queue_size)
 
-        # Build memory backend parameter
-
-        if self.has_hugepages1g:
-            memory_path = f'/dev/hugepages/qemu-memory{vm_number}'
-        else:
-            memory_path = f'/dev/shm/qemu-{vm_number}'
-        # if path_dirname(memory_path) != mem * 1024 * 1024:
-        if self.test(f"[[ -f {memory_path} && $(stat --printf='%s' {memory_path}) -eq {int(mem)*1024*1024} ]]"):
-            self.exec(f"sudo rm {memory_path}")
-
-        memory_backend = f' -object memory-backend-file,mem-path={memory_path},prealloc=yes,id=bm,size={mem}M,share=on'
-
         # Actually start qemu in tmux
         project_root = str(Path(self.project_root) / "../..") # nix wants nicely formatted paths
         extkern_options = ""
@@ -1727,8 +1740,7 @@ class Host(Server):
 
             # shared memory
             f' -m {mem}' +
-            memory_backend +
-            ' -numa node,memdev=bm' +
+            self._memory_backend(mem, vm_number) +
 
             # optionally a linux kernel
             extkern_options +
@@ -1773,6 +1785,25 @@ class Host(Server):
         -------
         """
         self.tmux_kill('qemu')
+
+    def _memory_backend(self: 'Host', mem: int, vm_number: int) -> str:
+        """
+        Build memory backend parameters. Needed for some setups like vhost-user or vfio-user.
+        We also keep it in other cases so that every VM uses hugepages consistently.
+        """
+
+        if self.has_hugepages1g:
+            memory_path = f'/dev/hugepages/qemu-memory{vm_number}'
+        else:
+            memory_path = f'/dev/shm/qemu-{vm_number}'
+        # if path_dirname(memory_path) != mem * 1024 * 1024:
+        if self.test(f"[[ -f {memory_path} && $(stat --printf='%s' {memory_path}) -eq {int(mem)*1024*1024} ]]"):
+            self.exec(f"sudo rm {memory_path}")
+
+        memory_backend = f' -object memory-backend-file,mem-path={memory_path},prealloc=yes,id=bm,size={mem}M,share=on' + \
+                          ' -numa node,memdev=bm'
+
+        return memory_backend
 
     def _test_network_qemu_args(self: 'Host', net_type, ioregionfd, vhost, dev_type, vm_number, rx_queue_size, tx_queue_size) -> str:
         # Build test network parameters
@@ -1823,6 +1854,12 @@ class Host(Server):
         elif net_type.needs_vmux():
             test_net_config = \
                 f' -device vfio-user-pci,socket={MultiHost.vfu_path(self.vmux_socket_path, vm_number)}'
+        elif net_type.is_vhost_user():
+            test_net_config = (
+                f" -chardev socket,id=char1,path={MultiHost.vhost_user_sock(vm_number)},server" +
+                f" -netdev type=vhost-user,id=hostnet1,chardev=char1" +
+                f" -device virtio-net-pci,netdev=hostnet1,id=net1,mac={self.guest_test_iface_mac}"
+            )
         return test_net_config
 
 
@@ -1862,6 +1899,7 @@ class Host(Server):
                 ' -serial chardev:char0' + \
                 ' -mon chardev=char0'
 
+
         self.tmux_new(
             MultiHost.enumerate('qemu', vm_number),
             f"sudo {nix_shell} {numactl} " +
@@ -1871,6 +1909,7 @@ class Host(Server):
             f' -smp {cpus}' +
             # shared memory
             f' -m {mem}' +
+            self._memory_backend(mem, vm_number) +
             # boot unikraft
             " -append \\\" vfs.fstab=['initrd0:/:extract::ramfs=1:'] --\\\"" +
             f' -kernel {unikraft_bin}' +
@@ -1962,6 +2001,7 @@ class Host(Server):
         """
         try:
             self.stop_vmux()
+            self.stop_vpp()
         except:
             pass
 

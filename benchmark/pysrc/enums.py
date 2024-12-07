@@ -2,6 +2,9 @@ from enum import Enum
 import netaddr
 from pathlib import Path
 import ipaddress
+import getpass
+
+USERNAME: str = getpass.getuser()
 
 class Machine(Enum):
     # Machine types
@@ -181,6 +184,9 @@ class MultiHost:
         if vm_number == -1: return f"{tap_name[:length]}-"
         return f"{tap_name[:length]}-{vm_number}"
 
+    @staticmethod
+    def vhost_user_sock(vm_number: int):
+        return f"/tmp/vhost-user-{USERNAME}.{vm_number}"
 
     @staticmethod
     def enumerate(enumeratable: str, vm_number: int) -> str:
