@@ -238,9 +238,11 @@ router_thread(void *thread_data)
 	ri->r->activate(errh);
 
 	LOG("Starting driver...\n\n");
+	uk_sched_dumpk_threads(0, uk_sched_current());
 	ri->r->master()->thread(0)->driver();
 
 	LOG("Stopping driver...\n\n");
+	uk_sched_dumpk_threads(0, uk_sched_current());
 	ri->r->unuse();
 	ri->f_stop = 1;
 
@@ -479,8 +481,18 @@ int CLICK_MAIN(int argc, char **argv)
 	}
 #else
 	router = uk_sched_thread_create(uk_sched_current(), router_thread, 0, "click-router");
-	while (!uk_thread_is_exited(router))
+	sleep(1);
+
+	while (!uk_thread_is_exited(router)) {
+	  router_list[0].r->foobar = 0;
+	  __snsec start = ukplat_monotonic_clock();
+	  sleep(10);
+	  LOG("foobar: %llu\n", router_list[0].r->foobar / 1000000);
+	  __snsec end = ukplat_monotonic_clock();
+	  uk_sched_dumpk_threads(0, uk_sched_current());
+	  LOG("10s in msec: %llu\n", (end - start) / 1000000);
 		uk_sched_yield();
+	}
 #endif
 	LOG("Shutting down...");
 

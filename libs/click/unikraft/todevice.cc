@@ -101,6 +101,7 @@ ToDevice::push(int port, Packet *p)
 {
 	int ret;
 	struct uk_netbuf *buf;
+	__snsec start, now;
 
 	uk_pr_debug("push() packet %p (len %u) -> %d\n", p, p->length(), port);
 	buf = uk_netbuf_alloc_buf(uk_alloc_get_default(),
@@ -112,9 +113,15 @@ ToDevice::push(int port, Packet *p)
 	}
 	memcpy(buf->data, p->data(), p->length());
 	buf->len = p->length();
+	start = ukplat_monotonic_clock();
 	do {
+		// start = ukplat_monotonic_clock();
+		now = ukplat_monotonic_clock();
 		ret = uk_netdev_tx_one(_dev, 0, buf);
 	} while (uk_netdev_status_notready(ret));
+	// now = ukplat_monotonic_clock();
+	this->router()->foobar += now - start;
+
 	checked_output_push(port, p);
 }
 
