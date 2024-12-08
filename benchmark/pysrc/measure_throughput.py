@@ -341,23 +341,23 @@ def main(measurement: Measurement, plan_only: bool = False) -> None:
     # set up test plan
     interfaces = [
           Interface.VPP,
-          # Interface.BRIDGE_VHOST,
+          Interface.BRIDGE_VHOST,
           ]
     directions = [ "rx", "tx" ]
     systems = [ "linux", "uk", "ukebpfjit" ]
     vm_nums = [ 1 ]
     sizes = [ 64 ]
     vnfs = [ "empty", "filter" ]
-    repetitions = 1
-    DURATION_S = 15 # 71 if not G.BRIEF else 15
+    repetitions = 3
+    DURATION_S = 71 if not G.BRIEF else 15
     if safe_vpp_warmup:
         DURATION_S = max(30, DURATION_S)
     if G.BRIEF:
         # interfaces = [ Interface.BRIDGE ]
-        # interfaces = [ Interface.BRIDGE_VHOST ]
-        interfaces = [ Interface.VPP ]
+        interfaces = [ Interface.BRIDGE_VHOST ]
+        # interfaces = [ Interface.VPP ]
         # interfaces = [ Interface.BRIDGE_VHOST, Interface.VPP ]
-        directions = [ "rx" ]
+        directions = [ "tx" ]
         # systems = [ "linux", "uk", "ukebpfjit" ]
         systems = [ "uk" ]
         vm_nums = [ 1 ]
