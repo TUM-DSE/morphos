@@ -29,7 +29,7 @@ The project is structured as follows:
 1. Clone the repository with the `--recursive` flag to also clone the submodules
 2. Install the `nix` package manager
 3. Run `nix develop .#fhs` to enter the development environment with all system dependencies
-4. Run `make downloadLibs` to download unikraft libraries as pinned by `flake.*`
+4. Run `just downloadLibs` to download unikraft libraries as pinned by `flake.*`
 
 ### Building the Unikernel
 
@@ -72,7 +72,11 @@ make sync
 You can run the benchmarks:
 
 ```
-python3 benchmark/pysrc/measure_throughput.py -c benchmark/conf/autotest_localhost.cfg -vvv
+# localhost doesn't support Interface.VPP (vhost-user):
+python3 benchmark/pysrc/measure_throughput.py -c benchmark/conf/uk_localhost.cfg -vvv
+
+# multihost:
+python3 benchmark/pysrc/measure_throughput.py -c benchmark/conf/uk_adelaide_wilfred.cfg -vvv
 ```
 
 See `-h` for more benchmarking options. When run on other hosts than `adelaide`, the config file and `benchmark/conf/ssh_config_doctor_cluster` may need adjusting.
