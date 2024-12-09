@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from util import safe_cast, product_dict, randomword
 from typing import Iterator, cast, List, Dict, Callable, Tuple, Any, Self, TypeVar, Iterable, Type, Generic
-from os.path import isfile, join as path_join
+from os.path import isfile, join as path_join, basename
 import os
 from abc import ABC, abstractmethod
 from server import Host, Guest, LoadGen
@@ -135,7 +135,7 @@ class Measurement:
         return vm_boot
 
     @contextmanager
-    def unikraft_vm(self, interface: Interface, click_config: str, vm_log: str = "", run_guest_args = dict()) -> Iterator[Guest]:
+    def unikraft_vm(self, interface: Interface, click_config: str, vm_log: str = "", run_guest_args = dict(), cpio_files: List[str] = []) -> Iterator[Guest]:
         """
         Creates a unikraft-click virtual machine
         """
@@ -154,11 +154,14 @@ class Measurement:
 
         self.host.detect_test_iface()
 
-        debug(f"Setting up interface {interface.value}")
+        info(f"Setting up interface {interface.value}")
         setup_host_interface(self.host, interface)
 
+        # network sidecars
         if interface.needs_vmux():
             self.host.start_vmux(interface)
+        if interface.needs_vpp():
+            self.host.start_vpp()
 
         # prepare initrd
 
@@ -168,15 +171,20 @@ class Measurement:
         self.host.exec(f"sudo rm {initrd} || true")
         self.host.exec(f"mkdir -p {tmpdir}")
         self.host.write(click_config, f"{tmpdir}/config.click")
+        for cpio_file in cpio_files:
+            with open(f"{self.host.project_root}/{cpio_file}", 'rb') as file:
+                data = file.read()
+                self.host.write(data, f"{tmpdir}/{basename(cpio_file)}")
         self.host.exec(f"{self.host.project_root}/libs/unikraft/support/scripts/mkcpio {initrd} {tmpdir}")
 
         # start VM
 
-        info(f"Starting VM ({interface.value})")
+        info(f"Starting unikraft VM ({interface.value})")
         self.host.run_unikraft(
                 initrd=initrd,
                 net_type=interface,
                 vm_log_path=vm_log,
+                qemu_build_dir=self.config.get('host', 'qemu_path', fallback=None),
                 **run_guest_args
                 )
 
@@ -190,6 +198,8 @@ class Measurement:
         self.host.kill_unikraft()
         if interface.needs_vmux():
             self.host.stop_vmux()
+        if interface.needs_vpp():
+            self.host.stop_vpp()
         self.host.cleanup_network()
         self.host.exec(f"sudo rm -r {tmpdir} || true")
         self.host.exec(f"sudo rm {initrd} || true")
@@ -214,11 +224,13 @@ class Measurement:
 
         self.host.detect_test_iface()
 
-        debug(f"Setting up interface {interface.value}")
+        info(f"Setting up interface {interface.value}")
         setup_host_interface(self.host, interface)
 
         if interface.needs_vmux():
             self.host.start_vmux(interface)
+        if interface.needs_vpp():
+            self.host.start_vpp()
 
         # start VM
 
@@ -226,6 +238,7 @@ class Measurement:
         self.host.run_guest(
                 net_type=interface,
                 machine_type='pc',
+                qemu_build_dir=self.config.get('host', 'qemu_path', fallback=None),
                 **run_guest_args
                 )
 
@@ -239,6 +252,8 @@ class Measurement:
         self.host.kill_guest()
         if interface.needs_vmux():
             self.host.stop_vmux()
+        if interface.needs_vpp():
+            self.host.stop_vpp()
         self.host.cleanup_network()
 
 
@@ -273,11 +288,13 @@ class Measurement:
 
         if interface in unbatched_interfaces:
             # vmux taps need to be there all from the start (no batching)
-            debug(f"Setting up interface {interface.value} for {num} VMs")
+            info(f"Setting up interface {interface.value} for {num} VMs")
             setup_host_interface(self.host, interface, vm_range=range(1, num+1))
 
         if interface.needs_vmux():
             self.host.start_vmux(interface, num_vms=num)
+        if interface.needs_vpp():
+            self.host.start_vpp()
 
         # start VMs in batches of batch
         range_ = MultiHost.range(num)
@@ -290,7 +307,7 @@ class Measurement:
             info(f"Starting VM {vm_range.start}-{vm_range.stop - 1}")
 
             if interface not in unbatched_interfaces:
-                debug(f"Setting up interface {interface.value} for {num} VMs")
+                info(f"Setting up interface {interface.value} for {num} VMs")
                 setup_host_interface(self.host, interface, vm_range=vm_range)
 
             # start VM
@@ -302,6 +319,7 @@ class Measurement:
                 self.host.run_guest(
                         net_type=interface,
                         machine_type='pc',
+                        qemu_build_dir=self.config.get('host', 'qemu_path', fallback=None),
                         vm_number=i
                         )
 
@@ -322,6 +340,8 @@ class Measurement:
         self.host.kill_guest()
         if interface in [ Interface.VMUX_PT, Interface.VMUX_EMU ]:
             self.host.stop_vmux()
+        if interface.needs_vpp():
+            self.host.stop_vpp()
         self.host.cleanup_network()
 
 
@@ -625,37 +645,19 @@ class Bench(Generic[T], ContextDecorator):
         self.tqdm.update(time_progress_s / 60)
 
 
-import measure_vnf
-import measure_hotel
-import measure_ycsb
 import measure_throughput
-import measure_mediation
-import measure_ptp
 
 def main():
     measurement = Measurement()
 
     # estimate runtimes
     info("")
-    measure_vnf.main(measurement, plan_only=True)
-    info("")
-    measure_hotel.main(measurement, plan_only=True)
-    info("")
-    measure_ycsb.main(measurement, plan_only=True)
-    info("")
-    measure_iperf.main(measurement, plan_only=True)
-    info("")
-    measure_mediation.main(measurement, plan_only=True)
-    info("")
+    measure_throughput.main(measurement, plan_only=True)
 
     info("Running benchmarks ...")
     info("")
     # measure_vnf.main(measurement)
-    measure_mediation.main(measurement)
-    measure_ycsb.main(measurement)
-    measure_hotel.main(measurement)
-    measure_ptp.main(measurement)
-    measure_iperf.main(measurement)
+    measure_throughput.main(measurement)
 
 if __name__ == "__main__":
     main()

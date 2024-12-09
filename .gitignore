@@ -2,7 +2,6 @@
 build/
 nix/builds/
 target
-.config
 .unikraft
 .config.click_qemu-x86_64
 .config.click_qemu-x86_64.old
@@ -18,7 +17,7 @@ libs/libcxxabi/
 libs/libunwind/
 libs/musl/
 libs/openssl/
-libs/unikraft/
+libs/click-og/
 
 VMs/
 out*/

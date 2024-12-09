@@ -180,6 +180,25 @@
                         inherit (flakepkgs) linux-firmware-pinned;
                     };
 
+                    dpdk24 = pkgs.callPackage ./nix/dpdk24.nix {
+                        kernel = pkgs.linuxPackages_6_6.kernel;
+                        inherit (flakepkgs) linux-firmware-pinned;
+                    };
+
+                    vpp = unstable.vpp.override { dpdk = flakepkgs.dpdk24; };
+                    vpp2 = unstable.vpp.override { dpdk = flakepkgs.dpdkX; };
+
+                    dpdkX = unstable.dpdk.overrideAttrs (new: old: {
+                      postPatch = old.postPatch + ''
+                        substituteInPlace drivers/net/ice/ice_ethdev.h \
+                          --replace '#define ICE_PKG_FILE_DEFAULT "/lib/firmware/intel/ice/ddp/ice.pkg"' \
+                          '#define ICE_PKG_FILE_DEFAULT "${flakepkgs.linux-firmware-pinned}/lib/firmware/intel/ice/ddp/ice-1.3.26.0.pkg"'
+                        substituteInPlace drivers/net/ice/ice_ethdev.h --replace \
+                          '#define ICE_PKG_FILE_SEARCH_PATH_DEFAULT "/lib/firmware/intel/ice/ddp/"' \
+                          '#define ICE_PKG_FILE_SEARCH_PATH_DEFAULT "${flakepkgs.linux-firmware-pinned}/lib/firmware/intel/ice/ddp/"'
+                      '';
+                    });
+
                     linux-pktgen = pkgs.callPackage ./nix/linux-pktgen.nix {
                         kernel = pkgs.linuxPackages_6_6.kernel;
                     };

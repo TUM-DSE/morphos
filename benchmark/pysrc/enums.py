@@ -2,6 +2,9 @@ from enum import Enum
 import netaddr
 from pathlib import Path
 import ipaddress
+import getpass
+
+USERNAME: str = getpass.getuser()
 
 class Machine(Enum):
     # Machine types
@@ -41,6 +44,9 @@ class Interface(Enum):
     # VFIO-passthrough to physical NIC for the VM
     VFIO = "vfio"
 
+    # vhost-user device backed by VPP software router
+    VPP = "vpp"
+
     # VMux-passthrough to physical NIC for the VM
     VMUX_PT = "vmux-pt"
 
@@ -66,11 +72,17 @@ class Interface(Enum):
     def needs_macvtap(self) -> bool:
         return self in [ Interface.MACVTAP ]
 
-    def needs_vfio(self) -> bool:
-        return self in [ Interface.VFIO, Interface.VMUX_PT, Interface.VMUX_DPDK, Interface.VMUX_DPDK_E810, Interface.VMUX_MED ]
+    def needs_vfio(self) -> bool: # vfio on the host
+        return self in [ Interface.VFIO, Interface.VMUX_PT, Interface.VMUX_DPDK, Interface.VMUX_DPDK_E810, Interface.VMUX_MED, Interface.VPP ]
 
     def needs_vmux(self) -> bool:
         return self in [ Interface.VMUX_PT, Interface.VMUX_EMU, Interface.VMUX_DPDK, Interface.VMUX_EMU_E810, Interface.VMUX_MED, Interface.VMUX_DPDK_E810 ]
+
+    def needs_vpp(self) -> bool:
+        return self in [ Interface.VPP ]
+
+    def is_vhost_user(self) -> bool:
+        return self in [ Interface.VPP ]
 
     def is_passthrough(self) -> bool:
         return self in [ Interface.VFIO, Interface.VMUX_PT ]
@@ -83,7 +95,7 @@ class Interface(Enum):
             return "ice"
         if self in [ Interface.BRIDGE_E1000, Interface.VMUX_EMU, Interface.VMUX_DPDK ]:
             return "e1000"
-        if self in [ Interface.BRIDGE, Interface.BRIDGE_VHOST, Interface.MACVTAP ]:
+        if self in [ Interface.BRIDGE, Interface.BRIDGE_VHOST, Interface.MACVTAP, Interface.VPP ]:
             return "virtio-net"
         raise Exception(f"Dont know which guest driver is used with {self}")
 
@@ -172,6 +184,9 @@ class MultiHost:
         if vm_number == -1: return f"{tap_name[:length]}-"
         return f"{tap_name[:length]}-{vm_number}"
 
+    @staticmethod
+    def vhost_user_sock(vm_number: int):
+        return f"/tmp/vhost-user-{USERNAME}.{vm_number}"
 
     @staticmethod
     def enumerate(enumeratable: str, vm_number: int) -> str:

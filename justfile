@@ -18,7 +18,7 @@ ssh COMMAND="":
     -p {{qemu_ssh_port}} \
     root@localhost -- "{{COMMAND}}"
 
-vm EXTRA_CMDLINE="" :
+vm-linux EXTRA_CMDLINE="" :
     sudo qemu-system-x86_64 \
         -cpu host \
         -smp 4 \
@@ -67,7 +67,7 @@ autotest-tmux *ARGS:
   default_parser = importlib.util.module_from_spec(spec)
   spec.loader.exec_module(default_parser)
   conf = default_parser.default_config_parser()
-  conf.read("{{proot}}/benchmark/conf/autotest_localhost.cfg")
+  conf.read("{{proot}}/benchmark/conf/uk_localhost.cfg")
   import os
   os.system(f"tmux -L {conf['common']['tmux_socket']} {{ARGS}}")
 
@@ -80,7 +80,7 @@ autotest-ssh *ARGS:
   default_parser = importlib.util.module_from_spec(spec)
   spec.loader.exec_module(default_parser)
   conf = default_parser.default_config_parser()
-  conf.read("{{proot}}/benchmark/conf/autotest_localhost.cfg")
+  conf.read("{{proot}}/benchmark/conf/uk_localhost.cfg")
   import os
   sudo = ""
   if conf["host"]["ssh_as_root"]:
@@ -90,9 +90,84 @@ autotest-ssh *ARGS:
   os.system(cmd)
 
 benchmark:
-  python3 benchmark/pysrc/measure_throughput.py -c benchmark/conf/autotest_localhost.cfg -b -vvv
+  python3 benchmark/pysrc/measure_throughput.py -c benchmark/conf/uk_localhost.cfg -b -vvv
 
 build-dependencies:
   mkdir -p {{proot}}/nix/builds
-  nix build .#click -o {{proot}}/nix/builds/click
   nix build .#linux-pktgen -o {{proot}}/nix/builds/linux-pktgen
+  nix build --inputs-from . nixpkgs#qemu -o {{proot}}/nix/builds/qemu
+  nix build .#vpp2 -o {{proot}}/nix/builds/vpp
+  nix build .#click -o {{proot}}/nix/builds/click
+
+build-click-og:
+  nix develop --unpack .#click
+  mv source libs/click-og
+  cd libs/click-og && nix develop .#click --command bash -c 'eval "$postPatch"'
+  cd libs/click-og && nix develop .#click --command bash -c './configure'
+  cd libs/click-og && nix develop .#click --command bash -c 'make -j$(nproc)'
+
+
+downloadLibs:
+    @nix develop .#unikraft --command bash -c 'sourceRoot=$(pwd); eval "$postUnpack"'
+
+kill:
+        sudo pkill -f "clicknet"
+        sudo pkill -f "controlnet"
+
+throughput-cpio:
+    rm -r /tmp/ukcpio-$(USER) || true
+    mkdir -p /tmp/ukcpio-$(USER)
+    cp ./throughput.click /tmp/ukcpio-$(USER)/config.click
+    ./libs/unikraft/support/scripts/mkcpio ./throughput.cpio /tmp/ukcpio-$(USER)
+
+vm: throughput-cpio
+    sudo taskset -c 3,4 qemu-system-x86_64 \
+        -accel kvm -cpu max \
+        -m 1024M -object memory-backend-file,id=mem,size=1024M,mem-path=/dev/hugepages,share=on \
+        -mem-prealloc -numa node,memdev=mem \
+        -netdev bridge,id=en0,br=clicknet \
+        -device virtio-net-pci,netdev=en0 \
+        -append " vfs.fstab=[\"initrd0:/:extract::ramfs=1:\"] --" \
+        -kernel ./.unikraft/build/click_qemu-x86_64 \
+        -initrd ./throughput.cpio \
+        -nographic
+
+vm-vhost: throughput-cpio
+    sudo taskset -c 3,4 qemu-system-x86_64 \
+        -accel kvm -cpu max \
+        -m 1024M -object memory-backend-file,id=mem,size=1024M,mem-path=/dev/hugepages,share=on \
+        -mem-prealloc -numa node,memdev=mem \
+        -chardev socket,id=char1,path=/tmp/vhost-user-okelmann-0,server \
+        -netdev type=vhost-user,id=hostnet1,chardev=char1  \
+        -device virtio-net-pci,netdev=hostnet1,id=net1,mac=52:54:00:00:00:14 \
+        -append " vfs.fstab=[\"initrd0:/:extract::ramfs=1:\"] --" \
+        -kernel ./.unikraft/build/click_qemu-x86_64 \
+        -initrd ./throughput.cpio \
+        -nographic
+
+
+vhost-user:
+    sudo ./result-examples/bin/dpdk-vhost -l 5-8 -n 4 --socket-mem 1024 -- --socket-file /tmp/vhost-user0 --client -p 1 --stats 1
+
+
+vpp-notes:
+    # sudo vpp -c ./vpp.conf
+    # sudo vppctl -s /tmp/vpp-cli
+    # show log
+    # show interface
+    # create vhost-user socket /tmp/vhost-user0
+    # set int state VirtualEthernet0/0/0 up
+    # set interface l2 xconnect GigabitEthernet0/8/0.300 GigabitEthernet0/9/0.300
+
+
+perf-kvm-top:
+    sudo perf kvm --guestkallsyms=./.unikraft/build/click_qemu-x86_64.sym --guestvmlinux=.unikraft/build/click_qemu-x86_64.dbg top -p $(pgrep qemu)
+
+perf-kvm-record:
+    sudo perf kvm --guestkallsyms=./.unikraft/build/click_qemu-x86_64.sym --guestvmlinux=.unikraft/build/click_qemu-x86_64.dbg record -g -p $(pgrep qemu)
+    sudo perf kvm --guestkallsyms=./.unikraft/build/click_qemu-x86_64.sym --guestvmlinux=.unikraft/build/click_qemu-x86_64.dbg report
+
+perf-qemu-record:
+    sudo perf record -g -p $(pgrep qemu)
+    sudo perf script > perf.trace
+

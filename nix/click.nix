@@ -11,11 +11,12 @@ let
   # dpdk = self.inputs.nixpkgs.legacyPackages.x86_64-linux.dpdk; # needed to build with flow-api
   debug = false;
 in
-pkgs.stdenv.mkDerivation {
+pkgs.stdenv.mkDerivation rec {
   pname = "click";
   version = "2024.01.15-21";
 
   src = self.inputs.og-click;
+  thisgit = ../.;
 
   nativeBuildInputs = with pkgs; [
     coreutils
@@ -44,8 +45,10 @@ pkgs.stdenv.mkDerivation {
     # substituteInPlace ./userlevel/Makefile.in \
     #   --replace "/bin/echo" "echo"
 
-    mkdir /build/rte_sdk
-    cp -r ${dpdk}/* /build/rte_sdk
+    cp ${thisgit}/libs/click/unikraft/ipfilter2.* ./elements/ip/
+
+    mkdir -p $RTE_SDK_BIN
+    cp -r ${dpdk}/* $RTE_SDK_BIN/
       '';
 
     /*
@@ -71,6 +74,11 @@ pkgs.stdenv.mkDerivation {
   RTE_SDK_BIN = "/build/rte_sdk";
   RTE_TARGET = "x86_64-native-linuxapp-gcc";
   # RTE_KERNELDIR = "${pkgs.linux.dev}/lib/modules/${pkgs.linux.modDirVersion}/build";
+
+  shellHook = ''
+    export RTE_SDK=$(pwd)/rte_sdk
+    export RTE_SDK_BIN=$RTE_SDK/$RTE_TARGET
+  '';
 
   configureFlags = [
     "--enable-all-elements"

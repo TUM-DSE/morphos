@@ -215,17 +215,15 @@ class Server(ABC):
         exec : Execute command on the server.
         __exec_local : Execute a command on the localhost.
         """
-        options = ""
-        if self.ssh_config is not None:
-            options = f" -F {self.ssh_config}"
-
-        sudo = ""
+        argv = []
         if self.ssh_as_root == True:
-            sudo = "sudo "
+            argv += ["sudo"]
+        argv += ["ssh"]
+        if self.ssh_config is not None:
+            argv += ["-F", f"{self.ssh_config}"]
+        argv += [self.fqdn, command]
 
-        return check_output(f"{sudo}ssh{options} {self.fqdn} '{command}'"
-                            # + " 2>&1 | tee /tmp/foo"
-                            , stderr=STDOUT, shell=True).decode('utf-8')
+        return check_output(argv, stderr=STDOUT).decode('utf-8')
 
     def exec(self: 'Server', command: str, echo: bool = True) -> str:
         """
@@ -260,13 +258,15 @@ class Server(ABC):
         else:
             return self.__exec_ssh(command)
 
-    def write(self: 'Server', content: str, path: str, verbose: bool = False) -> None:
+    def write(self: 'Server', content: str | bytes, path: str, verbose: bool = False) -> None:
         if verbose:
             debug(f'Executing command on {self.log_name()}: Writing to file {path} the following:\n{content}')
         else:
             debug(f'Executing command on {self.log_name()}: Writing to file {path}')
         # encode so we dont have to fuck aroudn with quotes (they get removed somewhere)
-        b64 = base64.b64encode(bytes(content, 'utf-8')).decode("utf-8")
+        if isinstance(content, str):
+            content = bytes(content, 'utf-8')
+        b64 = base64.b64encode(content).decode("utf-8")
         self.exec(f"echo {b64} | base64 -d > {path}", echo=False)
 
     def whoami(self: 'Server') -> str:
@@ -427,6 +427,10 @@ class Server(ABC):
         """
         _ = self.exec(f'tmux -L {self.tmux_socket}' +
                       f' send-keys -t {session_name} {keys}')
+
+    def tmux_is_alive(self: 'Server', session_name: str) -> bool:
+        return self.test(f'tmux -L {self.tmux_socket}' +
+                      f' list-sessions | grep {session_name}')
 
     def __copy_local(self: 'Server', source: str, destination: str, recursive: bool = False) -> None:
         """
@@ -1138,12 +1142,11 @@ class Server(ABC):
         script_args: arguements to override click scripts define() directive variables
         """
         click_bin = f"{self.project_root}/nix/builds/click/bin/click"
-        click_program = f"{self.project_root}/{program}"
         args = ' '.join([f'{key}={value}' for key, value in script_args.items()])
         dpdk_args = ""
         if dpdk:
             dpdk_args = f'--dpdk \'-l 0\' --'
-        self.tmux_new('click', f'{click_bin} {dpdk_args} {click_program} {args} 2>&1 | tee {outfile}; echo AUTOTEST_DONE >> {outfile}; sleep 999');
+        self.tmux_new('click', f'{click_bin} {dpdk_args} {program} {args} 2>&1 | tee {outfile}; echo AUTOTEST_DONE >> {outfile}; sleep 999');
 
 
     def stop_click(self):
@@ -1203,6 +1206,66 @@ class Server(ABC):
     def stop_ptp_client(self):
         self.tmux_kill("ptpclient")
 
+
+    # sudo vpp -c ./vpp.conf
+    # sudo vppctl -s /tmp/vpp-cli
+    # show log
+    # show interface
+    # create vhost-user socket /tmp/vhost-user0
+    # set int state VirtualEthernet0/0/0 up
+    # set interface l2 xconnect GigabitEthernet0/8/0.300 GigabitEthernet0/9/0.300
+    def start_vpp(self: 'Server'):
+        self.tmux_kill('vpp')
+
+        remote_config_file = "/tmp/vpp.conf"
+        remote_startup_file = "/tmp/vpp.exec"
+        remote_socket = MultiHost.vhost_user_sock(0)
+        vpp_bin = f"{self.project_root}/nix/builds/vpp/bin/vpp"
+        pnic_interface = "pNIC0"
+        vhost_user_interface = "VirtualEthernet0/0/0"
+
+        # escape { with {{
+        config = f"""
+        unix {{
+            cli-listen /tmp/vpp-cli
+            log /tmp/vpp.log
+            startup-config {remote_startup_file}
+            nodaemon
+        }}
+
+        dpdk {{
+            socket-mem 1024,1024
+            dev {self.test_iface_addr} {{
+                name {pnic_interface}
+            }}
+            uio-driver vfio-pci
+        }}
+        """
+        startup_exec = f"""
+            create vhost-user socket {remote_socket}
+            set int state {pnic_interface} up
+            set int state {vhost_user_interface} up
+            set int l2 xconnect {pnic_interface} {vhost_user_interface}
+            set int l2 xconnect {vhost_user_interface} {pnic_interface}
+        """
+
+        self.exec(f"sudo rm {remote_config_file} || true")
+        self.exec(f"sudo rm {remote_startup_file} || true")
+        self.write(config, remote_config_file)
+        self.write(startup_exec, remote_startup_file)
+
+        # sockets have to pre-exist.
+        self.exec(f"sudo rm {remote_socket} || true")
+        self.exec(f'python -c "import socket as s; sock = s.socket(s.AF_UNIX); sock.bind(\'{remote_socket}\')"')
+
+        # start vpp
+        cmd = f"sudo {vpp_bin} -c {remote_config_file} | tee /tmp/foo.log"
+        self.tmux_new('vpp', cmd)
+
+
+    def stop_vpp(self: 'Server'):
+        self.exec("sudo pkill vpp || true") # tmux doesn't kill it properly
+        self.tmux_kill('vpp')
 
 
 class BatchExec:
@@ -1663,18 +1726,6 @@ class Host(Server):
         # Build test network parameters
         test_net_config = self._test_network_qemu_args(net_type, ioregionfd, vhost, dev_type, vm_number, rx_queue_size, tx_queue_size)
 
-        # Build memory backend parameter
-
-        if self.has_hugepages1g:
-            memory_path = f'/dev/hugepages/qemu-memory{vm_number}'
-        else:
-            memory_path = f'/dev/shm/qemu-{vm_number}'
-        # if path_dirname(memory_path) != mem * 1024 * 1024:
-        if self.test(f"[[ -f {memory_path} && $(stat --printf='%s' {memory_path}) -eq {int(mem)*1024*1024} ]]"):
-            self.exec(f"sudo rm {memory_path}")
-
-        memory_backend = f' -object memory-backend-file,mem-path={memory_path},prealloc=yes,id=bm,size={mem}M,share=on'
-
         # Actually start qemu in tmux
         project_root = str(Path(self.project_root) / "../..") # nix wants nicely formatted paths
         extkern_options = ""
@@ -1700,8 +1751,7 @@ class Host(Server):
 
             # shared memory
             f' -m {mem}' +
-            memory_backend +
-            ' -numa node,memdev=bm' +
+            self._memory_backend(mem, vm_number) +
 
             # optionally a linux kernel
             extkern_options +
@@ -1746,6 +1796,25 @@ class Host(Server):
         -------
         """
         self.tmux_kill('qemu')
+
+    def _memory_backend(self: 'Host', mem: int, vm_number: int) -> str:
+        """
+        Build memory backend parameters. Needed for some setups like vhost-user or vfio-user.
+        We also keep it in other cases so that every VM uses hugepages consistently.
+        """
+
+        if self.has_hugepages1g:
+            memory_path = f'/dev/hugepages/qemu-memory{vm_number}'
+        else:
+            memory_path = f'/dev/shm/qemu-{vm_number}'
+        # if path_dirname(memory_path) != mem * 1024 * 1024:
+        if self.test(f"[[ -f {memory_path} && $(stat --printf='%s' {memory_path}) -eq {int(mem)*1024*1024} ]]"):
+            self.exec(f"sudo rm {memory_path}")
+
+        memory_backend = f' -object memory-backend-file,mem-path={memory_path},prealloc=yes,id=bm,size={mem}M,share=on' + \
+                          ' -numa node,memdev=bm'
+
+        return memory_backend
 
     def _test_network_qemu_args(self: 'Host', net_type, ioregionfd, vhost, dev_type, vm_number, rx_queue_size, tx_queue_size) -> str:
         # Build test network parameters
@@ -1796,13 +1865,20 @@ class Host(Server):
         elif net_type.needs_vmux():
             test_net_config = \
                 f' -device vfio-user-pci,socket={MultiHost.vfu_path(self.vmux_socket_path, vm_number)}'
+        elif net_type.is_vhost_user():
+            test_net_config = (
+                f" -chardev socket,id=char1,path={MultiHost.vhost_user_sock(vm_number)},server" +
+                f" -netdev type=vhost-user,id=hostnet1,chardev=char1" +
+                f" -device virtio-net-pci,netdev=hostnet1,id=net1,mac={self.guest_test_iface_mac}"
+            )
         return test_net_config
 
 
     def run_unikraft(self: 'Host',
                      initrd: str,
                      net_type: Interface,
-                     vm_log_path: str = ''
+                     vm_log_path: str = '',
+                     qemu_build_dir: str = None,
                     ) -> None:
         vm_number = 0
         project_root = str(Path(self.project_root)) # nix wants nicely formatted paths
@@ -1812,6 +1888,8 @@ class Host(Server):
         vhost = net_type.is_vhost()
         dev_type = 'pci'
         qemu_bin_path = 'qemu-system-x86_64'
+        if qemu_build_dir:
+            qemu_bin_path = path_join(qemu_build_dir, qemu_bin_path)
         unikraft_bin = f'{project_root}/.unikraft/build/click_qemu-x86_64'
 
         nix_shell = f"nix shell --inputs-from {project_root} nixpkgs#numactl --command"
@@ -1832,6 +1910,7 @@ class Host(Server):
                 ' -serial chardev:char0' + \
                 ' -mon chardev=char0'
 
+
         self.tmux_new(
             MultiHost.enumerate('qemu', vm_number),
             f"sudo {nix_shell} {numactl} " +
@@ -1841,6 +1920,7 @@ class Host(Server):
             f' -smp {cpus}' +
             # shared memory
             f' -m {mem}' +
+            self._memory_backend(mem, vm_number) +
             # boot unikraft
             " -append \\\" vfs.fstab=['initrd0:/:extract::ramfs=1:'] --\\\"" +
             f' -kernel {unikraft_bin}' +
@@ -1932,6 +2012,7 @@ class Host(Server):
         """
         try:
             self.stop_vmux()
+            self.stop_vpp()
         except:
             pass
 

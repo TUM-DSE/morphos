@@ -197,5 +197,20 @@ FromDevice::run_task(Task *)
 	return false;
 }
 
+static int
+averagecounter_reset_write_handler
+(const String &, Element *e, void *, ErrorHandler *)
+{
+  FromDevice *c = (FromDevice*)e;
+  c->take_packets();
+  return 0;
+}
+
+void
+FromDevice::add_handlers()
+{
+  add_write_handler("reset", averagecounter_reset_write_handler, 0, Handler::BUTTON);
+}
+
 CLICK_ENDDECLS
 EXPORT_ELEMENT(FromDevice)
