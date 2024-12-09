@@ -645,37 +645,19 @@ class Bench(Generic[T], ContextDecorator):
         self.tqdm.update(time_progress_s / 60)
 
 
-import measure_vnf
-import measure_hotel
-import measure_ycsb
 import measure_throughput
-import measure_mediation
-import measure_ptp
 
 def main():
     measurement = Measurement()
 
     # estimate runtimes
     info("")
-    measure_vnf.main(measurement, plan_only=True)
-    info("")
-    measure_hotel.main(measurement, plan_only=True)
-    info("")
-    measure_ycsb.main(measurement, plan_only=True)
-    info("")
-    measure_iperf.main(measurement, plan_only=True)
-    info("")
-    measure_mediation.main(measurement, plan_only=True)
-    info("")
+    measure_throughput.main(measurement, plan_only=True)
 
     info("Running benchmarks ...")
     info("")
     # measure_vnf.main(measurement)
-    measure_mediation.main(measurement)
-    measure_ycsb.main(measurement)
-    measure_hotel.main(measurement)
-    measure_ptp.main(measurement)
-    measure_iperf.main(measurement)
+    measure_throughput.main(measurement)
 
 if __name__ == "__main__":
     main()
