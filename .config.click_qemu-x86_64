@@ -1,8 +1,8 @@
 #
 # Automatically generated file; DO NOT EDIT.
-# Unikraft/0.16.3~e453b74a-custom Configuration
+# Unikraft/0.16.3~e453b74a Configuration
 #
-CONFIG_UK_FULLVERSION="0.16.3~e453b74a-custom"
+CONFIG_UK_FULLVERSION="0.16.3~e453b74a"
 CONFIG_UK_CODENAME="Telesto"
 CONFIG_UK_ARCH="x86_64"
 CONFIG_HOST_ARCH="x86_64"

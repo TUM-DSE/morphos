@@ -58,6 +58,11 @@ in pkgs.stdenv.mkDerivation {
         '';
     buildPhase = ''
         touch .unikraft/build/libclick/.origin
+
+        # this leads to unikraft not crashing on reading our committed .config.
+        # Instead kraft uses our .config instead of generating a new one based on the Kraftfile.
+        export EXTRA_KRAFT_ARGS=" --no-configure"
+
         ${runMake}/bin/runMake
         '';
 
