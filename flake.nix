@@ -209,6 +209,12 @@
                     vpp4 = unstable.vpp.override { dpdk = flakepkgs.dpdkZ; };
                     dpdkZ = unstable.dpdk;
 
+                    vpp5 = (unstable.vpp.override { dpdk = flakepkgs.dpdkX; }).overrideAttrs (new: old: {
+                        buildPhase = ''
+                            make -j1
+                        '';
+                    });
+
                     linux-pktgen = pkgs.callPackage ./nix/linux-pktgen.nix {
                         kernel = pkgs.linuxPackages_6_6.kernel;
                     };
