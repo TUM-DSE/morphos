@@ -67,7 +67,7 @@ autotest-tmux *ARGS:
   default_parser = importlib.util.module_from_spec(spec)
   spec.loader.exec_module(default_parser)
   conf = default_parser.default_config_parser()
-  conf.read("{{proot}}/benchmark/conf/autotest_localhost.cfg")
+  conf.read("{{proot}}/benchmark/conf/uk_localhost.cfg")
   import os
   os.system(f"tmux -L {conf['common']['tmux_socket']} {{ARGS}}")
 
@@ -80,7 +80,7 @@ autotest-ssh *ARGS:
   default_parser = importlib.util.module_from_spec(spec)
   spec.loader.exec_module(default_parser)
   conf = default_parser.default_config_parser()
-  conf.read("{{proot}}/benchmark/conf/autotest_localhost.cfg")
+  conf.read("{{proot}}/benchmark/conf/uk_localhost.cfg")
   import os
   sudo = ""
   if conf["host"]["ssh_as_root"]:
@@ -90,13 +90,13 @@ autotest-ssh *ARGS:
   os.system(cmd)
 
 benchmark:
-  python3 benchmark/pysrc/measure_throughput.py -c benchmark/conf/autotest_localhost.cfg -b -vvv
+  python3 benchmark/pysrc/measure_throughput.py -c benchmark/conf/uk_localhost.cfg -b -vvv
 
 build-dependencies:
   mkdir -p {{proot}}/nix/builds
   nix build .#linux-pktgen -o {{proot}}/nix/builds/linux-pktgen
   nix build --inputs-from . nixpkgs#qemu -o {{proot}}/nix/builds/qemu
-  nix build .#vpp -o {{proot}}/nix/builds/vpp
+  nix build .#vpp2 -o {{proot}}/nix/builds/vpp
   nix build .#click -o {{proot}}/nix/builds/click
 
 build-click-og:
@@ -137,7 +137,7 @@ vm-vhost: throughput-cpio
         -accel kvm -cpu max \
         -m 1024M -object memory-backend-file,id=mem,size=1024M,mem-path=/dev/hugepages,share=on \
         -mem-prealloc -numa node,memdev=mem \
-        -chardev socket,id=char1,path=/tmp/vhost-user0,server \
+        -chardev socket,id=char1,path=/tmp/vhost-user-okelmann-0,server \
         -netdev type=vhost-user,id=hostnet1,chardev=char1  \
         -device virtio-net-pci,netdev=hostnet1,id=net1,mac=52:54:00:00:00:14 \
         -append " vfs.fstab=[\"initrd0:/:extract::ramfs=1:\"] --" \

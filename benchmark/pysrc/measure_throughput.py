@@ -202,8 +202,9 @@ class ThroughputTest(AbstractBenchTest):
 
         # sometimes, pktgen returns immediately with 0 packets sent
         # i believe this happens, when the link is not ready due to peer reset
-        for i in range(5):
-            if i >= 4:
+        retries = 10
+        for i in range(retries + 1):
+            if i >= retries:
                 raise Exception("Failed to start pktgen")
 
             # start pktgen
