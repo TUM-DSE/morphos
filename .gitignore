@@ -3,6 +3,7 @@ build/
 nix/builds/
 target
 .unikraft
+.config.click_qemu-x86_64
 .config.click_qemu-x86_64.old
 libs/ubpf/vm/libubpf.so
 rootfs/*.bin
