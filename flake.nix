@@ -186,8 +186,8 @@
                     };
 
                     vpp = unstable.vpp.override { dpdk = flakepkgs.dpdk24; };
-                    vpp2 = unstable.vpp.override { dpdk = flakepkgs.dpdkX; };
 
+                    vpp2 = unstable.vpp.override { dpdk = flakepkgs.dpdkX; };
                     dpdkX = unstable.dpdk.overrideAttrs (new: old: {
                       postPatch = old.postPatch + ''
                         substituteInPlace drivers/net/ice/ice_ethdev.h \
@@ -196,6 +196,13 @@
                         substituteInPlace drivers/net/ice/ice_ethdev.h --replace \
                           '#define ICE_PKG_FILE_SEARCH_PATH_DEFAULT "/lib/firmware/intel/ice/ddp/"' \
                           '#define ICE_PKG_FILE_SEARCH_PATH_DEFAULT "${flakepkgs.linux-firmware-pinned}/lib/firmware/intel/ice/ddp/"'
+                      '';
+                    });
+
+                    vpp3 = unstable.vpp.override { dpdk = flakepkgs.dpdkY; };
+                    dpdkY = unstable.dpdk.overrideAttrs (new: old: {
+                      postPatch = old.postPatch + ''
+                        echo stub nothing
                       '';
                     });
 
