@@ -1219,6 +1219,7 @@ class Server(ABC):
 
         remote_config_file = "/tmp/vpp.conf"
         remote_startup_file = "/tmp/vpp.exec"
+        remote_vpp_sock = "/tmp/vpp-cli"
         remote_socket = MultiHost.vhost_user_sock(0)
         vpp_bin = f"{self.project_root}/nix/builds/vpp/bin/vpp"
         pnic_interface = "pNIC0"
@@ -1227,9 +1228,8 @@ class Server(ABC):
         # escape { with {{
         config = f"""
         unix {{
-            cli-listen /tmp/vpp-cli
+            cli-listen {remote_vpp_sock}
             log /tmp/vpp.log
-            startup-config {remote_startup_file}
             nodaemon
         }}
 
@@ -1242,7 +1242,7 @@ class Server(ABC):
         }}
         """
         startup_exec = f"""
-            create vhost-user socket {remote_socket}
+            create vhost-user socket {remote_socket} server
             set int state {pnic_interface} up
             set int state {vhost_user_interface} up
             set int l2 xconnect {pnic_interface} {vhost_user_interface}
@@ -1256,16 +1256,32 @@ class Server(ABC):
 
         # sockets have to pre-exist.
         self.exec(f"sudo rm {remote_socket} || true")
-        self.exec(f'python -c "import socket as s; sock = s.socket(s.AF_UNIX); sock.bind(\'{remote_socket}\')"')
+        # self.exec(f'python -c "import socket as s; sock = s.socket(s.AF_UNIX); sock.bind(\'{remote_socket}\')"')
 
         # start vpp
         cmd = f"sudo {vpp_bin} -c {remote_config_file} | tee /tmp/foo.log"
         self.tmux_new('vpp', cmd)
 
+        # run startup exec manually so that we block ontil vpp is online
+        self.wait_for_success(self.vpp_exec_cmd("show int"))
+        self.exec(self.vpp_exec_cmd(startup_exec))
+
 
     def stop_vpp(self: 'Server'):
         self.exec("sudo pkill vpp || true") # tmux doesn't kill it properly
         self.tmux_kill('vpp')
+
+    def vpp_exec_cmd(self: 'Server', cmd: str):
+        remote_vpp_sock = "/tmp/vpp-cli"
+
+        # i think vppctl does unnecessary stuff to beak this automation
+        # vppctl_bin = f"{self.project_root}/nix/builds/vpp/bin/vppctl"
+        # self.exec(f"echo '{cmd}' | sudo {vppctl_bin} -s {remote_vpp_sock}")
+
+        # simple solution, best solution: just works
+        pipefail_prefix = "set -o pipefail; " # make command fail if socat fails (ignore that strings always succeeds)
+        cmd = f"{pipefail_prefix}echo '{cmd}' | sudo socat - UNIX-CONNECT:{remote_vpp_sock} | strings"
+        return cmd
 
 
 class BatchExec:
@@ -1867,7 +1883,7 @@ class Host(Server):
                 f' -device vfio-user-pci,socket={MultiHost.vfu_path(self.vmux_socket_path, vm_number)}'
         elif net_type.is_vhost_user():
             test_net_config = (
-                f" -chardev socket,id=char1,path={MultiHost.vhost_user_sock(vm_number)},server" +
+                f" -chardev socket,id=char1,path={MultiHost.vhost_user_sock(vm_number)}" +
                 f" -netdev type=vhost-user,id=hostnet1,chardev=char1" +
                 f" -device virtio-net-pci,netdev=hostnet1,id=net1,mac={self.guest_test_iface_mac}"
             )
