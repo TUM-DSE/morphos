@@ -355,10 +355,10 @@ def main(measurement: Measurement, plan_only: bool = False) -> None:
         DURATION_S = max(30, DURATION_S)
     if G.BRIEF:
         # interfaces = [ Interface.BRIDGE ]
-        interfaces = [ Interface.BRIDGE_VHOST ]
-        # interfaces = [ Interface.VPP ]
+        # interfaces = [ Interface.BRIDGE_VHOST ]
+        interfaces = [ Interface.VPP ]
         # interfaces = [ Interface.BRIDGE_VHOST, Interface.VPP ]
-        directions = [ "tx" ]
+        directions = [ "rx" ]
         # systems = [ "linux", "uk", "ukebpfjit" ]
         systems = [ "uk" ]
         vm_nums = [ 1 ]
@@ -397,12 +397,24 @@ def main(measurement: Measurement, plan_only: bool = False) -> None:
             ) as (bench, bench_tests):
         for [num_vms, interface, direction, system, vnf], a_tests in bench.multi_iterator(bench_tests, ["num_vms", "interface", "direction", "system", "vnf"]):
             interface = Interface(interface)
+
             info("Booting VM for this test matrix:")
             info(ThroughputTest.test_matrix_string(a_tests))
 
             assert len(a_tests) == 1 # we have looped through all variables now, right?
             test = a_tests[0]
             info(f"Running {test}")
+
+
+            debug('Binding loadgen interface')
+            loadgen.modprobe_test_iface_drivers()
+            loadgen.release_test_iface() # bind linux driver
+            try:
+                loadgen.delete_nic_ip_addresses(loadgen.test_iface)
+            except Exception:
+                pass
+            loadgen.setup_test_iface_ip_net()
+
 
             if system in [ "uk", "ukebpf", "ukebpfjit" ]:
                 files, element = test.click_config()
