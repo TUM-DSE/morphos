@@ -21,6 +21,7 @@ import os
 from pandas import DataFrame
 import pandas as pd
 import traceback
+import click_configs
 from conf import G
 
 unikraft_interface = "0"
@@ -177,6 +178,9 @@ class ThroughputTest(AbstractBenchTest):
             case ("ukebpfjit", "filter", _):
                 files = [ "benchmark/bpfilters/target-port", "benchmark/bpfilters/target-port.sig" ]
                 processing += "-> BPFilter(ID 1, FILE target-port, SIGNATURE target-port.sig, JIT true)"
+            case ("uk", "nat", _):
+                files = []
+                processing += "TODO"
 
             case _:
                 raise ValueError(f"Unknown system/vnf combination: {self.system}/{self.vnf}")
@@ -197,7 +201,7 @@ class ThroughputTest(AbstractBenchTest):
             threads = 1
 
         pktgen_cmd = f"{loadgen.project_root}/nix/builds/linux-pktgen/bin/pktgen_sample03_burst_single_flow" + \
-            f" -i {loadgen.test_iface} -s {self.size} -d {guest.test_iface_ip_net} -m {guest.test_iface_mac} -b {batch} -t {threads} | tee {remote_pktgen_log}";
+            f" -i {loadgen.test_iface} -s {self.size} -d {strip_subnet_mask(guest.test_iface_ip_net)} -m {guest.test_iface_mac} -b {batch} -t {threads} | tee {remote_pktgen_log}";
         loadgen.tmux_kill("pktgen")
 
         # sometimes, pktgen returns immediately with 0 packets sent
@@ -355,15 +359,16 @@ def main(measurement: Measurement, plan_only: bool = False) -> None:
         DURATION_S = max(30, DURATION_S)
     if G.BRIEF:
         # interfaces = [ Interface.BRIDGE ]
-        # interfaces = [ Interface.BRIDGE_VHOST ]
-        interfaces = [ Interface.VPP ]
+        interfaces = [ Interface.BRIDGE_VHOST ]
+        # interfaces = [ Interface.VPP ]
         # interfaces = [ Interface.BRIDGE_VHOST, Interface.VPP ]
         directions = [ "rx" ]
         # systems = [ "linux", "uk", "ukebpfjit" ]
         systems = [ "uk" ]
         vm_nums = [ 1 ]
         # vm_nums = [ 128, 160 ]
-        vnfs = [ "empty" ]
+        # vnfs = [ "empty" ]
+        vnfs = [ "nat" ]
         repetitions = 1
 
     def exclude(test):
@@ -413,13 +418,24 @@ def main(measurement: Measurement, plan_only: bool = False) -> None:
                 loadgen.delete_nic_ip_addresses(loadgen.test_iface)
             except Exception:
                 pass
+            if test.vnf == "nat":
+                test_client_ip = "10.10.0.2"
+                loadgen.exec(f"sudo ip address add {test_client_ip}/32 dev {loadgen.test_iface}")
             loadgen.setup_test_iface_ip_net()
 
 
             if system in [ "uk", "ukebpf", "ukebpfjit" ]:
                 files, element = test.click_config()
                 click_config = ""
-                if test.direction == "tx":
+                if test.vnf == "nat":
+                    click_config = click_configs.nat(
+                        interface=unikraft_interface,
+                        guest_ip="10.10.0.1",
+                        guest_mac=measurement.guest.test_iface_mac,
+                        gw_ip=strip_subnet_mask(loadgen.test_iface_ip_net),
+                        gw_mac=loadgen.test_iface_mac
+                    )
+                elif test.direction == "tx":
                     click_config = click_tx_config(unikraft_interface, size=test.size, dst_mac=loadgen.test_iface_mac, extra_processing=element)
                 elif test.direction == "rx":
                     click_config = click_rx_config(unikraft_interface, extra_processing=element)
