@@ -131,7 +131,7 @@ StringMatcher::add_handlers() {
     add_write_handler("reset_count", write_handler, 0, Handler::h_button | Handler::h_nonexclusive);
 }
 
+// ELEMENT_REQUIRES(userlevel AhoCorasick)
 CLICK_ENDDECLS
-ELEMENT_REQUIRES(userlevel AhoCorasick)
+ELEMENT_REQUIRES(AhoCorasick)
 EXPORT_ELEMENT(StringMatcher)
-ELEMENT_MT_SAFE(StringMatcher)

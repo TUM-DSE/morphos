@@ -80,7 +80,6 @@ AhoCorasick::add_pattern (const char pattern[], PatternId id)
 
 
 
+// ELEMENT_REQUIRES(AhoCorasickC)
 CLICK_ENDDECLS
-ELEMENT_REQUIRES(userlevel AhoCorasickC)
 ELEMENT_PROVIDES(AhoCorasick)
-ELEMENT_MT_SAFE(AhoCorasick)

@@ -1,6 +1,6 @@
 #ifndef CLICK_STRINGMATCHER_HH
 #define CLICK_STRINGMATCHER_HH
-#include <click/batchelement.hh>
+#include <click/element.hh>
 #include "ahocorasickplus.hh"
 CLICK_DECLS
 
@@ -37,7 +37,7 @@ Returns the number of matched packets.
 When written, resets the C<matches>.
 */
 
-class StringMatcher : public BatchElement {
+class StringMatcher : public Element {
 	public:
 		StringMatcher() CLICK_COLD;
 		~StringMatcher() CLICK_COLD;
