@@ -119,7 +119,7 @@ class ThroughputTest(AbstractBenchTest):
                 lines = f.readlines()
             lines = [ line for line in lines if "Rx rate: " in line ]
             # pps values
-            values = [ float(line.split("Rx rate: ")[1].strip()) for line in lines ]
+            values = [ float(line.split("Rx rate: ")[1].strip().split(" ")[0].strip()) for line in lines ]
             values = values[warmup:]
 
         elif self.direction == "tx":
@@ -372,7 +372,8 @@ def main(measurement: Measurement, plan_only: bool = False) -> None:
         repetitions = 1
 
     def exclude(test):
-        return (Interface(test.interface).is_passthrough() and test.num_vms > 1)
+        return (Interface(test.interface).is_passthrough() and test.num_vms > 1) or \
+                    (test.vnf == "nat" and test.direction == "tx") # packets get stuck in queue
 
     # multi-VM TCP tests, but only one length
     test_matrix = dict(
@@ -433,7 +434,13 @@ def main(measurement: Measurement, plan_only: bool = False) -> None:
                         guest_ip="10.10.0.1",
                         guest_mac=measurement.guest.test_iface_mac,
                         gw_ip=strip_subnet_mask(loadgen.test_iface_ip_net),
-                        gw_mac=loadgen.test_iface_mac
+                        gw_mac=loadgen.test_iface_mac,
+                        src_ip=test_client_ip,
+                        src_mac=loadgen.test_iface_mac,
+                        dst_ip=strip_subnet_mask(loadgen.test_iface_ip_net),
+                        dst_mac=measurement.guest.test_iface_mac,
+                        size=test.size,
+                        direction=test.direction
                     )
                 elif test.direction == "tx":
                     click_config = click_tx_config(unikraft_interface, size=test.size, dst_mac=loadgen.test_iface_mac, extra_processing=element)

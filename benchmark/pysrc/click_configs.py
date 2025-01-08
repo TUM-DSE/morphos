@@ -1,5 +1,12 @@
 
-def nat(interface: str, guest_ip: str, guest_mac: str, gw_ip: str, gw_mac: str ,extra_processing: str = "") -> str:
+def nat(interface: str, guest_ip: str, guest_mac: str, gw_ip: str, gw_mac: str, src_ip: str, dst_ip: str, src_mac: str, dst_mac: str, size: int, direction: str,extra_processing: str = "") -> str:
+
+    pkt_gen_elements = f"""
+    InfiniteSource(DATA \<0800>, LENGTH {size}, LIMIT 50, BURST 100000)
+    -> UDPIPEncap({src_ip}, 8080, {dst_ip}, 8080)
+    -> EtherEncap(0x0800, {src_mac}, {src_mac})
+    """
+
     return f"""
     // This Click configuration implements a firewall and NAT, roughly based on the
     // mazu-nat.click example.
@@ -26,10 +33,10 @@ def nat(interface: str, guest_ip: str, guest_mac: str, gw_ip: str, gw_mac: str ,
     $device |
     from :: FromDevice($device)
     //  -> t1 :: Tee
-        -> output;
+        {"-> output;" if direction == "rx" else "-> Print('rx') -> Discard;"}
     input -> q :: Queue(1024)
     //  -> t2 :: PullTee
-        -> to :: ToDevice($device);
+        {"-> Print('tx*') -> to :: ToDevice($device);" if direction == "tx" else "-> Discard;"}
     // t1[1] -> ToHostSniffers;
     // t2[1] -> ToHostSniffers($device);
     ScheduleInfo(from .1, to 1);
@@ -42,6 +49,7 @@ def nat(interface: str, guest_ip: str, guest_mac: str, gw_ip: str, gw_mac: str ,
             -> CheckIPHeader
             -> EtherEncap(0x800, eth1-ex, gw-addr)
             -> ic1 :: AverageCounter()
+            // -> Print("txex: ", 124)
             -> device;
     ip_to_host :: EtherEncap(0x800, gw-addr, eth1-ex)
             // -> ToHost;
@@ -56,7 +64,7 @@ def nat(interface: str, guest_ip: str, guest_mac: str, gw_ip: str, gw_mac: str ,
             12/0806 20/0002,        // [1] ARP replies to host
             12/0800);               // [2] IP packets
 
-    device
+     {"device" if direction == "rx" else pkt_gen_elements}
     -> ic0 :: AverageCounter()
     -> arp_class;
 
