@@ -219,7 +219,8 @@
                         name = "devShell";
                         buildInputs = (buildDeps pkgs) ++ (prevailDeps pkgs) ++ [
                             unstable.kraft
-                                unstable.rustup
+                                unstable.cargo
+                                unstable.rustc
                                 unstable.bmon
                                 unstable.gh
                                 unstable.just
