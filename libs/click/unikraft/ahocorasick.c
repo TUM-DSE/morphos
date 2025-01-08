@@ -423,5 +423,5 @@ static void ac_trie_traverse_action
 		func (node);
 }
 
-// EXPORT_ELEMENT(AhoCorasickC)
 CLICK_ENDDECLS
+ELEMENT_PROVIDES(AhoCorasickC)

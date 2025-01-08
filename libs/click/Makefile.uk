@@ -179,7 +179,7 @@ LIBCLICK_SRCS-y += $(LIBCLICK_EXTRACTED)/lib/ip6flowid.cc
 LIBCLICK_SRCS-y += $(LIBCLICK_EXTRACTED)/lib/selectset.cc
 
 LIBCLICK_SRCS-y += $(LIBCLICK_BASE)/unikraft/bpfelement.cc
-LIBCLICK_SRCS-y += $(LIBCLICK_BASE)/unikraft/ahocorasick.c
+# LIBCLICK_SRCS-y += $(LIBCLICK_BASE)/unikraft/ahocorasick.c
 # LIBCLICK_SRCS-y += $(LIBCLICK_BASE)/unikraft/ahocorasickplus.cc
 # LIBCLICK_SRCS-y += $(LIBCLICK_BASE)/unikraft/stringmatcher.cc
 LIBCLICK_SRCS-y += $(LIBCLICK_BASE)/unikraft/mpool.c

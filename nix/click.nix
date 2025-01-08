@@ -46,6 +46,13 @@ pkgs.stdenv.mkDerivation rec {
     #   --replace "/bin/echo" "echo"
 
     cp ${thisgit}/libs/click/unikraft/ipfilter2.* ./elements/ip/
+    cp ${thisgit}/libs/click/unikraft/stringmatcher.* ./elements/ip/
+    cp ${thisgit}/libs/click/unikraft/replace.* ./elements/ip/
+    cp ${thisgit}/libs/click/unikraft/node.* ./elements/ip/
+    cp ${thisgit}/libs/click/unikraft/mpool.* ./elements/ip/
+    cp ${thisgit}/libs/click/unikraft/ahocorasickplus.* ./elements/ip/
+    cp ${thisgit}/libs/click/unikraft/ahocorasick.* ./elements/ip/
+    cp ${thisgit}/libs/click/unikraft/actypes.* ./elements/ip/
 
     mkdir -p $RTE_SDK_BIN
     cp -r ${dpdk}/* $RTE_SDK_BIN/
