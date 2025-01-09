@@ -42,15 +42,20 @@ def nat(interface: str, guest_ip: str, guest_mac: str, gw_ip: str, gw_mac: str, 
     ScheduleInfo(from .1, to 1);
     }}
 
+    from_device :: FromDevice({interface})
+        {";" if direction == "rx" else "-> Print('rx') -> Discard;"}
+    to_device :: Queue(1024)
+        {f"-> Print('tx*') -> to :: ToDevice({interface});" if direction == "tx" else "-> Discard;"}
 
-    device :: SniffGatewayDevice({interface});
-    arpq_in :: ARPQuerier(eth1-in) -> ic2 :: AverageCounter() -> ARPPrint("TxInt: ") -> device;
+
+    // device :: SniffGatewayDevice({interface});
+    arpq_in :: ARPQuerier(eth1-in) -> ic2 :: AverageCounter() -> ARPPrint("TxInt: ") -> to_device;
     ip_to_extern :: GetIPAddress(16)
             -> CheckIPHeader
             -> EtherEncap(0x800, eth1-ex, gw-addr)
             -> ic1 :: AverageCounter()
             // -> Print("txex: ", 124)
-            -> device;
+            -> to_device;
     ip_to_host :: EtherEncap(0x800, gw-addr, eth1-ex)
             // -> ToHost;
             -> Discard;
@@ -64,12 +69,12 @@ def nat(interface: str, guest_ip: str, guest_mac: str, gw_ip: str, gw_mac: str, 
             12/0806 20/0002,        // [1] ARP replies to host
             12/0800);               // [2] IP packets
 
-     {"device" if direction == "rx" else pkt_gen_elements}
+     {"from_device" if direction == "rx" else pkt_gen_elements}
     -> ic0 :: AverageCounter()
     -> arp_class;
 
     // ARP crap
-    arp_class[0] -> ARPResponder(eth1-in, eth1-ex) -> device;
+    arp_class[0] -> ARPResponder(eth1-in, eth1-ex) -> to_device;
     arp_class[1] -> arp_t :: Tee;
                     arp_t[0] -> Discard; // ToHost;
                     arp_t[1] -> [1]arpq_in;
@@ -163,8 +168,8 @@ def nat(interface: str, guest_ip: str, guest_mac: str, gw_ip: str, gw_mac: str, 
         write ic0.reset,
         write ic1.reset,
         write ic2.reset,
+        write from_device.reset 1,
         wait 1s,
         goto start,
     )
-
     """
