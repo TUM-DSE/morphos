@@ -178,9 +178,12 @@ class ThroughputTest(AbstractBenchTest):
             case ("ukebpfjit", "filter", _):
                 files = [ "benchmark/bpfilters/target-port", "benchmark/bpfilters/target-port.sig" ]
                 processing += "-> BPFilter(ID 1, FILE target-port, SIGNATURE target-port.sig, JIT true)"
-            case ("uk", "nat", _):
+            case (_, "nat", _):
                 files = []
-                processing += "TODO"
+                processing += "<uses other click config template>"
+            case (_, "ids", _):
+                files = []
+                processing += "-> StringMatcher(teststringtomatch)"
 
             case _:
                 raise ValueError(f"Unknown system/vnf combination: {self.system}/{self.vnf}")
@@ -352,19 +355,20 @@ def main(measurement: Measurement, plan_only: bool = False) -> None:
     systems = [ "linux", "uk", "ukebpfjit" ]
     vm_nums = [ 1 ]
     sizes = [ 64 ]
-    vnfs = [ "empty", "filter" ]
+    vnfs = [ "empty", "filter", "nat", "ids" ]
     repetitions = 3
     DURATION_S = 71 if not G.BRIEF else 15
     if safe_vpp_warmup:
         DURATION_S = max(30, DURATION_S)
     if G.BRIEF:
         # interfaces = [ Interface.BRIDGE ]
-        interfaces = [ Interface.BRIDGE_VHOST ]
-        # interfaces = [ Interface.VPP ]
+        # interfaces = [ Interface.BRIDGE_VHOST ]
+        interfaces = [ Interface.VPP ]
         # interfaces = [ Interface.BRIDGE_VHOST, Interface.VPP ]
         directions = [ "rx" ]
         # systems = [ "linux", "uk", "ukebpfjit" ]
         systems = [ "uk" ]
+        # systems = [ "linux" ]
         vm_nums = [ 1 ]
         # vm_nums = [ 128, 160 ]
         # vnfs = [ "empty" ]
@@ -372,8 +376,12 @@ def main(measurement: Measurement, plan_only: bool = False) -> None:
         repetitions = 1
 
     def exclude(test):
-        return (Interface(test.interface).is_passthrough() and test.num_vms > 1) or \
-                    (test.vnf == "nat" and test.direction == "tx") # packets get stuck in queue
+        return ((Interface(test.interface).is_passthrough() and test.num_vms > 1) or
+                    (test.vnf == "nat" and test.direction == "tx") or # packets get stuck in queue
+                    (test.vnf == "nat" and test.system == "linux") or # linux not working
+                    (test.vnf == "nat" and test.system == "ukebpfjit") or # ebpf not implemented
+                    (test.vnf == "ids" and test.system == "ukebpfjit") # ebpf not implemented
+        )
 
     # multi-VM TCP tests, but only one length
     test_matrix = dict(
