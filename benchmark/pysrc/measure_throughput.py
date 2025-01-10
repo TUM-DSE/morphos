@@ -26,6 +26,8 @@ from conf import G
 
 unikraft_interface = "0"
 safe_vpp_warmup = False # without we rarely get excessive standard deviations
+GUEST_IP = "10.10.0.1"
+TEST_CLIENT_IP = "10.10.0.2"
 
 def click_tx_config(interface: str, size: int = 1460, dst_mac: str = "90:e2:ba:c3:76:6e", extra_processing: str = "") -> str:
     return f"""
@@ -270,7 +272,23 @@ class ThroughputTest(AbstractBenchTest):
         click_args = {}
         guest.kill_click()
         _, element = self.click_config()
-        guest.write(click_rx_config(guest.test_iface, extra_processing=element), "/tmp/linux.click")
+        if self.vnf == "nat":
+            config = click_configs.nat(
+                interface=guest.test_iface,
+                guest_ip=GUEST_IP,
+                guest_mac=measurement.guest.test_iface_mac,
+                gw_ip=strip_subnet_mask(loadgen.test_iface_ip_net),
+                gw_mac=loadgen.test_iface_mac,
+                src_ip=TEST_CLIENT_IP,
+                src_mac=loadgen.test_iface_mac,
+                dst_ip=strip_subnet_mask(loadgen.test_iface_ip_net),
+                dst_mac=measurement.guest.test_iface_mac,
+                size=self.size,
+                direction=self.direction
+            )
+        else:
+            config = click_rx_config(guest.test_iface, extra_processing=element)
+        guest.write(config, "/tmp/linux.click")
         guest.start_click("/tmp/linux.click", remote_click_output, script_args=click_args, dpdk=False)
         # start network load
         self.start_pktgen(guest, loadgen, host, remote_pktgen_log)
@@ -378,9 +396,7 @@ def main(measurement: Measurement, plan_only: bool = False) -> None:
     def exclude(test):
         return ((Interface(test.interface).is_passthrough() and test.num_vms > 1) or
                     (test.vnf == "nat" and test.direction == "tx") or # packets get stuck in queue
-                    (test.vnf == "nat" and test.system == "linux") or # linux not working
                     (test.vnf == "nat" and test.system == "ukebpfjit") # ebpf not implemented
-                    # (test.vnf == "ids" and test.system == "ukebpfjit") # ebpf not implemented
         )
 
     # multi-VM TCP tests, but only one length
@@ -428,8 +444,7 @@ def main(measurement: Measurement, plan_only: bool = False) -> None:
             except Exception:
                 pass
             if test.vnf == "nat":
-                test_client_ip = "10.10.0.2"
-                loadgen.exec(f"sudo ip address add {test_client_ip}/32 dev {loadgen.test_iface}")
+                loadgen.exec(f"sudo ip address add {TEST_CLIENT_IP}/32 dev {loadgen.test_iface}")
             loadgen.setup_test_iface_ip_net()
 
 
@@ -439,11 +454,11 @@ def main(measurement: Measurement, plan_only: bool = False) -> None:
                 if test.vnf == "nat":
                     click_config = click_configs.nat(
                         interface=unikraft_interface,
-                        guest_ip="10.10.0.1",
+                        guest_ip=GUEST_IP,
                         guest_mac=measurement.guest.test_iface_mac,
                         gw_ip=strip_subnet_mask(loadgen.test_iface_ip_net),
                         gw_mac=loadgen.test_iface_mac,
-                        src_ip=test_client_ip,
+                        src_ip=TEST_CLIENT_IP,
                         src_mac=loadgen.test_iface_mac,
                         dst_ip=strip_subnet_mask(loadgen.test_iface_ip_net),
                         dst_mac=measurement.guest.test_iface_mac,
