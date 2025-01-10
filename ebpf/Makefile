@@ -5,7 +5,7 @@ TARGET_DIR:=$(DIR)/target/bpfel-unknown-none/release
 EXAMPLES_DIR:=$(DIR)/../examples
 BENCHMARK_DIR:=$(DIR)/../benchmark/bpfilters
 
-BINS := dns-filter drop ether-mirror pass rate-limiter round-robin strip-ether-vlan-header target-port udp-tcp-classifier state-migration-v1 state-migration-v2
+BINS := dns-filter drop ether-mirror pass rate-limiter round-robin strip-ether-vlan-header target-port udp-tcp-classifier state-migration-v1 state-migration-v2 stringmatcher
 
 VERIFY ?= 0
 
@@ -71,3 +71,5 @@ sync:
 	@-cp $(TARGET_DIR)/udp-tcp-classifier.sig $(BENCHMARK_DIR)/udp-tcp-classifier.sig
 	@-cp $(TARGET_DIR)/strip-ether-vlan-header $(BENCHMARK_DIR)/strip-ether-vlan-header
 	@-cp $(TARGET_DIR)/strip-ether-vlan-header.sig $(BENCHMARK_DIR)/strip-ether-vlan-header.sig
+	@-cp $(TARGET_DIR)/stringmatcher $(BENCHMARK_DIR)/
+	@-cp $(TARGET_DIR)/stringmatcher.sig $(BENCHMARK_DIR)/
