@@ -11,6 +11,11 @@
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-23.11";
     unstablepkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
     flake-utils.url = "github:numtide/flake-utils";
+    fenix = {
+      url = "github:nix-community/fenix";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+
 
         unikraft = {
             flake = false;
@@ -93,6 +98,30 @@
             pkgs = nixpkgs.legacyPackages.${system};
             unstable = unstablepkgs.legacyPackages.${system};
             flakepkgs = self.packages.${system};
+            rustToolchain = with inputs.fenix.packages.${system}; combine [
+                latest.cargo
+                latest.rustc
+                latest.rust-src
+                latest.rust-std
+                latest.clippy
+                latest.rustfmt
+                #targets.x86_64-unknown-linux-musl.stable.rust-std
+                # fenix.packages.x86_64-linux.targets.aarch64-unknown-linux-gnu.latest.rust-std
+            ];
+            bpfDeps = pkgs: (with pkgs; [
+                # ((bpf-linker.override { rustPlatform = makeRustPlatform {
+                #     cargo = rustToolchain;
+                #     rustc = rustToolchain;
+                # };}).overrideAttrs {
+                #     fixupPhase = ''
+                #         ls $out/bin
+                #         patchelf --add-rpath ${zlib}/lib $out/bin/bpf-linker $out/bin/bpf-linker
+                #         patchelf --add-rpath ${ncurses}/lib $out/bin/bpf-linker $out/bin/bpf-linker
+                #         patchelf --add-rpath ${libxml2}/lib $out/bin/bpf-linker $out/bin/bpf-linker
+                #         patchelf --add-rpath ${rustToolchain}/lib $out/bin/bpf-linker $out/bin/bpf-linker
+                #     '';
+                # })
+            ]);
             buildDeps = pkgs: (with pkgs; [
                 pkg-config
                 gnumake
@@ -217,15 +246,15 @@
                 devShells = {
                     default = pkgs.mkShell {
                         name = "devShell";
-                        buildInputs = (buildDeps pkgs) ++ (prevailDeps pkgs) ++ [
+                        RUST_SRC_PATH = "${rustToolchain}/lib/rustlib/src/rust/library";
+                        buildInputs = (bpfDeps pkgs) ++ (buildDeps pkgs) ++ (prevailDeps pkgs) ++ [
                             unstable.kraft
-                                unstable.cargo
-                                unstable.rustc
                                 unstable.bmon
                                 unstable.gh
                                 unstable.just
                                 unstable.bridge-utils
                                 unstable.ack
+                            rustToolchain
 
                             # deps for tests
                             (pkgs.python3.withPackages (ps: [

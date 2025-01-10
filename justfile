@@ -120,7 +120,15 @@ throughput-cpio:
     cp ./throughput.click /tmp/ukcpio-$(USER)/config.click
     ./libs/unikraft/support/scripts/mkcpio ./throughput.cpio /tmp/ukcpio-$(USER)
 
-vm: throughput-cpio
+stringmatcher-cpio:
+    rm -r /tmp/ukcpio-{{user}} || true
+    mkdir -p /tmp/ukcpio-{{user}}
+    cp ./benchmark/configurations/stringmatcher.click /tmp/ukcpio-{{user}}/config.click
+    cp ./benchmark/bpfilters/stringmatcher /tmp/ukcpio-{{user}}/stringmatcher
+    cp ./benchmark/bpfilters/stringmatcher.sig /tmp/ukcpio-{{user}}/stringmatcher.sig
+    ./libs/unikraft/support/scripts/mkcpio ./throughput.cpio /tmp/ukcpio-{{user}}
+
+vm: stringmatcher-cpio
     sudo taskset -c 3,4 qemu-system-x86_64 \
         -accel kvm -cpu max \
         -m 1024M -object memory-backend-file,id=mem,size=1024M,mem-path=/dev/hugepages,share=on \
