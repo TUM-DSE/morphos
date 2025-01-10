@@ -173,8 +173,8 @@ class ThroughputTest(AbstractBenchTest):
                 files = []
                 processing += "-> IPFilter(deny dst port 1234, allow all)"
             case ("ukebpf", "filter", _):
-                files = [ "benchmark/bpfilters/target-port", "benchmark/bpfilters/target-port.sig" ]
-                processing += "-> BPFilter(ID 1, FILE target-port, SIGNATURE target-port.sig, JIT false)"
+                files = [ "benchmark/bpfilters/stringmatcher", "benchmark/bpfilters/stringmatcher.sig" ]
+                processing += "-> BPFilter(ID 1, FILE stringmatcher, SIGNATURE stringmatcher.sig, JIT false)"
             case ("ukebpfjit", "filter", _):
                 files = [ "benchmark/bpfilters/target-port", "benchmark/bpfilters/target-port.sig" ]
                 processing += "-> BPFilter(ID 1, FILE target-port, SIGNATURE target-port.sig, JIT true)"
@@ -362,13 +362,13 @@ def main(measurement: Measurement, plan_only: bool = False) -> None:
         DURATION_S = max(30, DURATION_S)
     if G.BRIEF:
         # interfaces = [ Interface.BRIDGE ]
-        # interfaces = [ Interface.BRIDGE_VHOST ]
-        interfaces = [ Interface.VPP ]
+        interfaces = [ Interface.BRIDGE_VHOST ]
+        # interfaces = [ Interface.VPP ]
         # interfaces = [ Interface.BRIDGE_VHOST, Interface.VPP ]
         directions = [ "rx" ]
         # systems = [ "linux", "uk", "ukebpfjit" ]
-        systems = [ "uk" ]
-        # systems = [ "linux" ]
+        # systems = [ "ukebpfjit" ]
+        systems = [ "linux" ]
         vm_nums = [ 1 ]
         # vm_nums = [ 128, 160 ]
         # vnfs = [ "empty" ]
@@ -379,8 +379,8 @@ def main(measurement: Measurement, plan_only: bool = False) -> None:
         return ((Interface(test.interface).is_passthrough() and test.num_vms > 1) or
                     (test.vnf == "nat" and test.direction == "tx") or # packets get stuck in queue
                     (test.vnf == "nat" and test.system == "linux") or # linux not working
-                    (test.vnf == "nat" and test.system == "ukebpfjit") or # ebpf not implemented
-                    (test.vnf == "ids" and test.system == "ukebpfjit") # ebpf not implemented
+                    (test.vnf == "nat" and test.system == "ukebpfjit") # ebpf not implemented
+                    # (test.vnf == "ids" and test.system == "ukebpfjit") # ebpf not implemented
         )
 
     # multi-VM TCP tests, but only one length
