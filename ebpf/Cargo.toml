@@ -47,9 +47,13 @@ path = "src/bin/state-migration-v1.rs"
 name = "state-migration-v2"
 path = "src/bin/state-migration-v2.rs"
 
+[[bin]]
+name = "nat"
+path = "src/bin/nat.rs"
+
 [dependencies]
 network-types = "0.0.6"
-aya-ebpf = "0.1.0"
+aya-ebpf = "0.1.1"
 flex-dns = "1.0.1"
 
 [profile.dev]
