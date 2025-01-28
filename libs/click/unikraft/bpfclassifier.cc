@@ -9,11 +9,11 @@ CLICK_DECLS
 BPFClassifier::BPFClassifier() {
 }
 
-void BPFClassifier::push(int, Packet *p) {
+void BPFClassifier::push(int port, Packet *p) {
     uk_pr_debug("BPFClassifier: Received packet\n");
 
     uk_rwlock_rlock(&_lock);
-    int ret = this->exec(p);
+    int ret = this->exec(port, p);
     uk_rwlock_runlock(&_lock);
 
     if (ret == -1) {

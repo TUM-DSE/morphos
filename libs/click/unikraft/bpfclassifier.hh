@@ -43,7 +43,7 @@ public:
 
     const char *class_name() const override { return "BPFClassifier"; }
 
-    const char *port_count() const override { return "1/-"; }
+    const char *port_count() const override { return "-/-"; }
 
     const char *processing() const override { return PUSH; }
 

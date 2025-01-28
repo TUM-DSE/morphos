@@ -42,7 +42,7 @@ void BPFRewriter::register_additional_bpf_helpers(void) {
 #define REWRITER_ABORT 0
 #define REWRITER_SUCCESS 1
 
-void BPFRewriter::push(int, Packet *p) {
+void BPFRewriter::push(int port, Packet *p) {
     uk_pr_debug("BPFRewriter: Received packet\n");
 
     WritablePacket * p_out = p->uniqueify();
@@ -52,7 +52,7 @@ void BPFRewriter::push(int, Packet *p) {
 
     uk_rwlock_rlock(&_lock);
     _current_packet = p_out;
-    int ret = this->exec(p_out);
+    int ret = this->exec(port, p_out);
     p_out = _current_packet;
     uk_rwlock_runlock(&_lock);
 

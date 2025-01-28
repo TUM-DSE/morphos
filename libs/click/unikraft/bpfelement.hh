@@ -28,7 +28,7 @@ protected:
 
     virtual void register_additional_bpf_helpers(void) { }
 
-    uint32_t exec(Packet *p);
+    uint32_t exec(int port, Packet *p);
 
 private:
 
@@ -50,6 +50,7 @@ private:
 typedef struct {
     void* data;
     void* data_end;
+    uint32_t port;
 } bpfelement_md;
 
 CLICK_ENDDECLS

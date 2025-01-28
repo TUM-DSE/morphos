@@ -20,13 +20,13 @@ BPFilter::BPFilter() {
 #define XDP_DROP 1
 #define XDP_PASS 2
 
-void BPFilter::push(int, Packet *p) {
+void BPFilter::push(int port, Packet *p) {
     _count++;
 
     uk_pr_debug("BPFilter: Received packet\n");
 
     uk_rwlock_rlock(&_lock);
-    uint32_t ret = this->exec(p);
+    uint32_t ret = this->exec(port, p);
     uk_rwlock_runlock(&_lock);
 
     if (ret == XDP_DROP) {

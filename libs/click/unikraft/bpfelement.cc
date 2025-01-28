@@ -222,12 +222,14 @@ int BPFElement::configure(Vector <String> &conf, ErrorHandler *errh) {
         return errh->error("Error loading ubpf program: %s\n", error_msg);
     }
 
+#ifdef CONFIG_LIBCLICK_UBPF_VERIFY_SIGNATURE
     if (CONFIG_LIBCLICK_UBPF_VERIFY_SIGNATURE) {
         auto return_code = check_bpf_verification_signature(errh);
         if (return_code < 0) {
             return return_code;
         }
     }
+#endif
 
     if (_jit) {
         _ubpf_jit_fn = ubpf_compile(_ubpf_vm, &error_msg);
@@ -253,10 +255,11 @@ int BPFElement::configure(Vector <String> &conf, ErrorHandler *errh) {
     return 0;
 }
 
-uint32_t BPFElement::exec(Packet *p) {
+uint32_t BPFElement::exec(int port, Packet *p) {
     auto ctx = (bpfelement_md) {
             .data = (void *) p->data(),
-            .data_end = (void *) p->end_data()
+            .data_end = (void *) p->end_data(),
+            .port = port,
     };
 
     if (_jit) {

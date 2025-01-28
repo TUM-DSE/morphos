@@ -12,6 +12,7 @@ pub use programs::*;
 pub struct BpfContext {
     pub data: *mut u8,
     pub data_end: *mut u8,
+    pub port: u32,
 }
 
 impl BpfContext {
