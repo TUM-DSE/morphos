@@ -82,15 +82,48 @@ long bpf_map_delete_elem(void *raw_map, void *key) {
     }
 }
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wformat-security"
 void bpf_trace_printk(const char *fmt, int fmt_size, ...) {
+    int i, var_args;
+    for (i=0, var_args=0; fmt[i] && i < fmt_size; i++)
+        var_args += (fmt[i] == '%');
+
+    // null terminate the format string. We are calling from rust where we don't terminate strings.
+    char* fmt_str = (char*) malloc(fmt_size + 1);
+    memcpy(fmt_str, fmt, fmt_size);
+    fmt_str[fmt_size] = '\0';
+
     va_list args;
     va_start(args, fmt_size);
 
-    printf("bpf_trace_printk: ");
-    vprintf(fmt, args);
+    // Our rust ebpf library calls us only with up to 4 arguments. More will call _vprintk instead.
+    switch (var_args) {
+        case 1: {
+            printf(fmt_str, *va_arg(args, int*));
+            break;
+        }
+        case 2: {
+            printf(fmt_str, *va_arg(args, int*), *va_arg(args, int*));
+            break;
+        }
+        case 3: {
+            printf(fmt_str, *va_arg(args, int*), *va_arg(args, int*), *va_arg(args, int*));
+            break;
+        }
+        case 4: {
+            printf(fmt_str, *va_arg(args, int*), *va_arg(args, int*), *va_arg(args, int*), *va_arg(args, int*));
+            break;
+        }
+        default: {
+            printf(fmt_str);
+            break;
+        }
+    }
 
     va_end(args);
 }
+#pragma GCC diagnostic pop
 
 uint64_t bpf_ktime_get_ns() {
     struct timespec ts;
