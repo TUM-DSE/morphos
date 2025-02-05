@@ -29,13 +29,13 @@
 #include <click/handlercall.hh>
 CLICK_DECLS
 
-InfiniteSource::InfiniteSource()
+InfiniteSource2::InfiniteSource2()
     : _packet(0), _task(this), _end_h(0)
 {
 }
 
 void *
-InfiniteSource::cast(const char *n)
+InfiniteSource2::cast(const char *n)
 {
     if (strcmp(n, class_name()) == 0)
 	return static_cast<Element *>(this);
@@ -46,7 +46,7 @@ InfiniteSource::cast(const char *n)
 }
 
 int
-InfiniteSource::configure(Vector<String> &conf, ErrorHandler *errh)
+InfiniteSource2::configure(Vector<String> &conf, ErrorHandler *errh)
 {
     ActiveNotifier::initialize(Notifier::EMPTY_NOTIFIER, router());
     String data = "Random bullshit in a packet, at least 64 bytes long. Well, now it is.";
@@ -94,7 +94,7 @@ InfiniteSource::configure(Vector<String> &conf, ErrorHandler *errh)
 }
 
 int
-InfiniteSource::initialize(ErrorHandler *errh)
+InfiniteSource2::initialize(ErrorHandler *errh)
 {
     if (output_is_push(0)) {
 	ScheduleInfo::initialize_task(this, &_task, errh);
@@ -106,7 +106,7 @@ InfiniteSource::initialize(ErrorHandler *errh)
 }
 
 void
-InfiniteSource::cleanup(CleanupStage)
+InfiniteSource2::cleanup(CleanupStage)
 {
     if (_packet)
 	_packet->kill();
@@ -114,7 +114,7 @@ InfiniteSource::cleanup(CleanupStage)
 }
 
 bool
-InfiniteSource::run_task(Task *)
+InfiniteSource2::run_task(Task *)
 {
     if (!_active || !_nonfull_signal)
 	return false;
@@ -136,7 +136,7 @@ InfiniteSource::run_task(Task *)
 }
 
 Packet *
-InfiniteSource::pull(int)
+InfiniteSource2::pull(int)
 {
     if (!_active) {
     done:
@@ -157,7 +157,7 @@ InfiniteSource::pull(int)
 }
 
 void
-InfiniteSource::setup_packet()
+InfiniteSource2::setup_packet()
 {
     if (_packet)
 	_packet->kill();
@@ -176,10 +176,10 @@ InfiniteSource::setup_packet()
 }
 
 int
-InfiniteSource::change_param(const String &s, Element *e, void *vparam,
+InfiniteSource2::change_param(const String &s, Element *e, void *vparam,
 			     ErrorHandler *errh)
 {
-    InfiniteSource *is = (InfiniteSource *)e;
+    InfiniteSource2 *is = (InfiniteSource2 *)e;
     switch ((intptr_t)vparam) {
 
     case h_data:		// data
@@ -237,7 +237,7 @@ InfiniteSource::change_param(const String &s, Element *e, void *vparam,
 }
 
 void
-InfiniteSource::add_handlers()
+InfiniteSource2::add_handlers()
 {
     add_data_handlers("data", Handler::f_read | Handler::f_raw | Handler::f_calm, &_data);
     add_write_handler("data", change_param, h_data, Handler::f_raw);
@@ -262,4 +262,4 @@ InfiniteSource::add_handlers()
 }
 
 CLICK_ENDDECLS
-EXPORT_ELEMENT(InfiniteSource)
+EXPORT_ELEMENT(InfiniteSource2)

@@ -9,7 +9,7 @@ class HandlerCall;
 /*
 =c
 
-InfiniteSource([DATA, LIMIT, BURST, ACTIVE, I<keywords>])
+InfiniteSource2([DATA, LIMIT, BURST, ACTIVE, I<keywords>])
 
 =s basicsources
 
@@ -70,19 +70,19 @@ in conjunction with Script.
 
 =e
 
-  InfiniteSource(\<0800>) -> Queue -> ...
+  InfiniteSource2(\<0800>) -> Queue -> ...
 
 =n
 
 Useful for profiling and experiments.  Packets' timestamp annotations are set
 to the current time.
 
-InfiniteSource listens for downstream full notification.
+InfiniteSource2 listens for downstream full notification.
 
 =h count read-only
 Returns the total number of packets that have been generated.
 =h reset write-only
-Resets the number of generated packets to 0. The InfiniteSource will then
+Resets the number of generated packets to 0. The InfiniteSource2 will then
 generate another LIMIT packets (if it is active).
 =h data read/write
 Returns or sets the DATA parameter.
@@ -99,11 +99,11 @@ Makes the element active or inactive.
 
 RatedSource, Script */
 
-class InfiniteSource : public Element, public ActiveNotifier { public:
+class InfiniteSource2 : public Element, public ActiveNotifier { public:
 
-  InfiniteSource() CLICK_COLD;
+  InfiniteSource2() CLICK_COLD;
 
-  const char *class_name() const		{ return "InfiniteSource"; }
+  const char *class_name() const		{ return "InfiniteSource2"; }
   void *cast(const char *);
   const char *port_count() const		{ return PORTS_0_1; }
   const char *flags() const			{ return "S1"; }
