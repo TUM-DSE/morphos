@@ -51,6 +51,7 @@ InfiniteSource(DATA \<0800>, LENGTH {size}, LIMIT -1, BURST 100000)
  -> UDPIPEncap($myip, 5678, $dstip, 5678)
 {extra_processing}
 -> EtherEncap(0x0800, $mymac, $dmac)
+// FastUDPFlows(RATE 0, LIMIT -1, LENGTH {size}, SRCETH $mymac, DSTETH $dmac, SRCIP $myip, DSTIP $dstip, FLOWS 1, FLOWSIZE 100000)
 -> ic0 :: AverageCounter()
 -> ToDevice({interface});
 
