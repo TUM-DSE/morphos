@@ -53,6 +53,7 @@ pkgs.stdenv.mkDerivation rec {
     cp ${thisgit}/libs/click/unikraft/ahocorasickplus.* ./elements/ip/
     cp ${thisgit}/libs/click/unikraft/ahocorasick.* ./elements/ip/
     cp ${thisgit}/libs/click/unikraft/actypes.* ./elements/ip/
+    cp ${thisgit}/libs/click/unikraft/infinitesource2.* ./elements/ip/
 
     mkdir -p $RTE_SDK_BIN
     cp -r ${dpdk}/* $RTE_SDK_BIN/
