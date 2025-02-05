@@ -46,8 +46,9 @@ define($verbose 3)
 define($blocking true)
 
 
-InfiniteSource(DATA \<0800>, LENGTH {size}, LIMIT -1, BURST 100000)
--> UDPIPEncap($myip, 5678, $dstip, 5678)
+// InfiniteSource(DATA \<0800>, LENGTH {size}, LIMIT -1, BURST 100000)
+InfiniteSource2(DATA \<0800>, SRCIP $myip, DSTIP $dstip, LENGTH {size}, LIMIT -1, BURST 100000)
+// -> UDPIPEncap($myip, 5678, $dstip, 5678)
 {extra_processing}
 -> EtherEncap(0x0800, $mymac, $dmac)
 -> ic0 :: AverageCounter()

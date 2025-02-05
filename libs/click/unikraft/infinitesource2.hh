@@ -1,5 +1,5 @@
-#ifndef CLICK_INFINITESOURCE_HH
-#define CLICK_INFINITESOURCE_HH
+#ifndef CLICK_INFINITESOURCE2_HH
+#define CLICK_INFINITESOURCE2_HH
 #include <click/element.hh>
 #include <click/task.hh>
 #include <click/notifier.hh>
@@ -138,6 +138,9 @@ class InfiniteSource2 : public Element, public ActiveNotifier { public:
     bool _timestamp;
     Task _task;
     String _data;
+    // click_ether _ethh;
+    struct in_addr _sipaddr;
+    struct in_addr _dipaddr;
     NotifierSignal _nonfull_signal;
     HandlerCall *_end_h;
 

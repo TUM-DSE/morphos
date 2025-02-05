@@ -19,7 +19,7 @@
  */
 
 #include <click/config.h>
-#include "infinitesource.hh"
+#include "infinitesource2.hh"
 #include <click/args.hh>
 #include <click/error.hh>
 #include <click/router.hh>
@@ -27,6 +27,8 @@
 #include <click/glue.hh>
 #include <click/straccum.hh>
 #include <click/handlercall.hh>
+#include <clicknet/ip.h>
+#include <clicknet/udp.h>
 CLICK_DECLS
 
 InfiniteSource2::InfiniteSource2()
@@ -58,6 +60,10 @@ InfiniteSource2::configure(Vector<String> &conf, ErrorHandler *errh)
 
     if (Args(conf, this, errh)
 	.read_p("DATA", data)
+    // .read_mp("SRCETH", EtherAddressArg(), _ethh.ether_shost)
+    .read_mp("SRCIP", _sipaddr)
+    // .read_mp("DSTETH", EtherAddressArg(), _ethh.ether_dhost)
+    .read_mp("DSTIP", _dipaddr)
 	.read_p("LIMIT", limit)
 	.read_p("BURST", burstsize)
 	.read_p("ACTIVE", active)
@@ -73,6 +79,7 @@ InfiniteSource2::configure(Vector<String> &conf, ErrorHandler *errh)
     if (stop && end_h)
 	return errh->error("END_CALL and STOP are mutually exclusive");
 
+    // _ethh.ether_type = htons(0x0800);
     _data = data;
     _datasize = datasize;
     _limit = limit;
@@ -162,17 +169,61 @@ InfiniteSource2::setup_packet()
     if (_packet)
 	_packet->kill();
 
-    if (_datasize < 0)
-	_packet = Packet::make(_data.data(), _data.length());
-    else if (_datasize <= _data.length())
-	_packet = Packet::make(_data.data(), _datasize);
-    else {
-	// make up some data to fill extra space
-	StringAccum sa;
-	while (sa.length() < _datasize)
-	    sa << _data;
-	_packet = Packet::make(sa.data(), _datasize);
-    }
+    size_t pkt_len;
+	if (_datasize < 0) {
+        pkt_len = _data.length();
+	} else {
+	    pkt_len = _datasize;
+	}
+	pkt_len += 14; // account for ethernet header
+
+    WritablePacket *q = Packet::make(pkt_len);
+    _packet = q;
+    // memcpy(q->data(), &_ethh, 14);
+    click_ip *ip = reinterpret_cast<click_ip *>(q->data()+14);
+    click_udp *udp = reinterpret_cast<click_udp *>(ip + 1);
+
+    // set up IP header
+    ip->ip_v = 4;
+    ip->ip_hl = sizeof(click_ip) >> 2;
+    ip->ip_len = htons(pkt_len-14);
+    ip->ip_id = 0;
+    ip->ip_p = IP_PROTO_UDP;
+    ip->ip_src = _sipaddr;
+    ip->ip_dst = _dipaddr;
+    ip->ip_tos = 0;
+    ip->ip_off = 0;
+    ip->ip_ttl = 250;
+    ip->ip_sum = 0;
+    ip->ip_sum = click_in_cksum((unsigned char *)ip, sizeof(click_ip));
+    _packet->set_dst_ip_anno(IPAddress(_dipaddr));
+    _packet->set_ip_header(ip, sizeof(click_ip));
+
+    // set up UDP header
+    udp->uh_sport = (click_random() >> 2) % 0xFFFF;
+    udp->uh_dport = (click_random() >> 2) % 0xFFFF;
+    udp->uh_sum = 0;
+    unsigned short len = pkt_len-14-sizeof(click_ip);
+    udp->uh_ulen = htons(len);
+    unsigned csum = click_in_cksum((uint8_t *)udp, len);
+    udp->uh_sum = click_in_cksum_pseudohdr(csum, ip, len);
+
+    // skip ethernet header (we need to encapsulate after processing)
+    size_t skip = 14;
+    const void *skipped = _packet->data()+skip;
+    _packet = Packet::make(skip, skipped, pkt_len-skip, 0);
+
+    // if (_datasize < 0)
+	// _packet = Packet::make(_data.data(), _data.length());
+    // else if (_datasize <= _data.length())
+	// _packet = Packet::make(_data.data(), _datasize);
+    // else {
+	// // make up some data to fill extra space
+	// StringAccum sa;
+	// while (sa.length() < _datasize)
+	//     sa << _data;
+	// _packet = Packet::make(sa.data(), _datasize);
+    // }
 }
 
 int
