@@ -1,4 +1,4 @@
-#!/nix/store/m0s1xf30bdk6vfn5m6c3mhb2z8w1cib5-bash-5.2-p15/bin/bash
+#!/bin/bash
 # SPDX-License-Identifier: GPL-2.0
 #
 # Script for max single flow performance
@@ -19,12 +19,14 @@
 #  [1] http://netoptimizer.blogspot.dk/2014/06/pktgen-for-network-overload-testing.html
 #  [2] http://netoptimizer.blogspot.dk/2014/10/unlocked-10gbps-tx-wirespeed-smallest.html
 #
-basedir=`dirname $0`
+basedir="`dirname $0`/../nix/builds/linux-pktgen/share/"
 source ${basedir}/functions.sh
 root_check_run_with_sudo "$@"
 
 # Parameter parsing via include
 source ${basedir}/parameters.sh
+
+PGRXDEV=/proc/net/pktgen/pgrx
 
 # Trap EXIT first
 trap_exit
@@ -48,6 +50,11 @@ fi
 
 # General cleanup everything since last run
 [ -z "$APPEND" ] && pg_ctrl "reset"
+echo ok
+[ -z "$APPEND" ] && echo "rx_reset" > $PGRXDEV
+
+echo "rx" > $PGRXDEV # read return packets
+echo "statistics time" > $PGRXDEV # collect latency stats
 
 # Threads are specified with parameter -t value in $THREADS
 for ((thread = $F_THREAD; thread <= $L_THREAD; thread++)); do
@@ -63,7 +70,8 @@ for ((thread = $F_THREAD; thread <= $L_THREAD; thread++)); do
     pg_set $dev "clone_skb $CLONE_SKB"
     pg_set $dev "pkt_size $PKT_SIZE"
     pg_set $dev "delay $DELAY"
-    pg_set $dev "flag NO_TIMESTAMP"
+    # pg_set $dev "rate 5" # seems to be the lowest packet rate that works (-> 333kpps)
+    pg_set $dev 'flag !NO_TIMESTAMP'
 
     # Destination
     pg_set $dev "dst_mac $DST_MAC"
@@ -96,6 +104,9 @@ function print_result() {
 	echo "Device: $dev"
 	cat /proc/net/pktgen/$dev | grep -A2 "Result:"
     done
+
+    echo ""
+    cat $PGRXDEV
 }
 # trap keyboard interrupt (Ctrl-C)
 trap true SIGINT
