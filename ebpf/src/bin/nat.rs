@@ -15,19 +15,28 @@ use network_types::udp::UdpHdr;
 
 const OUTPUTS: u32 = 2;
 pub type Output = u32;
-const FOUTPUT: u32 = 0; // packet towards the wild
-const ROUTPUT: u32 = 1; // reply flows are rewritten to look like the original flow -> routput
 
+// NAT ports
+const PORT_START: u16 = 50000;
+const PORT_END: u16 = 65535;
 
+const FOUTPUT: u32 = 0; // packet towards the wild. Will have src_ip == DEV_EX.ip and dst_mac == GW_ADDR.mac.
+const ROUTPUT: u32 = 1; // reply flows are rewritten to look like the original flow -> routput (to the internal network)
 
-
-const FOO: Rewrite = Rewrite {
-    src_ip: 0x0a000001,
-    src_mac: [0x00, 0x00, 0x00, 0x00, 0x00, 0x00],
-    src_port: 0,
-    dst_ip: 0x0a000002,
-    dst_mac: [0x00, 0x00, 0x00, 0x00, 0x00, 0x00],
-    dst_port: 0,
+const DEV_IN: InterfaceInfo = InterfaceInfo {
+    // mac: [0x00, 0x0d, 0x87, 0x9d, 0x1c, 0xe9],
+    ip: 0xac2c0002, // 172.44.0.2
+    subnet: 24,
+};
+const DEV_EX: InterfaceInfo = InterfaceInfo {
+    // mac: [0x00, 0x0d, 0x87, 0x9d, 0x1c, 0xe9],
+    ip: 0xac2c0003, // 172.44.0.3
+    subnet: 0,
+};
+const GW_ADDR: InterfaceInfo = InterfaceInfo {
+    // mac: [0x00, 0x20, 0x6f, 0x9d, 0x1c, 0xc2],
+    ip: 0xac2c0001, // 172.44.0.2
+    subnet: 0,
 };
 
 struct Connection {
@@ -40,17 +49,25 @@ struct Connection {
 
 struct Rewrite {
     src_ip: u32,
-    src_mac: [u8; 6],
+    // src_mac: [u8; 6],
     src_port: u16,
     dst_ip: u32,
-    dst_mac: [u8; 6],
-    dst_port: u16
+    // dst_mac: [u8; 6],
+    dst_port: u16,
+    output: Output
+}
+
+struct InterfaceInfo {
+    // mac: [u8; 6],
+    ip: u32,
+    subnet: u8,
 }
 
 #[no_mangle]
 #[link_section = "bpffilter"]
 pub extern "C" fn main(ctx: *mut BpfContext) -> Output {
     let mut ctx = unsafe { *ctx };
+    unsafe { bpf_printk!(b"port %d\n", ctx.port) };
     try_classify(&mut ctx).unwrap_or_else(|_| 0)
 }
 
@@ -59,9 +76,6 @@ static PKTCOUNTER: Array<u32> = Array::with_max_entries(1, 0);
 
 #[map(name = "NEXT_PORT")]
 static NEXT_PORT: Array<u16> = Array::with_max_entries(1, 0);
-
-const PORT_START: u16 = 50000;
-const PORT_END: u16 = 65535;
 
 #[inline(always)]
 fn next_port() -> Result<u16, ()> {
@@ -72,20 +86,33 @@ fn next_port() -> Result<u16, ()> {
 }
 
 #[map(name = "CONNECTIONS")]
-static CONNECTIONS: HashMap<Connection, u32> = HashMap::with_max_entries(1028, 0);
+static CONNECTIONS: HashMap<Connection, Rewrite> = HashMap::with_max_entries(1028, 0);
 
 #[inline(always)]
 fn try_classify(ctx: &mut BpfContext) -> Result<Output, ()> {
-    let ethhdr: *const EthHdr = unsafe { ctx.get_ptr(0)? };
-    let ether_type  = unsafe { *ethhdr }.ether_type;
-    if ether_type != EtherType::Ipv4 {
-        return Err(());
-    }
-    let ipv4hdr: *const Ipv4Hdr = unsafe { ctx.get_ptr(14)? };
+    let port = ctx.port as u32;
+    // let ethhdr: *const EthHdr = unsafe { ctx.get_ptr(0)? };
+    // let ether_type  = unsafe { *ethhdr }.ether_type;
+    // if ether_type != EtherType::Ipv4 {
+    //     unsafe { bpf_printk!(b"err! #2\n") };
+    //     return Err(());
+    // }
+    let packet_start: usize = 0; // 14 if ethernet has not been stripped
+    let ipv4hdr: *const Ipv4Hdr = unsafe { ctx.get_ptr(packet_start)? };
+    let a = 1337;
+    let b: *const u32 = &a;
 
-    let mut conn = match unsafe { *ipv4hdr }.proto {
+    unsafe { bpf_printk!(b"foo #0\n") };
+    if (ipv4hdr as u32) > 1000 {
+        unsafe { bpf_printk!(b"proto 0\n") };
+    }
+    let proto = unsafe { *ipv4hdr }.proto;
+    unsafe { bpf_printk!(b"foo #1\n") };
+
+    let mut conn = match proto {
         IpProto::Tcp => {
-            let tcphdr: *const TcpHdr = unsafe { ctx.get_ptr(Ipv4Hdr::LEN) }?;
+            unsafe { bpf_printk!(b"foo #2.1\n") };
+            let tcphdr: *const TcpHdr = unsafe { ctx.get_ptr(packet_start + Ipv4Hdr::LEN) }?;
             Connection{
                 src_ip: unsafe { *ipv4hdr }.src_addr,
                 src_port: u16::from_be(unsafe { *tcphdr }.source),
@@ -95,7 +122,9 @@ fn try_classify(ctx: &mut BpfContext) -> Result<Output, ()> {
             }
         }
         IpProto::Udp => {
-            let udphdr: *const UdpHdr = unsafe { ctx.get_ptr(Ipv4Hdr::LEN) }?;
+            unsafe { bpf_printk!(b"foo #2\n") };
+            let udphdr: *const UdpHdr = unsafe { ctx.get_ptr(packet_start + Ipv4Hdr::LEN) }?;
+            unsafe { bpf_printk!(b"foo #3\n") };
             Connection{
                 src_ip: unsafe { *ipv4hdr }.src_addr,
                 src_port: u16::from_be(unsafe { *udphdr }.source),
@@ -104,17 +133,56 @@ fn try_classify(ctx: &mut BpfContext) -> Result<Output, ()> {
                 protocol: IpProto::Tcp as u8,
             }
         }
-        _ => return Err(()),
+        _ => {
+            unsafe { bpf_printk!(b"err! #1\n") };
+            return Err(())
+        },
     };
 
+    // handles packets from internal network for external network
     let output = match CONNECTIONS.get_ptr(&conn) {
-        Some(output) => unsafe {*output % OUTPUTS},
-        None => {
-            let port = next_port()? as u32;
-            CONNECTIONS.insert(&conn, &port, 0).ok().ok_or(())?;
+        Some(rewrite) => unsafe {(*rewrite).output % OUTPUTS},
+
+        None if port == 1 => { FOUTPUT },
+
+        None if port == 0 => {
+            let local_nat_port = next_port()? as u32;
+
+            // install outgoing rewrite rule (into the wild)
+            let key = &conn;
+            let value = Rewrite {
+                src_ip: DEV_EX.ip,
+                src_port: local_nat_port as u16,
+                dst_ip: conn.src_ip,
+                dst_port: conn.dst_port,
+                output: FOUTPUT,
+            };
+            CONNECTIONS.insert(key, &value, 0).ok().ok_or(())?;
+
+            // install incoming rewrite rule (replies from the wild)
+            let key = Connection {
+                src_ip: conn.dst_ip,
+                src_port: conn.dst_port,
+                dst_ip: DEV_EX.ip,
+                dst_port: local_nat_port as u16,
+                protocol: conn.protocol,
+            };
+            let value = Rewrite {
+                src_ip: conn.dst_ip,
+                src_port: conn.dst_port,
+                dst_ip: conn.src_ip,
+                dst_port: conn.dst_port,
+                output: FOUTPUT,
+            };
+            CONNECTIONS.insert(&key, &value, 0).ok().ok_or(())?;
             port
+        },
+        None => { // catch remaining None cases
+            unsafe { bpf_printk!(b"err! #3\n") };
+            return Err(())
         }
     };
+    unsafe { bpf_printk!(b"port %d #2\n", output) };
 
 
 
