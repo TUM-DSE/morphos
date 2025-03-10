@@ -81,6 +81,7 @@ static NEXT_PORT: Array<u16> = Array::with_max_entries(1, 0);
 fn next_port() -> Result<u16, ()> {
     let next_port = NEXT_PORT.get_ptr_mut(0).ok_or(())?;
     let port = unsafe { *next_port };
+    unsafe { bpf_printk!(b"port %d\n", port) };
     unsafe { *next_port = (*next_port - PORT_START + 1) % (PORT_END - PORT_START) + PORT_START };
     Ok(port)
 }
@@ -102,12 +103,8 @@ fn try_classify(ctx: &mut BpfContext) -> Result<Output, ()> {
     let a = 1337;
     let b: *const u32 = &a;
 
-    unsafe { bpf_printk!(b"foo #0\n") };
-    if (ipv4hdr as u32) > 1000 {
-        unsafe { bpf_printk!(b"proto 0\n") };
-    }
     let proto = unsafe { *ipv4hdr }.proto;
-    unsafe { bpf_printk!(b"foo #1\n") };
+    unsafe { bpf_printk!(b"proto %d\n", proto as u8) };
 
     let mut conn = match proto {
         IpProto::Tcp => {
@@ -122,7 +119,6 @@ fn try_classify(ctx: &mut BpfContext) -> Result<Output, ()> {
             }
         }
         IpProto::Udp => {
-            unsafe { bpf_printk!(b"foo #2\n") };
             let udphdr: *const UdpHdr = unsafe { ctx.get_ptr(packet_start + Ipv4Hdr::LEN) }?;
             unsafe { bpf_printk!(b"foo #3\n") };
             Connection{
@@ -130,7 +126,7 @@ fn try_classify(ctx: &mut BpfContext) -> Result<Output, ()> {
                 src_port: u16::from_be(unsafe { *udphdr }.source),
                 dst_ip: unsafe { *ipv4hdr }.dst_addr,
                 dst_port: u16::from_be(unsafe { *udphdr }.dest),
-                protocol: IpProto::Tcp as u8,
+                protocol: IpProto::Udp as u8,
             }
         }
         _ => {
