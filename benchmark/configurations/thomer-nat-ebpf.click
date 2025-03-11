@@ -79,7 +79,7 @@ iprw :: IPRewriterPatterns(NAT dev0-ex 50000-65535 - -);
 // output[1] rewritten to come back from the wild or no match
 //rw :: IPRewriter(pattern NAT 0 1,
 //                 pass 1);
-rw :: BPFClassifier(ID 1, FILE nat, SIGNATURE nat.sig, JIT true)
+rw :: BPFClassifier(ID 1, FILE nat, SIGNATURE nat.sig, JIT false)
 // rw :: BPFClassifier(ID 1, FILE round-robin, SIGNATURE round-robin.sig, JIT true)
 
 // Rewriting rules for ICMP packets
