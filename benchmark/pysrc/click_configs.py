@@ -2,7 +2,7 @@
 def nat(interface: str, guest_ip: str, guest_mac: str, gw_ip: str, gw_mac: str, src_ip: str, dst_ip: str, src_mac: str, dst_mac: str, size: int, direction: str,extra_processing: str = "") -> str:
 
     pkt_gen_elements = f"""
-    InfiniteSource(DATA \<0800>, LENGTH {size}, LIMIT 50, BURST 100000)
+    InfiniteSource(DATA \<0800>, LENGTH {size - 4}, LIMIT 50, BURST 100000)
     -> UDPIPEncap({src_ip}, 8080, {dst_ip}, 8080)
     -> EtherEncap(0x0800, {src_mac}, {src_mac})
     """

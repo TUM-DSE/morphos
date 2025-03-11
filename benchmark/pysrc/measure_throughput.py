@@ -30,6 +30,8 @@ GUEST_IP = "10.10.0.1"
 TEST_CLIENT_IP = "10.10.0.2"
 
 def click_tx_config(interface: str, size: int = 1460, dst_mac: str = "90:e2:ba:c3:76:6e", extra_processing: str = "") -> str:
+    # size - 4 bytes ethernet CRC - 14 ethernet header - 20 IP header - 20 ethernet peamble maybe?
+    size = size - 4 - 14 - 20 - 20
     return f"""
 //Default values for packet length, number of packets and amountfs of time to replay them
 define($L 60, $R 0, $S 100000);
@@ -207,8 +209,9 @@ class ThroughputTest(AbstractBenchTest):
             batch = 1
             threads = 1
 
+        size = self.size - 4 # subtract 4 bytes for the CRC
         pktgen_cmd = f"{loadgen.project_root}/nix/builds/linux-pktgen/bin/pktgen_sample03_burst_single_flow" + \
-            f" -i {loadgen.test_iface} -s {self.size} -d {strip_subnet_mask(guest.test_iface_ip_net)} -m {guest.test_iface_mac} -b {batch} -t {threads} | tee {remote_pktgen_log}";
+            f" -i {loadgen.test_iface} -s {self.size - 4} -d {strip_subnet_mask(guest.test_iface_ip_net)} -m {guest.test_iface_mac} -b {batch} -t {threads} | tee {remote_pktgen_log}";
         loadgen.tmux_kill("pktgen")
 
         # sometimes, pktgen returns immediately with 0 packets sent
@@ -374,7 +377,7 @@ def main(measurement: Measurement, plan_only: bool = False) -> None:
     directions = [ "rx", "tx" ]
     systems = [ "linux", "uk", "ukebpfjit" ]
     vm_nums = [ 1 ]
-    sizes = [ 64 ]
+    sizes = [ 64, 256, 1024, 1518 ]
     vnfs = [ "empty", "filter", "nat", "ids" ]
     repetitions = 3
     DURATION_S = 71 if not G.BRIEF else 15
@@ -392,6 +395,7 @@ def main(measurement: Measurement, plan_only: bool = False) -> None:
         vm_nums = [ 1 ]
         # vm_nums = [ 128, 160 ]
         # vnfs = [ "empty" ]
+        sizes = [ 64 ]
         vnfs = [ "nat" ]
         repetitions = 1
 
@@ -401,7 +405,6 @@ def main(measurement: Measurement, plan_only: bool = False) -> None:
                     (test.vnf == "nat" and test.system == "ukebpfjit") # ebpf not implemented
         )
 
-    # multi-VM TCP tests, but only one length
     test_matrix = dict(
         repetitions=[ repetitions ],
         direction=directions,
@@ -415,7 +418,7 @@ def main(measurement: Measurement, plan_only: bool = False) -> None:
     tests = ThroughputTest.list_tests(test_matrix, exclude_test=exclude)
 
 
-    args_reboot = ["interface", "num_vms", "direction", "system", "vnf"]
+    args_reboot = ["interface", "num_vms", "direction", "system", "vnf", "size"]
     info(f"ThroughputTest execution plan:")
     ThroughputTest.estimate_time2(tests, args_reboot)
 
@@ -427,7 +430,7 @@ def main(measurement: Measurement, plan_only: bool = False) -> None:
             args_reboot = args_reboot,
             brief = G.BRIEF
             ) as (bench, bench_tests):
-        for [num_vms, interface, direction, system, vnf], a_tests in bench.multi_iterator(bench_tests, ["num_vms", "interface", "direction", "system", "vnf"]):
+        for [num_vms, interface, direction, system, vnf, size], a_tests in bench.multi_iterator(bench_tests, ["num_vms", "interface", "direction", "system", "vnf", "size"]):
             interface = Interface(interface)
 
             info("Booting VM for this test matrix:")
