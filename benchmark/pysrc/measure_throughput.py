@@ -192,11 +192,10 @@ class ThroughputTest(AbstractBenchTest):
                 files = [ "benchmark/bpfilters/nat", "benchmark/bpfilters/nat.sig" ]
                 # dont append, but replace processing because we use another config template
                 processing = "rw :: BPFClassifier(ID 1, FILE nat, SIGNATURE nat.sig, JIT false)"
-            # JIT generates broken instructions last time i've checked
-            # case ("ukebpfjit", "nat", _):
-            #     files = []
-            #     # dont append, but replace processing because we use another config template
-            #     processing = "rw :: BPFClassifier(ID 1, FILE nat, SIGNATURE nat.sig, JIT false)"
+            case ("ukebpfjit", "nat", _):
+                files = [ "benchmark/bpfilters/nat", "benchmark/bpfilters/nat.sig" ]
+                # dont append, but replace processing because we use another config template
+                processing = "rw :: BPFClassifier(ID 1, FILE nat, SIGNATURE nat.sig, JIT true)"
             case (_, "ids", _):
                 files = []
                 processing += "-> StringMatcher(teststringtomatch)"
@@ -412,8 +411,7 @@ def main(measurement: Measurement, plan_only: bool = False) -> None:
 
     def exclude(test):
         return ((Interface(test.interface).is_passthrough() and test.num_vms > 1) or
-                    (test.vnf == "nat" and test.direction == "tx") or # packets get stuck in queue
-                    (test.vnf == "nat" and test.system == "ukebpfjit") # ebpf not implemented
+                    (test.vnf == "nat" and test.direction == "tx") # packets get stuck in queue
         )
 
     test_matrix = dict(
