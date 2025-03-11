@@ -185,15 +185,15 @@ class ThroughputTest(AbstractBenchTest):
                 files = [ "benchmark/bpfilters/target-port", "benchmark/bpfilters/target-port.sig" ]
                 processing += "-> BPFilter(ID 1, FILE target-port, SIGNATURE target-port.sig, JIT true)"
 
-            case ("uk", "nat", _):
-                files = []
-                processing += "rw :: IPRewriter(pattern NAT 0 1, pass 1);"
             case ("ukebpf", "nat", "rx"):
                 files = [ "benchmark/bpfilters/nat", "benchmark/bpfilters/nat.sig" ]
                 processing += "rw :: BPFClassifier(ID 1, FILE nat, SIGNATURE nat.sig, JIT false)"
             case ("ukebpfjit", "nat", "rx"):
                 files = [ "benchmark/bpfilters/nat", "benchmark/bpfilters/nat.sig" ]
                 processing += "rw :: BPFClassifier(ID 1, FILE nat, SIGNATURE nat.sig, JIT true)"
+            case (_, "nat", _):
+                files = []
+                processing += "rw :: IPRewriter(pattern NAT 0 1, pass 1);"
 
             case ("ukebpf", "mirror", "rx"):
                 files = [ "benchmark/bpfilters/ether-mirror", "benchmark/bpfilters/ether-mirror.sig" ]
