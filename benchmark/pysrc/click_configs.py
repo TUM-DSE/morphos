@@ -14,8 +14,10 @@ def mirror(interface: str, ip: str, mac: str, extra_element: str = "") -> str:
                         -);
 
     // Answer ARP requests
-    c1[0] -> ARPResponder({ip} $MAC0)
-        -> ToDevice({interface});
+    c1[0] -> Discard;
+    // Needs a queue to convert push/pull contexts. But only on Linux.
+    // c1[0] -> ARPResponder({ip} $MAC0)
+    //    -> ToDevice({interface});
 
     // Handle IP Packets
     c1[1]

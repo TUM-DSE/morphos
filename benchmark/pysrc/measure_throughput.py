@@ -201,9 +201,12 @@ class ThroughputTest(AbstractBenchTest):
             case ("ukebpfjit", "mirror", "rx"):
                 files = [ "benchmark/bpfilters/ether-mirror", "benchmark/bpfilters/ether-mirror.sig" ]
                 processing += "-> BPFRewriter(ID 1, FILE ether-mirror, SIGNATURE ether-mirror.sig, JIT true)"
-            case (_, "mirror", "rx"):
+            case ("uk", "mirror", "rx"):
                 files = []
                 processing += "-> EtherMirror()" # this and its ebpf version should probably also do IPMirror()
+            case ("linux", "mirror", "rx"):
+                files = []
+                processing += "-> EtherMirror() -> SimpleQueue(256)"
 
             case (_, "ids", _): # TODO!!!!
                 files = []
@@ -312,7 +315,7 @@ class ThroughputTest(AbstractBenchTest):
             )
         elif self.vnf == "mirror":
             config = click_configs.mirror(
-                interface=unikraft_interface,
+                interface=guest.test_iface,
                 ip=strip_subnet_mask(loadgen.test_iface_ip_net),
                 mac=loadgen.test_iface_mac,
                 extra_element=element
