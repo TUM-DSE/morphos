@@ -208,7 +208,13 @@ class ThroughputTest(AbstractBenchTest):
                 files = []
                 processing += "-> EtherMirror() -> SimpleQueue(256)"
 
-            case (_, "ids", _): # TODO!!!!
+            case ("ukebpf", "ids", _):
+                files = [ "benchmark/bpfilters/stringmatcher", "benchmark/bpfilters/stringmatcher.sig" ]
+                processing += "-> BPFilter(ID 1, FILE stringmatcher, SIGNATURE stringmatcher.sig, JIT false)"
+            case ("ukebpfjit", "ids", _):
+                files = [ "benchmark/bpfilters/stringmatcher", "benchmark/bpfilters/stringmatcher.sig" ]
+                processing += "-> BPFilter(ID 1, FILE stringmatcher, SIGNATURE stringmatcher.sig, JIT true)"
+            case (_, "ids", _):
                 files = []
                 processing += "-> StringMatcher(teststringtomatch)"
 
