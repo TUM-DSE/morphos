@@ -23,6 +23,8 @@ const PORT_END: u16 = 65535;
 const FOUTPUT: u32 = 0; // packet towards the wild. Will have src_ip == DEV_EX.ip and dst_mac == GW_ADDR.mac.
 const ROUTPUT: u32 = 1; // reply flows are rewritten to look like the original flow -> routput (to the internal network)
 
+const PACKET_START: usize = 0; // 14 if ethernet has not been stripped
+
 const DEV_IN: InterfaceInfo = InterfaceInfo {
     // mac: [0x00, 0x0d, 0x87, 0x9d, 0x1c, 0xe9],
     ip: 0xac2c0002_u32.to_be(), // 172.44.0.2
@@ -93,6 +95,30 @@ fn next_port() -> Result<u16, ()> {
     Ok(port as u16)
 }
 
+#[inline(always)]
+fn apply_rewrite(ctx: &mut BpfContext, conn: &Connection, rewrite: *const Rewrite) -> Result<(), ()> {
+    let ipv4hdr: *mut Ipv4Hdr = unsafe { ctx.get_ptr_mut(PACKET_START)? };
+    unsafe { (*ipv4hdr).src_addr = (*rewrite).src_ip };
+    unsafe { (*ipv4hdr).dst_addr = (*rewrite).dst_ip };
+    match conn.protocol {
+        IpProto::Tcp => {
+            let tcphdr: *mut TcpHdr = unsafe { ctx.get_ptr_mut(PACKET_START + Ipv4Hdr::LEN) }?;
+            unsafe { (*tcphdr).source = (*rewrite).src_port.to_be() };
+            unsafe { (*tcphdr).dest = (*rewrite).dst_port.to_be() };
+        }
+        IpProto::Udp => {
+            let udphdr: *mut UdpHdr = unsafe { ctx.get_ptr_mut(PACKET_START + Ipv4Hdr::LEN) }?;
+            unsafe { (*udphdr).source = (*rewrite).src_port.to_be() };
+            unsafe { (*udphdr).dest = (*rewrite).dst_port.to_be() };
+        }
+        _ => {
+            unsafe { bpf_printk!(b"err! #4\n") };
+            return Err(())
+        }
+    }
+    Ok(())
+}
+
 #[map(name = "CONNECTIONS")]
 static CONNECTIONS: HashMap<Connection, Rewrite> = HashMap::with_max_entries(1028, 0);
 
@@ -105,8 +131,7 @@ fn try_classify(ctx: &mut BpfContext) -> Result<Output, ()> {
     //     unsafe { bpf_printk!(b"err! #2\n") };
     //     return Err(());
     // }
-    let packet_start: usize = 0; // 14 if ethernet has not been stripped
-    let ipv4hdr: *mut Ipv4Hdr = unsafe { ctx.get_ptr_mut(packet_start)? };
+    let ipv4hdr: *mut Ipv4Hdr = unsafe { ctx.get_ptr_mut(PACKET_START)? };
     let a = 1337;
     let b: *const u32 = &a;
 
@@ -116,7 +141,7 @@ fn try_classify(ctx: &mut BpfContext) -> Result<Output, ()> {
     let mut conn = match proto {
         IpProto::Tcp => {
             unsafe { bpf_printk!(b"foo #2.1\n") };
-            let tcphdr: *const TcpHdr = unsafe { ctx.get_ptr(packet_start + Ipv4Hdr::LEN) }?;
+            let tcphdr: *const TcpHdr = unsafe { ctx.get_ptr(PACKET_START + Ipv4Hdr::LEN) }?;
             Connection{
                 src_ip: unsafe { *ipv4hdr }.src_addr,
                 src_port: u16::from_be(unsafe { *tcphdr }.source),
@@ -126,7 +151,7 @@ fn try_classify(ctx: &mut BpfContext) -> Result<Output, ()> {
             }
         }
         IpProto::Udp => {
-            let udphdr: *const UdpHdr = unsafe { ctx.get_ptr(packet_start + Ipv4Hdr::LEN) }?;
+            let udphdr: *const UdpHdr = unsafe { ctx.get_ptr(PACKET_START + Ipv4Hdr::LEN) }?;
             unsafe { bpf_printk!(b"foo #3\n") };
             Connection{
                 src_ip: unsafe { *ipv4hdr }.src_addr,
@@ -146,24 +171,7 @@ fn try_classify(ctx: &mut BpfContext) -> Result<Output, ()> {
     let output = match CONNECTIONS.get_ptr(&conn) {
         Some(rewrite) => {
             // unsafe { bpf_printk!(b"rewrite port %d\n", (*rewrite).src_port) };
-            unsafe { (*ipv4hdr).src_addr = (*rewrite).src_ip };
-            unsafe { (*ipv4hdr).dst_addr = (*rewrite).dst_ip };
-            match conn.protocol {
-                IpProto::Tcp => {
-                    let tcphdr: *mut TcpHdr = unsafe { ctx.get_ptr_mut(packet_start + Ipv4Hdr::LEN) }?;
-                    unsafe { (*tcphdr).source = (*rewrite).src_port.to_be() };
-                    unsafe { (*tcphdr).dest = (*rewrite).dst_port.to_be() };
-                }
-                IpProto::Udp => {
-                    let udphdr: *mut UdpHdr = unsafe { ctx.get_ptr_mut(packet_start + Ipv4Hdr::LEN) }?;
-                    unsafe { (*udphdr).source = (*rewrite).src_port.to_be() };
-                    unsafe { (*udphdr).dest = (*rewrite).dst_port.to_be() };
-                }
-                _ => {
-                    unsafe { bpf_printk!(b"err! #4\n") };
-                    return Err(())
-                }
-            }
+            apply_rewrite(ctx, &conn, rewrite)?;
 
             unsafe {(*rewrite).output % OUTPUTS}
         },
