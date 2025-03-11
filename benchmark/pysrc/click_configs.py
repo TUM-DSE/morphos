@@ -1,11 +1,17 @@
 
-def nat(interface: str, guest_ip: str, guest_mac: str, gw_ip: str, gw_mac: str, src_ip: str, dst_ip: str, src_mac: str, dst_mac: str, size: int, direction: str,extra_processing: str = "") -> str:
+def nat(interface: str, guest_ip: str, guest_mac: str, gw_ip: str, gw_mac: str, src_ip: str, dst_ip: str, src_mac: str, dst_mac: str, size: int, direction: str,rewriter: str = "") -> str:
 
     pkt_gen_elements = f"""
     InfiniteSource(DATA \<0800>, LENGTH {size - 4}, LIMIT 50, BURST 100000)
     -> UDPIPEncap({src_ip}, 8080, {dst_ip}, 8080)
     -> EtherEncap(0x0800, {src_mac}, {src_mac})
     """
+
+    if rewriter == "":
+        rewriter = """
+        rw :: IPRewriter(pattern NAT 0 1,
+                        pass 1);
+        """
 
     return f"""
     // This Click configuration implements a firewall and NAT, roughly based on the
@@ -93,8 +99,7 @@ def nat(interface: str, guest_ip: str, guest_mac: str, gw_ip: str, gw_mac: str, 
     // Rewriting rules for UDP/TCP packets
     // output[0] rewritten to go into the wild
     // output[1] rewritten to come back from the wild or no match
-    rw :: IPRewriter(pattern NAT 0 1,
-                    pass 1);
+    {rewriter}
 
     // Rewriting rules for ICMP packets
     irw :: ICMPPingRewriter(pass);
@@ -104,9 +109,10 @@ def nat(interface: str, guest_ip: str, guest_mac: str, gw_ip: str, gw_mac: str, 
             icmp_me_or_intern[1] -> ip_to_intern;
 
     // Rewriting rules for ICMP error packets
-    ierw :: ICMPRewriter(rw irw);
-    ierw[0] -> icmp_me_or_intern;
-    ierw[1] -> icmp_me_or_intern;
+    ierw :: Discard; // incompatible with our ebpf rewriter
+    // ierw :: ICMPRewriter(rw irw);
+    // ierw[0] -> icmp_me_or_intern;
+    // ierw[1] -> icmp_me_or_intern;
 
 
     // Packets directed at eth1-ex.

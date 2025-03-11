@@ -184,9 +184,19 @@ class ThroughputTest(AbstractBenchTest):
             case ("ukebpfjit", "filter", _):
                 files = [ "benchmark/bpfilters/target-port", "benchmark/bpfilters/target-port.sig" ]
                 processing += "-> BPFilter(ID 1, FILE target-port, SIGNATURE target-port.sig, JIT true)"
-            case (_, "nat", _):
+            case ("uk", "nat", _):
                 files = []
-                processing += "<uses other click config template>"
+                # dont append, but replace processing because we use another config template
+                processing = "rw :: IPRewriter(pattern NAT 0 1, pass 1);"
+            case ("ukebpf", "nat", _):
+                files = [ "benchmark/bpfilters/nat", "benchmark/bpfilters/nat.sig" ]
+                # dont append, but replace processing because we use another config template
+                processing = "rw :: BPFClassifier(ID 1, FILE nat, SIGNATURE nat.sig, JIT false)"
+            # JIT generates broken instructions last time i've checked
+            # case ("ukebpfjit", "nat", _):
+            #     files = []
+            #     # dont append, but replace processing because we use another config template
+            #     processing = "rw :: BPFClassifier(ID 1, FILE nat, SIGNATURE nat.sig, JIT false)"
             case (_, "ids", _):
                 files = []
                 processing += "-> StringMatcher(teststringtomatch)"
@@ -289,7 +299,8 @@ class ThroughputTest(AbstractBenchTest):
                 dst_ip=strip_subnet_mask(loadgen.test_iface_ip_net),
                 dst_mac=measurement.guest.test_iface_mac,
                 size=self.size,
-                direction=self.direction
+                direction=self.direction,
+                rewriter=element
             )
         else:
             config = click_rx_config(guest.test_iface, extra_processing=element)
@@ -468,7 +479,8 @@ def main(measurement: Measurement, plan_only: bool = False) -> None:
                         dst_ip=strip_subnet_mask(loadgen.test_iface_ip_net),
                         dst_mac=measurement.guest.test_iface_mac,
                         size=test.size,
-                        direction=test.direction
+                        direction=test.direction,
+                        rewriter=element
                     )
                 elif test.direction == "tx":
                     click_config = click_tx_config(unikraft_interface, size=test.size, dst_mac=loadgen.test_iface_mac, extra_processing=element)
