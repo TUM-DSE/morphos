@@ -152,7 +152,7 @@ fn try_classify(ctx: &mut BpfContext) -> Result<Output, ()> {
         }
         IpProto::Udp => {
             let udphdr: *const UdpHdr = unsafe { ctx.get_ptr(PACKET_START + Ipv4Hdr::LEN) }?;
-            unsafe { bpf_printk!(b"foo #3\n") };
+            // unsafe { bpf_printk!(b"foo #3\n") };
             Connection{
                 src_ip: unsafe { *ipv4hdr }.src_addr,
                 src_port: u16::from_be(unsafe { *udphdr }.source),
@@ -186,7 +186,7 @@ fn try_classify(ctx: &mut BpfContext) -> Result<Output, ()> {
             let value_to = Rewrite {
                 src_ip: DEV_EX.ip,
                 src_port: local_nat_port as u16,
-                dst_ip: conn.src_ip,
+                dst_ip: conn.dst_ip,
                 dst_port: conn.dst_port,
                 output: FOUTPUT,
             };
@@ -209,6 +209,7 @@ fn try_classify(ctx: &mut BpfContext) -> Result<Output, ()> {
                 output: FOUTPUT,
             };
             CONNECTIONS.insert(&key_from, &value_from, 0).ok().ok_or(())?;
+            apply_rewrite(ctx, &conn, &value_to)?;
 
             port
         },
