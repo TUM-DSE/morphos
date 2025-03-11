@@ -1,3 +1,41 @@
+def mirror(interface: str, ip: str, mac: str, extra_element: str = "") -> str:
+
+    if extra_element == "":
+        extra_element = """
+        -> EtherMirror()
+        """
+        # or -> BPFRewriter(FILE ether-mirror, SIGNATURE ether-mirror.sig)
+
+    return f"""
+    from_device :: FromDevice({interface})
+    -> ic0 :: AverageCounter()
+    -> c1 :: Classifier(12/0806 20/0001,
+                        12/0800,
+                        -);
+
+    // Answer ARP requests
+    c1[0] -> ARPResponder({ip} $MAC0)
+        -> ToDevice({interface});
+
+    // Handle IP Packets
+    c1[1]
+        {extra_element}
+        -> ic1 :: AverageCounter()
+        -> ToDevice({interface});
+
+    c1[2] -> Discard;
+
+    Script(wait 1s,
+        label start,
+        print "Rx rate: $(ic0.count)   TxExt rate: $(ic1.count)   TxInt rate: $(ic1.count)",
+        write ic0.reset,
+        write ic1.reset,
+        write from_device.reset 1,
+        wait 1s,
+        goto start,
+    )
+    """
+
 
 def nat(interface: str, guest_ip: str, guest_mac: str, gw_ip: str, gw_mac: str, src_ip: str, dst_ip: str, src_mac: str, dst_mac: str, size: int, direction: str,rewriter: str = "") -> str:
 

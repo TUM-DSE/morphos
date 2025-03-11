@@ -184,19 +184,28 @@ class ThroughputTest(AbstractBenchTest):
             case ("ukebpfjit", "filter", _):
                 files = [ "benchmark/bpfilters/target-port", "benchmark/bpfilters/target-port.sig" ]
                 processing += "-> BPFilter(ID 1, FILE target-port, SIGNATURE target-port.sig, JIT true)"
+
             case ("uk", "nat", _):
                 files = []
-                # dont append, but replace processing because we use another config template
-                processing = "rw :: IPRewriter(pattern NAT 0 1, pass 1);"
-            case ("ukebpf", "nat", _):
+                processing += "rw :: IPRewriter(pattern NAT 0 1, pass 1);"
+            case ("ukebpf", "nat", "rx"):
                 files = [ "benchmark/bpfilters/nat", "benchmark/bpfilters/nat.sig" ]
-                # dont append, but replace processing because we use another config template
-                processing = "rw :: BPFClassifier(ID 1, FILE nat, SIGNATURE nat.sig, JIT false)"
-            case ("ukebpfjit", "nat", _):
+                processing += "rw :: BPFClassifier(ID 1, FILE nat, SIGNATURE nat.sig, JIT false)"
+            case ("ukebpfjit", "nat", "rx"):
                 files = [ "benchmark/bpfilters/nat", "benchmark/bpfilters/nat.sig" ]
-                # dont append, but replace processing because we use another config template
-                processing = "rw :: BPFClassifier(ID 1, FILE nat, SIGNATURE nat.sig, JIT true)"
-            case (_, "ids", _):
+                processing += "rw :: BPFClassifier(ID 1, FILE nat, SIGNATURE nat.sig, JIT true)"
+
+            case ("ukebpf", "mirror", "rx"):
+                files = [ "benchmark/bpfilters/ether-mirror", "benchmark/bpfilters/ether-mirror.sig" ]
+                processing += "-> BPFRewriter(ID 1, FILE ether-mirror, SIGNATURE ether-mirror.sig, JIT false)"
+            case ("ukebpfjit", "mirror", "rx"):
+                files = [ "benchmark/bpfilters/ether-mirror", "benchmark/bpfilters/ether-mirror.sig" ]
+                processing += "-> BPFRewriter(ID 1, FILE ether-mirror, SIGNATURE ether-mirror.sig, JIT true)"
+            case (_, "mirror", "rx"):
+                files = []
+                processing += "-> EtherMirror()" # this and its ebpf version should probably also do IPMirror()
+
+            case (_, "ids", _): # TODO!!!!
                 files = []
                 processing += "-> StringMatcher(teststringtomatch)"
 
@@ -301,6 +310,13 @@ class ThroughputTest(AbstractBenchTest):
                 direction=self.direction,
                 rewriter=element
             )
+        elif self.vnf == "mirror":
+            config = click_configs.mirror(
+                interface=unikraft_interface,
+                ip=strip_subnet_mask(loadgen.test_iface_ip_net),
+                mac=loadgen.test_iface_mac,
+                extra_element=element
+            )
         else:
             config = click_rx_config(guest.test_iface, extra_processing=element)
         guest.write(config, "/tmp/linux.click")
@@ -388,7 +404,7 @@ def main(measurement: Measurement, plan_only: bool = False) -> None:
     systems = [ "linux", "uk", "ukebpfjit" ]
     vm_nums = [ 1 ]
     sizes = [ 64, 256, 1024, 1518 ]
-    vnfs = [ "empty", "filter", "nat", "ids" ]
+    vnfs = [ "empty", "filter", "nat", "ids", "mirror" ]
     repetitions = 3
     DURATION_S = 71 if not G.BRIEF else 15
     if safe_vpp_warmup:
@@ -411,7 +427,8 @@ def main(measurement: Measurement, plan_only: bool = False) -> None:
 
     def exclude(test):
         return ((Interface(test.interface).is_passthrough() and test.num_vms > 1) or
-                    (test.vnf == "nat" and test.direction == "tx") # packets get stuck in queue
+                    (test.vnf == "nat" and test.direction == "tx") or # packets get stuck in queue
+                    (test.vnf == "mirror" and test.direction == "tx") # bidirection test
         )
 
     test_matrix = dict(
@@ -479,6 +496,13 @@ def main(measurement: Measurement, plan_only: bool = False) -> None:
                         size=test.size,
                         direction=test.direction,
                         rewriter=element
+                    )
+                elif test.vnf == "mirror":
+                    click_config = click_configs.mirror(
+                        interface=unikraft_interface,
+                        ip=strip_subnet_mask(loadgen.test_iface_ip_net),
+                        mac=loadgen.test_iface_mac,
+                        extra_element=element
                     )
                 elif test.direction == "tx":
                     click_config = click_tx_config(unikraft_interface, size=test.size, dst_mac=loadgen.test_iface_mac, extra_processing=element)

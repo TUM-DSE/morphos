@@ -61,6 +61,8 @@ sync:
 	@-cp $(TARGET_DIR)/pass.sig $(BENCHMARK_DIR)/pass.sig
 	@-cp $(TARGET_DIR)/drop $(BENCHMARK_DIR)/drop
 	@-cp $(TARGET_DIR)/drop.sig $(BENCHMARK_DIR)/drop.sig
+	@-cp $(TARGET_DIR)/ether-mirror $(BENCHMARK_DIR)/ether-mirror
+	@-cp $(TARGET_DIR)/ether-mirror.sig $(BENCHMARK_DIR)/ether-mirror.sig
 	@-cp $(TARGET_DIR)/target-port $(BENCHMARK_DIR)/target-port
 	@-cp $(TARGET_DIR)/target-port.sig $(BENCHMARK_DIR)/target-port.sig
 	@-cp $(TARGET_DIR)/round-robin $(BENCHMARK_DIR)/round-robin
