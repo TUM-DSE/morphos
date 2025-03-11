@@ -25,17 +25,17 @@ const ROUTPUT: u32 = 1; // reply flows are rewritten to look like the original f
 
 const DEV_IN: InterfaceInfo = InterfaceInfo {
     // mac: [0x00, 0x0d, 0x87, 0x9d, 0x1c, 0xe9],
-    ip: 0xac2c0002, // 172.44.0.2
+    ip: 0xac2c0002_u32.to_be(), // 172.44.0.2
     subnet: 24,
 };
 const DEV_EX: InterfaceInfo = InterfaceInfo {
     // mac: [0x00, 0x0d, 0x87, 0x9d, 0x1c, 0xe9],
-    ip: 0xac2c0003, // 172.44.0.3
+    ip: 0xac2c0003_u32.to_be(), // 172.44.0.3
     subnet: 0,
 };
 const GW_ADDR: InterfaceInfo = InterfaceInfo {
     // mac: [0x00, 0x20, 0x6f, 0x9d, 0x1c, 0xc2],
-    ip: 0xac2c0001, // 172.44.0.2
+    ip: 0xac2c0001_u32.to_be(), // 172.44.0.2
     subnet: 0,
 };
 
@@ -44,7 +44,7 @@ struct Connection {
     src_port: u16,
     dst_ip: u32,
     dst_port: u16,
-    protocol: u8,
+    protocol: IpProto,
 }
 
 struct Rewrite {
@@ -67,7 +67,7 @@ struct InterfaceInfo {
 #[link_section = "bpffilter"]
 pub extern "C" fn main(ctx: *mut BpfContext) -> Output {
     let mut ctx = unsafe { *ctx };
-    unsafe { bpf_printk!(b"port %d\n", ctx.port) };
+    // unsafe { bpf_printk!(b"port %d\n", ctx.port) };
     try_classify(&mut ctx).unwrap_or_else(|_| 0)
 }
 
@@ -106,12 +106,12 @@ fn try_classify(ctx: &mut BpfContext) -> Result<Output, ()> {
     //     return Err(());
     // }
     let packet_start: usize = 0; // 14 if ethernet has not been stripped
-    let ipv4hdr: *const Ipv4Hdr = unsafe { ctx.get_ptr(packet_start)? };
+    let ipv4hdr: *mut Ipv4Hdr = unsafe { ctx.get_ptr_mut(packet_start)? };
     let a = 1337;
     let b: *const u32 = &a;
 
     let proto = unsafe { *ipv4hdr }.proto;
-    unsafe { bpf_printk!(b"proto %d\n", proto as u8) };
+    // unsafe { bpf_printk!(b"proto %d\n", proto as u8) };
 
     let mut conn = match proto {
         IpProto::Tcp => {
@@ -122,7 +122,7 @@ fn try_classify(ctx: &mut BpfContext) -> Result<Output, ()> {
                 src_port: u16::from_be(unsafe { *tcphdr }.source),
                 dst_ip: unsafe { *ipv4hdr }.dst_addr,
                 dst_port: u16::from_be(unsafe { *tcphdr }.dest),
-                protocol: IpProto::Tcp as u8,
+                protocol: IpProto::Tcp,
             }
         }
         IpProto::Udp => {
@@ -133,7 +133,7 @@ fn try_classify(ctx: &mut BpfContext) -> Result<Output, ()> {
                 src_port: u16::from_be(unsafe { *udphdr }.source),
                 dst_ip: unsafe { *ipv4hdr }.dst_addr,
                 dst_port: u16::from_be(unsafe { *udphdr }.dest),
-                protocol: IpProto::Udp as u8,
+                protocol: IpProto::Udp,
             }
         }
         _ => {
@@ -145,8 +145,26 @@ fn try_classify(ctx: &mut BpfContext) -> Result<Output, ()> {
     // handles packets from internal network for external network
     let output = match CONNECTIONS.get_ptr(&conn) {
         Some(rewrite) => {
-            unsafe { bpf_printk!(b"rewrite port %d\n", (*rewrite).src_port) };
-            ipv4hdr.
+            // unsafe { bpf_printk!(b"rewrite port %d\n", (*rewrite).src_port) };
+            unsafe { (*ipv4hdr).src_addr = (*rewrite).src_ip };
+            unsafe { (*ipv4hdr).dst_addr = (*rewrite).dst_ip };
+            match conn.protocol {
+                IpProto::Tcp => {
+                    let tcphdr: *mut TcpHdr = unsafe { ctx.get_ptr_mut(packet_start + Ipv4Hdr::LEN) }?;
+                    unsafe { (*tcphdr).source = (*rewrite).src_port.to_be() };
+                    unsafe { (*tcphdr).dest = (*rewrite).dst_port.to_be() };
+                }
+                IpProto::Udp => {
+                    let udphdr: *mut UdpHdr = unsafe { ctx.get_ptr_mut(packet_start + Ipv4Hdr::LEN) }?;
+                    unsafe { (*udphdr).source = (*rewrite).src_port.to_be() };
+                    unsafe { (*udphdr).dest = (*rewrite).dst_port.to_be() };
+                }
+                _ => {
+                    unsafe { bpf_printk!(b"err! #4\n") };
+                    return Err(())
+                }
+            }
+
             unsafe {(*rewrite).output % OUTPUTS}
         },
 
@@ -191,7 +209,7 @@ fn try_classify(ctx: &mut BpfContext) -> Result<Output, ()> {
             return Err(())
         }
     };
-    unsafe { bpf_printk!(b"port %d #2\n", output) };
+    // unsafe { bpf_printk!(b"port %d #2\n", output) };
 
     Ok(output)
 
