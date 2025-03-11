@@ -75,15 +75,22 @@ pub extern "C" fn main(ctx: *mut BpfContext) -> Output {
 static PKTCOUNTER: Array<u32> = Array::with_max_entries(1, 0);
 
 #[map(name = "NEXT_PORT")]
-static NEXT_PORT: Array<u16> = Array::with_max_entries(1, 0);
+static NEXT_PORT: Array<u32> = Array::with_max_entries(1, 0);
 
 #[inline(always)]
 fn next_port() -> Result<u16, ()> {
     let next_port = NEXT_PORT.get_ptr_mut(0).ok_or(())?;
     let port = unsafe { *next_port };
-    unsafe { bpf_printk!(b"port %d\n", port) };
-    unsafe { *next_port = (*next_port - PORT_START + 1) % (PORT_END - PORT_START) + PORT_START };
-    Ok(port)
+    // unsafe { bpf_printk!(b"next_port %d\n", port) };
+    if port == 0 {
+        // unsafe { bpf_printk!(b"set 0\n") };
+        unsafe { *next_port = PORT_START as u32 };
+    }
+    let port = unsafe { *next_port };
+    // unsafe { bpf_printk!(b"next_port %d\n", port) };
+    // unsafe { bpf_printk!(b"next_port %d\n", *next_port) };
+    unsafe { *next_port = (*next_port - PORT_START as u32 + 1) % (PORT_END - PORT_START) as u32 + PORT_START as u32 };
+    Ok(port as u16)
 }
 
 #[map(name = "CONNECTIONS")]
@@ -137,7 +144,11 @@ fn try_classify(ctx: &mut BpfContext) -> Result<Output, ()> {
 
     // handles packets from internal network for external network
     let output = match CONNECTIONS.get_ptr(&conn) {
-        Some(rewrite) => unsafe {(*rewrite).output % OUTPUTS},
+        Some(rewrite) => {
+            unsafe { bpf_printk!(b"rewrite port %d\n", (*rewrite).src_port) };
+            ipv4hdr.
+            unsafe {(*rewrite).output % OUTPUTS}
+        },
 
         None if port == 1 => { FOUTPUT },
 
@@ -145,32 +156,34 @@ fn try_classify(ctx: &mut BpfContext) -> Result<Output, ()> {
             let local_nat_port = next_port()? as u32;
 
             // install outgoing rewrite rule (into the wild)
-            let key = &conn;
-            let value = Rewrite {
+            let key_to = &conn;
+            let value_to = Rewrite {
                 src_ip: DEV_EX.ip,
                 src_port: local_nat_port as u16,
                 dst_ip: conn.src_ip,
                 dst_port: conn.dst_port,
                 output: FOUTPUT,
             };
-            CONNECTIONS.insert(key, &value, 0).ok().ok_or(())?;
+            // unsafe { bpf_printk!(b"local_nat_port %d\n", local_nat_port) };
+            CONNECTIONS.insert(key_to, &value_to, 0).ok().ok_or(())?;
 
             // install incoming rewrite rule (replies from the wild)
-            let key = Connection {
+            let key_from = Connection {
                 src_ip: conn.dst_ip,
                 src_port: conn.dst_port,
                 dst_ip: DEV_EX.ip,
                 dst_port: local_nat_port as u16,
                 protocol: conn.protocol,
             };
-            let value = Rewrite {
+            let value_from = Rewrite {
                 src_ip: conn.dst_ip,
                 src_port: conn.dst_port,
                 dst_ip: conn.src_ip,
                 dst_port: conn.dst_port,
                 output: FOUTPUT,
             };
-            CONNECTIONS.insert(&key, &value, 0).ok().ok_or(())?;
+            CONNECTIONS.insert(&key_from, &value_from, 0).ok().ok_or(())?;
+
             port
         },
         None => { // catch remaining None cases
@@ -180,6 +193,7 @@ fn try_classify(ctx: &mut BpfContext) -> Result<Output, ()> {
     };
     unsafe { bpf_printk!(b"port %d #2\n", output) };
 
+    Ok(output)
 
 
     // let z = unsafe { bpf_ktime_get_ns() };
@@ -193,21 +207,21 @@ fn try_classify(ctx: &mut BpfContext) -> Result<Output, ()> {
 
     // CONNECTIONS.insert(&conn, &1, 0).ok().ok_or(())?;
 
-    let a: *const u8 = unsafe { ctx.get_ptr_mut(0)? };
-    let a: u8 = unsafe { *a };
-    // *a = 0xff;
+    // let a: *const u8 = unsafe { ctx.get_ptr_mut(0)? };
+    // let a: u8 = unsafe { *a };
+    // // *a = 0xff;
 
-    let counter = PKTCOUNTER.get_ptr_mut(0).ok_or(())?;
+    // let counter = PKTCOUNTER.get_ptr_mut(0).ok_or(())?;
 
-    let output = unsafe { *counter } % OUTPUTS;
+    // let output = unsafe { *counter } % OUTPUTS;
 
-    unsafe {
-        *counter += 1;
-    }
-    // Ok(output)
-    if conn.protocol == (IpProto::Tcp as u8) {
-        Ok(1)
-    } else {
-        Ok(0)
-    }
+    // unsafe {
+    //     *counter += 1;
+    // }
+    // // Ok(output)
+    // if conn.protocol == (IpProto::Tcp as u8) {
+    //     Ok(1)
+    // } else {
+    //     Ok(0)
+    // }
 }
