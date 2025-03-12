@@ -67,6 +67,8 @@ If you make any changes to the eBPF programs, you can synchronize them with the 
 make sync
 ```
 
+Further information about our ebpf build system: https://aya-rs.dev/book/start/development/
+
 ## Running the Benchmarks
 
 You can run the benchmarks:

@@ -98,6 +98,7 @@ build-dependencies:
   nix build --inputs-from . nixpkgs#qemu -o {{proot}}/nix/builds/qemu
   nix build .#vpp2 -o {{proot}}/nix/builds/vpp
   nix build .#click -o {{proot}}/nix/builds/click
+  nix build -o {{proot}}/nix/builds/xdp github:vmuxio/vmuxio#xdp-reflector
 
 build-click-og:
   nix develop --unpack .#click
@@ -120,6 +121,12 @@ throughput-cpio:
     cp ./throughput.click /tmp/ukcpio-$(USER)/config.click
     ./libs/unikraft/support/scripts/mkcpio ./throughput.cpio /tmp/ukcpio-$(USER)
 
+nat-cpio:
+    rm -r /tmp/ukcpio-{{user}} || true
+    mkdir -p /tmp/ukcpio-{{user}}
+    cp ./benchmark/configurations/thomer-nat.click /tmp/ukcpio-{{user}}/config.click
+    ./libs/unikraft/support/scripts/mkcpio ./throughput.cpio /tmp/ukcpio-{{user}}
+
 stringmatcher-cpio:
     rm -r /tmp/ukcpio-{{user}} || true
     mkdir -p /tmp/ukcpio-{{user}}
@@ -128,7 +135,21 @@ stringmatcher-cpio:
     cp ./benchmark/bpfilters/stringmatcher.sig /tmp/ukcpio-{{user}}/stringmatcher.sig
     ./libs/unikraft/support/scripts/mkcpio ./throughput.cpio /tmp/ukcpio-{{user}}
 
-vm: stringmatcher-cpio
+natebpf-cpio:
+    rm -r /tmp/ukcpio-{{user}} || true
+    mkdir -p /tmp/ukcpio-{{user}}
+    # cp ./benchmark/configurations/thomer-nat-ebpf.click /tmp/ukcpio-{{user}}/config.click
+    cp ./benchmark/configurations/thomer-nat.click /tmp/ukcpio-{{user}}/config.click
+    # cp ./benchmark/configurations/test.click /tmp/ukcpio-{{user}}/config.click
+    # cp ./benchmark/configurations/test2.click /tmp/ukcpio-{{user}}/config.click
+    # cp ./benchmark/configurations/stringmatcher.click /tmp/ukcpio-{{user}}/config.click
+    cp ./benchmark/bpfilters/round-robin /tmp/ukcpio-{{user}}/round-robin
+    cp ./benchmark/bpfilters/round-robin.sig /tmp/ukcpio-{{user}}/round-robin.sig
+    cp ./benchmark/bpfilters/nat /tmp/ukcpio-{{user}}/nat
+    cp ./benchmark/bpfilters/nat.sig /tmp/ukcpio-{{user}}/nat.sig
+    ./libs/unikraft/support/scripts/mkcpio ./throughput.cpio /tmp/ukcpio-{{user}}
+
+vm: natebpf-cpio
     sudo taskset -c 3,4 qemu-system-x86_64 \
         -accel kvm -cpu max \
         -m 1024M -object memory-backend-file,id=mem,size=1024M,mem-path=/dev/hugepages,share=on \
@@ -139,6 +160,7 @@ vm: stringmatcher-cpio
         -kernel ./.unikraft/build/click_qemu-x86_64 \
         -initrd ./throughput.cpio \
         -nographic
+
 
 vm-vhost: throughput-cpio
     sudo taskset -c 3,4 qemu-system-x86_64 \

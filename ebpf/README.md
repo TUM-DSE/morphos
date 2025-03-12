@@ -3,6 +3,7 @@
 ## Prerequisites
 
 1. Install bpf-linker: `cargo install bpf-linker`
+2. Import binary to path: `export PATH="/home/$USER/.cargo/bin:$PATH"`
 
 ## Build eBPF
 
