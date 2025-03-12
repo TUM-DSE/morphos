@@ -201,3 +201,23 @@ perf-qemu-record:
     sudo perf record -g -p $(pgrep qemu)
     sudo perf script > perf.trace
 
+UBUNTU_PATH := "~/.vagrant.d/boxes/ubuntu-VAGRANTSLASH-jammy64/20241002.0.0/virtualbox/ubuntu-jammy-22.04-cloudimg.vmdk"
+ALPINE_PATH := "~/.vagrant.d/boxes/generic-VAGRANTSLASH-alpine319/4.3.12/virtualbox/generic-alpine319-virtualbox-x64-disk001.vmdk"
+
+imagesizes: natebpf-cpio
+    # downloading images
+    [ -e {{ALPINE_PATH}} ] || nix run --inputs-from ./ nixpkgs#vagrant -- box add generic/alpine319 --provider virtualbox --box-version 4.3.12
+    [ -e {{UBUNTU_PATH}} ] || nix run --inputs-from ./ nixpkgs#vagrant -- box add ubuntu/jammy64 --provider virtualbox --box-version 20241002.0.0
+    # click unikraft nat ebpf
+    ls -l ./.unikraft/build/click_qemu-x86_64
+    ls -l ./throughput.cpio
+    # click linux nat ebpf
+    # we should also count non-trivial click dependencies: dpdk, libjannson
+    ls -l ./nix/builds/click/bin/click
+    ls -l ./benchmark/configurations/thomer-nat-ebpf.click
+    ls -l ./benchmark/bpfilters/nat
+    ls -l ./benchmark/bpfilters/nat.sig
+    ls -l {{ALPINE_PATH}}
+    ls -l {{UBUNTU_PATH}}
+
+
