@@ -5,7 +5,7 @@ TARGET_DIR:=$(DIR)/target/bpfel-unknown-none/release
 EXAMPLES_DIR:=$(DIR)/../examples
 BENCHMARK_DIR:=$(DIR)/../benchmark/bpfilters
 
-BINS := dns-filter drop ether-mirror pass rate-limiter round-robin strip-ether-vlan-header target-port udp-tcp-classifier state-migration-v1 state-migration-v2 stringmatcher nat
+BINS := dns-filter drop ether-mirror pass rate-limiter round-robin strip-ether-vlan-header target-port udp-tcp-classifier state-migration-v1 state-migration-v2 stringmatcher nat firewall
 
 VERIFY ?= 0
 
@@ -40,6 +40,19 @@ generate-cases:
 	done
 	sed -i '/$(START_MARKER)/r $(TMPFILE)' $(PATCH_FILE)
 
+
+sync-firewall:
+	$(eval END := $(shell echo $$(($(START) + $(NR) - 1))))
+	$(MAKE) generate-cases END=$(END)
+	$(MAKE) firewall
+	@-cp $(TARGET_DIR)/firewall.sig $(BENCHMARK_DIR)/firewall-$(NR).sig
+	@-cp $(TARGET_DIR)/firewall $(BENCHMARK_DIR)/firewall-$(NR)
+
+sync-firewalls:
+	$(MAKE) sync-firewall NR=2
+	$(MAKE) sync-firewall NR=100
+	$(MAKE) sync-firewall NR=1000
+	$(MAKE) sync-firewall NR=10000
 
 all: $(BINS)
 
