@@ -14,7 +14,7 @@ use network_types::tcp::TcpHdr;
 use network_types::udp::UdpHdr;
 use bpf_element::filter::FilterResult;
 
-const PACKET_START: usize = 0; // 14 if ethernet has not been stripped
+const PACKET_START: usize = 14; // 14 if ethernet has not been stripped
 //
 #[no_mangle]
 #[link_section = "bpffilter"]
@@ -26,6 +26,12 @@ pub extern "C" fn main(ctx: *mut BpfContext) -> FilterResult {
 
 #[inline(always)]
 fn try_classify(ctx: &mut BpfContext) -> Result<FilterResult, ()> {
+    let ethhdr: *const EthHdr = unsafe { ctx.get_ptr(0)? };
+    let ether_type  = unsafe { *ethhdr }.ether_type;
+    if ether_type != EtherType::Ipv4 {
+        // unsafe { bpf_printk!(b"err! #2\n") };
+        return Err(());
+    }
     let ipv4hdr: *mut Ipv4Hdr = unsafe { ctx.get_ptr_mut(PACKET_START)? };
     let proto = unsafe { *ipv4hdr }.proto;
     let (src_port, dst_port) = match proto {
