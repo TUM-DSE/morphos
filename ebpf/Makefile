@@ -22,6 +22,25 @@ endef
 
 $(foreach bin,$(BINS),$(eval $(call BUILD_TARGET,$(bin))))
 
+TMPFILE ?= /tmp/cases.txt
+PATCH_FILE ?= $(DIR)/src/bin/firewall.rs
+START ?= 1000
+END ?= 1010
+# escape markers for regex
+START_MARKER ?= \/\/ start
+END_MARKER ?= \/\/ end
+
+generate-cases:
+	@rm -f $(TMPFILE)
+	sed -i '/$(START_MARKER)/,/$(END_MARKER)/{/$(START_MARKER)/!{/$(END_MARKER)/!d;};}' $(PATCH_FILE)
+	@for i in $$(seq $(START) 2 $(END)); do \
+		echo "$$i => FilterResult::Pass," >> $(TMPFILE); \
+		j=$$(( $$i + 1 )); \
+		echo "$$j => FilterResult::Drop," >> $(TMPFILE); \
+	done
+	sed -i '/$(START_MARKER)/r $(TMPFILE)' $(PATCH_FILE)
+
+
 all: $(BINS)
 
 sync:
