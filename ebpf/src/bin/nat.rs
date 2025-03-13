@@ -122,7 +122,15 @@ fn apply_rewrite(ctx: &mut BpfContext, conn: &Connection, rewrite: *const Rewrit
 }
 
 #[map(name = "CONNECTIONS")]
-static CONNECTIONS: HashMap<Connection, Rewrite> = HashMap::with_max_entries(1028, 0);
+static CONNECTIONS: HashMap<u128, Rewrite> = HashMap::with_max_entries(1028, 0);
+
+
+#[inline(always)]
+fn connection_to_u128(connection: &Connection) -> u128 {
+    // Our verifier supports MAP_KEYS to be any generic numeric value, but can't comprehend that a struct is also just a numeric value.
+    // We convert it to a numeric value for it.
+    (connection.src_ip as u128) << 96 | (connection.src_port as u128) << 80 | (connection.dst_ip as u128) << 64 | (connection.dst_port as u128) << 48 | (connection.protocol as u128) << 32
+}
 
 #[inline(always)]
 fn try_classify(ctx: &mut BpfContext) -> Result<Output, ()> {
@@ -170,7 +178,7 @@ fn try_classify(ctx: &mut BpfContext) -> Result<Output, ()> {
     };
 
     // handles packets from internal network for external network
-    let output = match CONNECTIONS.get_ptr(&conn) {
+    let output = match CONNECTIONS.get_ptr(&connection_to_u128(&conn)) {
         Some(rewrite) => {
             // unsafe { bpf_printk!(b"rewrite port %d\n", (*rewrite).src_port) };
             apply_rewrite(ctx, &conn, rewrite)?;
@@ -193,7 +201,7 @@ fn try_classify(ctx: &mut BpfContext) -> Result<Output, ()> {
                 output: FOUTPUT,
             };
             // unsafe { bpf_printk!(b"local_nat_port %d\n", local_nat_port) };
-            CONNECTIONS.insert(key_to, &value_to, 0).ok().ok_or(())?;
+            CONNECTIONS.insert(&connection_to_u128(key_to), &value_to, 0).ok().ok_or(())?;
 
             // install incoming rewrite rule (replies from the wild)
             let key_from = Connection {
@@ -210,7 +218,7 @@ fn try_classify(ctx: &mut BpfContext) -> Result<Output, ()> {
                 dst_port: conn.dst_port,
                 output: FOUTPUT,
             };
-            CONNECTIONS.insert(&key_from, &value_from, 0).ok().ok_or(())?;
+            CONNECTIONS.insert(&connection_to_u128(key_to), &value_to, 0).ok().ok_or(())?;
             apply_rewrite(ctx, &conn, &value_to)?;
 
             port
