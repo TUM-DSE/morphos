@@ -11,6 +11,17 @@
 make all
 ```
 
+## Debug eBPF verification
+
+Generate debug symbols for `nat` program. This also yields more useful verifier output.
+
+```
+RUSTFLAGS="-C debuginfo=2 -C link-arg=--btf" cargo build --bin nat --target bpfel-unknown-none -Z build-std=core
+llvm-objdump -S ./target/bpfel-unknown-none/debug/nat > ./src/bin/nat.asm
+../verifier/build/ubpf_verifier -f ./target/bpfel-unknown-none/debug/nat -k ../verifier/keys/ec_private_key.pem -o /tmp/foo -v 3
+```
+
+
 ## Programs
 
 | Program Name            | Program Type  | Description                                                  | Passes Verification |
