@@ -7,7 +7,7 @@ use aya_ebpf::macros::map;
 use aya_ebpf::helpers::bpf_printk;
 use aya_ebpf::helpers::gen::bpf_ktime_get_ns;
 use aya_ebpf::maps::{Array, HashMap};
-use bpf_element::BpfContext;
+use bpf_element::{BpfContext, update_checksum_ip};
 use network_types::eth::{EthHdr, EtherType};
 use network_types::ip::{IpProto, Ipv4Hdr};
 use network_types::tcp::TcpHdr;
@@ -70,7 +70,7 @@ struct InterfaceInfo {
 pub extern "C" fn main(ctx: *mut BpfContext) -> Output {
     let mut ctx = unsafe { *ctx };
     // unsafe { bpf_printk!(b"port %d\n", ctx.port) };
-    try_classify(&mut ctx).unwrap_or_else(|_| 0)
+    try_classify(&mut ctx).unwrap_or_else(|_| core::u32::MAX)
 }
 
 #[map(name = "PKTCOUNTER")]
@@ -98,7 +98,9 @@ fn next_port() -> Result<u16, ()> {
 #[inline(always)]
 fn apply_rewrite(ctx: &mut BpfContext, conn: &Connection, rewrite: *const Rewrite) -> Result<(), ()> {
     let ipv4hdr: *mut Ipv4Hdr = unsafe { ctx.get_ptr_mut(PACKET_START)? };
+    unsafe { update_checksum_ip(&mut (*ipv4hdr).check, (*ipv4hdr).src_addr, (*rewrite).src_ip) };
     unsafe { (*ipv4hdr).src_addr = (*rewrite).src_ip };
+    unsafe { update_checksum_ip(&mut (*ipv4hdr).check, (*ipv4hdr).dst_addr , (*rewrite).dst_ip) };
     unsafe { (*ipv4hdr).dst_addr = (*rewrite).dst_ip };
     match conn.protocol {
         IpProto::Tcp => {
@@ -112,7 +114,7 @@ fn apply_rewrite(ctx: &mut BpfContext, conn: &Connection, rewrite: *const Rewrit
             unsafe { (*udphdr).dest = (*rewrite).dst_port.to_be() };
         }
         _ => {
-            unsafe { bpf_printk!(b"err! #4\n") };
+            // unsafe { bpf_printk!(b"err! #4\n") };
             return Err(())
         }
     }
@@ -140,7 +142,7 @@ fn try_classify(ctx: &mut BpfContext) -> Result<Output, ()> {
 
     let mut conn = match proto {
         IpProto::Tcp => {
-            unsafe { bpf_printk!(b"foo #2.1\n") };
+            // unsafe { bpf_printk!(b"foo #2.1\n") };
             let tcphdr: *const TcpHdr = unsafe { ctx.get_ptr(PACKET_START + Ipv4Hdr::LEN) }?;
             Connection{
                 src_ip: unsafe { *ipv4hdr }.src_addr,
@@ -162,7 +164,7 @@ fn try_classify(ctx: &mut BpfContext) -> Result<Output, ()> {
             }
         }
         _ => {
-            unsafe { bpf_printk!(b"err! #1\n") };
+            // unsafe { bpf_printk!(b"err! #1\n") };
             return Err(())
         },
     };
@@ -214,7 +216,7 @@ fn try_classify(ctx: &mut BpfContext) -> Result<Output, ()> {
             port
         },
         None => { // catch remaining None cases
-            unsafe { bpf_printk!(b"err! #3\n") };
+            // unsafe { bpf_printk!(b"err! #3\n") };
             return Err(())
         }
     };

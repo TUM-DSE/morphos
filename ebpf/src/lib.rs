@@ -65,3 +65,21 @@ impl BpfContext {
 fn panic(_info: &core::panic::PanicInfo) -> ! {
     unsafe { core::hint::unreachable_unchecked() }
 }
+
+
+#[inline(always)]
+pub fn update_checksum(checksum: &mut u16, old: u16, new: u16) {
+    let mut sum: u32 = (!*checksum as u32).wrapping_add(!old as u32).wrapping_add(new as u32);
+    sum = (sum & 0xffff).wrapping_add(sum >> 16);
+    *checksum = !(sum.wrapping_add(sum >> 16)) as u16;
+}
+
+#[inline(always)]
+pub fn update_checksum_ip(checksum: &mut u16, old: u32, new: u32) {
+    let old1 = (old >> 16) as u16;
+    let old2 = old as u16;
+    let new1 = (new >> 16) as u16;
+    let new2 = new as u16;
+    update_checksum(checksum, old1, new1);
+    update_checksum(checksum, old2, new2);
+}
