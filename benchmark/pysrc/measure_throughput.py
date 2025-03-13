@@ -110,7 +110,7 @@ class ThroughputTest(AbstractBenchTest):
         estimate time needed to run this benchmark excluding boot time in seconds
         """
         overheads = 5
-        return (self.repetitions * (DURATION_S + 2) ) + overheads
+        return (self.repetitions * (G.DURATION_S + 2) ) + overheads
 
 
     def parse_results(self, repetition: int) -> DataFrame:
@@ -281,7 +281,7 @@ class ThroughputTest(AbstractBenchTest):
         loadgen.tmux_kill("monitor")
         loadgen.tmux_new("monitor", monitor_cmd)
 
-        time.sleep(DURATION_S)
+        time.sleep(G.DURATION_S)
 
         loadgen.tmux_kill("monitor")
         guest.stop_click()
@@ -333,7 +333,7 @@ class ThroughputTest(AbstractBenchTest):
         # start network load
         self.start_pktgen(guest, loadgen, host, remote_pktgen_log)
 
-        time.sleep(DURATION_S)
+        time.sleep(G.DURATION_S)
 
         # stop network load
         self.stop_pktgen(loadgen)
@@ -362,7 +362,7 @@ class ThroughputTest(AbstractBenchTest):
         loadgen.tmux_kill("monitor")
         loadgen.tmux_new("monitor", monitor_cmd)
 
-        time.sleep(DURATION_S)
+        time.sleep(G.DURATION_S)
 
         loadgen.tmux_kill("monitor")
 
@@ -388,7 +388,7 @@ class ThroughputTest(AbstractBenchTest):
         # reset unikraft log
         host.exec(f"sudo truncate -s 0 {remote_unikraft_log_raw}")
 
-        time.sleep(DURATION_S)
+        time.sleep(G.DURATION_S)
 
         # copy raw to log, but only printable characters (cut leading null bytes)
         host.exec(f"strings {remote_unikraft_log_raw} | sudo tee {remote_unikraft_log}")
@@ -402,7 +402,6 @@ class ThroughputTest(AbstractBenchTest):
 
 def main(measurement: Measurement, plan_only: bool = False) -> None:
     host, loadgen = measurement.hosts()
-    global DURATION_S
 
     # set up test plan
     interfaces = [
@@ -415,9 +414,9 @@ def main(measurement: Measurement, plan_only: bool = False) -> None:
     sizes = [ 64, 256, 1024, 1518 ]
     vnfs = [ "empty", "filter", "nat", "ids", "mirror" ]
     repetitions = 3
-    DURATION_S = 71 if not G.BRIEF else 15
+    G.DURATION_S = 71 if not G.BRIEF else 15
     if safe_vpp_warmup:
-        DURATION_S = max(30, DURATION_S)
+        G.DURATION_S = max(30, G.DURATION_S)
     if G.BRIEF:
         # interfaces = [ Interface.BRIDGE ]
         interfaces = [ Interface.BRIDGE_VHOST ]

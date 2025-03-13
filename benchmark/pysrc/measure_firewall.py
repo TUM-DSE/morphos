@@ -23,131 +23,22 @@ import pandas as pd
 import traceback
 import click_configs
 from conf import G
+from measure_throughput import ThroughputTest, click_tx_config, click_rx_config
 
 unikraft_interface = "0"
 safe_vpp_warmup = False # without we rarely get excessive standard deviations
 GUEST_IP = "10.10.0.1"
 TEST_CLIENT_IP = "10.10.0.2"
 
-def click_tx_config(interface: str, size: int = 1460, dst_mac: str = "90:e2:ba:c3:76:6e", extra_processing: str = "") -> str:
-    # size - 4 bytes ethernet CRC - 14 ethernet header - 20 IP header - 20 ethernet peamble maybe?
-    size = size - 4 - 14 - 20 - 20
-    return f"""
-//Default values for packet length, number of packets and amountfs of time to replay them
-define($L 60, $R 0, $S 100000);
-
-//You do not need to change these to the real ones, just have the dmac match the receiver's one
-define($mymac 90:e2:ba:c3:79:66)
-define($dmac {dst_mac})
-//Ip are just for a convenient payload as this is l2
-define($myip 192.168.130.13)
-define($dstip 192.168.128.13)
-
-//Explained in loop.click
-define($verbose 3)
-define($blocking true)
-
-
-InfiniteSource(DATA \<0800>, LENGTH {size}, LIMIT -1, BURST 100000)
-// InfiniteSource2(DATA \<0800>, SRCIP $myip, DSTIP $dstip, LENGTH {size}, LIMIT -1, BURST 100000)
- -> UDPIPEncap($myip, 5678, $dstip, 5678)
-{extra_processing}
--> EtherEncap(0x0800, $mymac, $dmac)
-// FastUDPFlows(RATE 0, LIMIT -1, LENGTH {size}, SRCETH $mymac, DSTETH $dmac, SRCIP $myip, DSTIP $dstip, FLOWS 1, FLOWSIZE 100000)
--> ic0 :: AverageCounter()
--> ToDevice({interface});
-
-fd :: FromDevice({interface}) -> Print('rx') -> Discard
-
-Script(TYPE ACTIVE,
-       wait 5ms,
-       label start,
-       print "Number of packets sent : $(ic0.rate)",
-       wait 1s,
-       goto start
-       )
-"""
-
-def click_rx_config(interface: str, extra_processing: str = "") -> str:
-    return f"""
-from :: FromDevice({interface})
-{extra_processing}
--> ic0 :: AverageCounter()
--> Discard;
-
-Script(TYPE ACTIVE,
-       wait 5ms,
-       label start,
-       print "Rx rate: $(ic0.rate)",
-       write ic0.reset 1,
-       write from.reset 1,
-       wait 1s,
-       goto start
-       )
-    """
-
-bmon_format = "format:fmt=\$(attr:rxrate:packets)\t\$(attr:rxrate:bytes)\n"
 
 @dataclass
-class ThroughputTest(AbstractBenchTest):
+class FirewallTest(ThroughputTest):
 
-    # test options
-    direction: str # VM's point of view: rx | tx
-
-    interface: str # network interface used
-    size: int # packet size
-    vnf: str # workload
-    system: str # linux | uk | ukebpf | ukebpfjit
+    # test options (additionally to ThroughputTest)
+    fw_size: int # nr of firewall rules
 
     def test_infix(self):
-        return f"throughput_{self.system}_{self.interface}_{self.direction}_{self.vnf}_{self.size}B"
-
-    def pktgen_output_filepath(self, repetition: int) -> str:
-        return self.output_filepath(repetition, extension="pktgen.log")
-
-    def estimated_runtime(self) -> float:
-        """
-        estimate time needed to run this benchmark excluding boot time in seconds
-        """
-        overheads = 5
-        return (self.repetitions * (DURATION_S + 2) ) + overheads
-
-
-    def parse_results(self, repetition: int) -> DataFrame:
-        warmup = 4 # how many seconds to skip at the beginning
-        if safe_vpp_warmup and Interface(self.interface).needs_vpp():
-            warmup = 10 # vpp implements active queue management which delays packet bursts
-
-        values = []
-        if self.direction == "rx":
-            # parse click log
-            with open(self.output_filepath(repetition), 'r') as f:
-                lines = f.readlines()
-            lines = [ line for line in lines if "Rx rate: " in line ]
-            # pps values
-            values = [ float(line.split("Rx rate: ")[1].strip().split(" ")[0].strip()) for line in lines ]
-            values = values[warmup:]
-
-        elif self.direction == "tx":
-            # parse click log
-            with open(self.output_filepath(repetition), 'r') as f:
-                lines = f.readlines()
-            # pps values
-            values = [ float(line.split("\t")[0].strip()) for line in lines ]
-            values = values[warmup:]
-
-        else:
-            raise ValueError(f"Unknown direction: {self.direction}")
-
-        data = []
-        for value in values:
-            data += [{
-                **asdict(self), # put selfs member variables and values into this dict
-                "repetition": repetition,
-                "pps": value,
-            }]
-        return DataFrame(data=data)
-
+        return f"firewall_{self.system}_{self.interface}_{self.direction}_{self.fw_size}_{self.size}B"
 
     def click_config(self) -> Tuple[List[str], str]:
         files = [] # relative to project root
@@ -165,266 +56,55 @@ class ThroughputTest(AbstractBenchTest):
             processing += rx_ip_check
 
         match (self.system, self.vnf, self.direction):
-            case (_, "empty", _):
+            case ("linux", "firewall", "rx"):
                 files = []
-                processing += ""
-
-            case ("linux", "filter", "rx"):
+                processing += "-> IPFilter(deny dst port 1234, allow all)" # TODO
+            case ("uk", "firewall", "rx"):
                 files = []
-                processing += "-> IPFilter(deny dst port 1234, allow all)" # push/pull mismatch for tx
-            case ("linux", "filter", "tx"):
-                files = []
-                processing += "-> IPFilter2(deny dst port 1234, allow all)" # push/pull mismatch for tx
-            case ("uk", "filter", _):
-                files = []
-                processing += "-> IPFilter(deny dst port 1234, allow all)"
-            case ("ukebpf", "filter", _):
-                files = [ "benchmark/bpfilters/stringmatcher", "benchmark/bpfilters/stringmatcher.sig" ]
-                processing += "-> BPFilter(ID 1, FILE stringmatcher, SIGNATURE stringmatcher.sig, JIT false)"
-            case ("ukebpfjit", "filter", _):
-                files = [ "benchmark/bpfilters/target-port", "benchmark/bpfilters/target-port.sig" ]
-                processing += "-> BPFilter(ID 1, FILE target-port, SIGNATURE target-port.sig, JIT true)"
-
-            case ("ukebpf", "nat", "rx"):
-                files = [ "benchmark/bpfilters/nat", "benchmark/bpfilters/nat.sig" ]
-                processing += "rw :: BPFClassifier(ID 1, FILE nat, SIGNATURE nat.sig, JIT false)"
-            case ("ukebpfjit", "nat", "rx"):
-                files = [ "benchmark/bpfilters/nat", "benchmark/bpfilters/nat.sig" ]
-                processing += "rw :: BPFClassifier(ID 1, FILE nat, SIGNATURE nat.sig, JIT true)"
-            case (_, "nat", _):
-                files = []
-                processing += "rw :: IPRewriter(pattern NAT 0 1, pass 1);"
-
-            case ("ukebpf", "mirror", "rx"):
-                files = [ "benchmark/bpfilters/ether-mirror", "benchmark/bpfilters/ether-mirror.sig" ]
-                processing += "-> BPFRewriter(ID 1, FILE ether-mirror, SIGNATURE ether-mirror.sig, JIT false)"
-            case ("ukebpfjit", "mirror", "rx"):
-                files = [ "benchmark/bpfilters/ether-mirror", "benchmark/bpfilters/ether-mirror.sig" ]
-                processing += "-> BPFRewriter(ID 1, FILE ether-mirror, SIGNATURE ether-mirror.sig, JIT true)"
-            case ("uk", "mirror", "rx"):
-                files = []
-                processing += "-> EtherMirror()" # this and its ebpf version should probably also do IPMirror()
-            case ("linux", "mirror", "rx"):
-                files = []
-                processing += "-> EtherMirror() -> SimpleQueue(256)"
-
-            case ("ukebpf", "ids", _):
-                files = [ "benchmark/bpfilters/stringmatcher", "benchmark/bpfilters/stringmatcher.sig" ]
-                processing += "-> BPFilter(ID 1, FILE stringmatcher, SIGNATURE stringmatcher.sig, JIT false)"
-            case ("ukebpfjit", "ids", _):
-                files = [ "benchmark/bpfilters/stringmatcher", "benchmark/bpfilters/stringmatcher.sig" ]
-                processing += "-> BPFilter(ID 1, FILE stringmatcher, SIGNATURE stringmatcher.sig, JIT true)"
-            case (_, "ids", _):
-                files = []
-                processing += "-> StringMatcher(teststringtomatch)"
+                processing += "-> IPFilter(deny dst port 1234, allow all)" # TODO
+            case ("ukebpf", "firewall", "rx"):
+                name = f"firewall-{self.fw_size}"
+                files = [ f"benchmark/bpfilters/{name}", f"benchmark/bpfilters/{name}.sig" ]
+                processing += f"-> BPFilter(ID 1, FILE {name}, SIGNATURE {name}.sig, JIT false)"
+            case ("ukebpfjit", "firewall", "rx"):
+                name = f"firewall-{self.fw_size}"
+                files = [ f"benchmark/bpfilters/{name}", f"benchmark/bpfilters/{name}.sig" ]
+                processing += f"-> BPFilter(ID 1, FILE {name}, SIGNATURE {name}.sig, JIT true)"
 
             case _:
                 raise ValueError(f"Unknown system/vnf combination: {self.system}/{self.vnf}")
 
         return files, processing
 
-    def start_pktgen(self, guest, loadgen, host, remote_pktgen_log):
-        info("Starting pktgen")
-
-        batch = 32
-        threads = 2
-
-        # when doing localhost measurements, pktgen attaches to virtual devices.
-        # They don't support batching and likely only have 1 queue (thread support).
-        # Therefore, we enable fast pktgen only for non-localhost measurements.
-        if host.fqdn == "localhost":
-            batch = 1
-            threads = 1
-
-        size = self.size - 4 # subtract 4 bytes for the CRC
-        pktgen_cmd = f"{loadgen.project_root}/nix/builds/linux-pktgen/bin/pktgen_sample03_burst_single_flow" + \
-            f" -i {loadgen.test_iface} -s {self.size - 4} -d {strip_subnet_mask(guest.test_iface_ip_net)} -m {guest.test_iface_mac} -b {batch} -t {threads} | tee {remote_pktgen_log}";
-        loadgen.tmux_kill("pktgen")
-
-        # sometimes, pktgen returns immediately with 0 packets sent
-        # i believe this happens, when the link is not ready due to peer reset
-        retries = 10
-        for i in range(retries + 1):
-            if i >= retries:
-                raise Exception("Failed to start pktgen")
-
-            # start pktgen
-            loadgen.tmux_new("pktgen", pktgen_cmd)
-
-            time.sleep(1)
-            if loadgen.tmux_is_alive("pktgen"):
-                break
-            debug("Pktgen exited immediately, restarting")
-
-    def stop_pktgen(self, loadgen):
-        loadgen.exec("sudo pkill -SIGINT pktgen")
-
-    def run_linux_tx(self, repetition: int, guest, loadgen, host):
-        remote_monitor_file = "/tmp/throughput.tsv"
-        remote_click_output = "/tmp/click.log"
-        local_monitor_file = self.output_filepath(repetition)
-        local_click_output = self.output_filepath(repetition, "click.log")
-
-        loadgen.exec(f"sudo rm {remote_monitor_file} || true")
-        guest.exec(f"sudo rm {remote_click_output} || true")
-
-        click_args = { "R": 0 }
-        guest.kill_click()
-        _, element = self.click_config()
-        config = click_tx_config(guest.test_iface, size=self.size, dst_mac=loadgen.test_iface_mac, extra_processing=element)
-        guest.write(config, "/tmp/linux.click")
-        guest.start_click("/tmp/linux.click", remote_click_output, script_args=click_args, dpdk=False)
-
-        info("Start measuring with bmon")
-        # count packets that actually arrive, but cut first line because it is always zero
-        monitor_cmd = f"bmon -p {loadgen.test_iface} -o '{bmon_format}' | tee {remote_monitor_file}"
-        loadgen.tmux_kill("monitor")
-        loadgen.tmux_new("monitor", monitor_cmd)
-
-        time.sleep(DURATION_S)
-
-        loadgen.tmux_kill("monitor")
-        guest.stop_click()
-        guest.kill_click()
-
-        loadgen.copy_from(remote_monitor_file, local_monitor_file)
-        guest.copy_from(remote_click_output, local_click_output)
-
-    def run_linux_rx(self, repetition: int, guest, loadgen, host):
-        loadgen.exec(f"sudo modprobe pktgen")
-
-        remote_click_output = "/tmp/click.log"
-        remote_pktgen_log = "/tmp/pktgen.log"
-        local_click_output = self.output_filepath(repetition)
-        local_pktgen_log = self.pktgen_output_filepath(repetition)
-
-        loadgen.exec(f"sudo rm {remote_pktgen_log} || true")
-        guest.exec(f"sudo rm {remote_click_output} || true")
-
-        click_args = {}
-        guest.kill_click()
-        _, element = self.click_config()
-        if self.vnf == "nat":
-            config = click_configs.nat(
-                interface=guest.test_iface,
-                guest_ip=GUEST_IP,
-                guest_mac=measurement.guest.test_iface_mac,
-                gw_ip=strip_subnet_mask(loadgen.test_iface_ip_net),
-                gw_mac=loadgen.test_iface_mac,
-                src_ip=TEST_CLIENT_IP,
-                src_mac=loadgen.test_iface_mac,
-                dst_ip=strip_subnet_mask(loadgen.test_iface_ip_net),
-                dst_mac=measurement.guest.test_iface_mac,
-                size=self.size,
-                direction=self.direction,
-                rewriter=element
-            )
-        elif self.vnf == "mirror":
-            config = click_configs.mirror(
-                interface=guest.test_iface,
-                ip=strip_subnet_mask(loadgen.test_iface_ip_net),
-                mac=loadgen.test_iface_mac,
-                extra_element=element
-            )
-        else:
-            config = click_rx_config(guest.test_iface, extra_processing=element)
-        guest.write(config, "/tmp/linux.click")
-        guest.start_click("/tmp/linux.click", remote_click_output, script_args=click_args, dpdk=False)
-        # start network load
-        self.start_pktgen(guest, loadgen, host, remote_pktgen_log)
-
-        time.sleep(DURATION_S)
-
-        # stop network load
-        self.stop_pktgen(loadgen)
-
-        guest.stop_click()
-        guest.kill_click()
-
-        loadgen.copy_from(remote_pktgen_log, local_pktgen_log)
-        guest.copy_from(remote_click_output, local_click_output)
-
-
-    def run_unikraft_tx(self, repetition: int, guest, loadgen, host, remote_unikraft_log_raw):
-        remote_monitor_file = "/tmp/throughput.tsv"
-        remote_unikraft_log = f"{remote_unikraft_log_raw}.{repetition}"
-        local_monitor_file = self.output_filepath(repetition)
-        local_unikraft_log = self.output_filepath(repetition, "unikraft.log")
-
-        loadgen.exec(f"sudo rm {remote_monitor_file} || true")
-        host.exec(f"sudo rm {remote_unikraft_log} || true")
-
-        # reset unikraft log
-        host.exec(f"sudo truncate -s 0 {remote_unikraft_log_raw}")
-
-        info("Start measuring with bmon")
-        monitor_cmd = f"bmon -p {loadgen.test_iface} -o '{bmon_format}' | tee {remote_monitor_file}"
-        loadgen.tmux_kill("monitor")
-        loadgen.tmux_new("monitor", monitor_cmd)
-
-        time.sleep(DURATION_S)
-
-        loadgen.tmux_kill("monitor")
-
-        # copy raw to log, but only printable characters (cut leading null bytes)
-        host.exec(f"strings {remote_unikraft_log_raw} | sudo tee {remote_unikraft_log}")
-        host.copy_from(remote_unikraft_log, local_unikraft_log)
-        loadgen.copy_from(remote_monitor_file, local_monitor_file)
-        pass
-
-    def run_unikraft_rx(self, repetition: int, guest, loadgen, host, remote_unikraft_log_raw):
-        loadgen.exec(f"sudo modprobe pktgen")
-
-        remote_pktgen_log = "/tmp/pktgen.log"
-        remote_unikraft_log = f"{remote_unikraft_log_raw}.{repetition}"
-        local_unikraft_log = self.output_filepath(repetition)
-        local_pktgen_log = self.pktgen_output_filepath(repetition)
-
-        loadgen.exec(f"sudo rm {remote_pktgen_log} || true")
-        host.exec(f"sudo rm {remote_unikraft_log} || true")
-
-        # start network load
-        self.start_pktgen(guest, loadgen, host, remote_pktgen_log)
-        # reset unikraft log
-        host.exec(f"sudo truncate -s 0 {remote_unikraft_log_raw}")
-
-        time.sleep(DURATION_S)
-
-        # copy raw to log, but only printable characters (cut leading null bytes)
-        host.exec(f"strings {remote_unikraft_log_raw} | sudo tee {remote_unikraft_log}")
-        # stop network load
-        self.stop_pktgen(loadgen)
-
-        host.copy_from(remote_unikraft_log, local_unikraft_log)
-        loadgen.copy_from(remote_pktgen_log, local_pktgen_log)
-        pass
 
 
 def main(measurement: Measurement, plan_only: bool = False) -> None:
     host, loadgen = measurement.hosts()
-    global DURATION_S
 
     # set up test plan
     interfaces = [
           Interface.VPP,
           # Interface.BRIDGE_VHOST,
           ]
-    directions = [ "rx", "tx" ]
+    directions = [ "rx" ]
     systems = [ "linux", "uk", "ukebpfjit" ]
     vm_nums = [ 1 ]
-    sizes = [ 64, 256, 1024, 1518 ]
-    vnfs = [ "empty", "filter", "nat", "ids", "mirror" ]
+    sizes = [ 64 ]
+    vnfs = [ "firewall" ]
+    fw_sizes = [ 2, 100, 1000
+                # , 10000 # click ebpf: jit target buffer too small
+                ]
     repetitions = 3
-    DURATION_S = 71 if not G.BRIEF else 15
+    G.DURATION_S = 71 if not G.BRIEF else 15
     if safe_vpp_warmup:
-        DURATION_S = max(30, DURATION_S)
+        G.DURATION_S = max(30, G.DURATION_S)
     if G.BRIEF:
         # interfaces = [ Interface.BRIDGE ]
         # interfaces = [ Interface.BRIDGE_VHOST ]
         interfaces = [ Interface.VPP ]
         # interfaces = [ Interface.BRIDGE_VHOST, Interface.VPP ]
         # directions = [ "rx", "tx" ]
-        directions = [ "tx" ]
+        directions = [ "rx" ]
         # systems = [ "linux", "uk", "ukebpfjit" ]
         # systems = [ "uk", "ukebpfjit" ]
         # systems = [ "uk" ]
@@ -434,14 +114,10 @@ def main(measurement: Measurement, plan_only: bool = False) -> None:
         # vm_nums = [ 128, 160 ]
         # vnfs = [ "empty" ]
         sizes = [ 64 ]
-        vnfs = [ "empty" ]
+        vnfs = [ "firewall" ]
+        # fw_sizes [ 2 ]
+        fw_sizes = [ 2, 100, 1000 ]
         repetitions = 1
-
-    def exclude(test):
-        return ((Interface(test.interface).is_passthrough() and test.num_vms > 1) or
-                    (test.vnf == "nat" and test.direction == "tx") or # packets get stuck in queue
-                    (test.vnf == "mirror" and test.direction == "tx") # bidirection test
-        )
 
     test_matrix = dict(
         repetitions=[ repetitions ],
@@ -451,14 +127,15 @@ def main(measurement: Measurement, plan_only: bool = False) -> None:
         size=sizes,
         vnf=vnfs,
         system=systems,
+        fw_size=fw_sizes,
     )
-    tests: List[ThroughputTest] = []
-    tests = ThroughputTest.list_tests(test_matrix, exclude_test=exclude)
+    tests: List[FirewallTest] = []
+    tests = FirewallTest.list_tests(test_matrix)
 
 
-    args_reboot = ["interface", "num_vms", "direction", "system", "vnf", "size"]
-    info(f"ThroughputTest execution plan:")
-    ThroughputTest.estimate_time2(tests, args_reboot)
+    args_reboot = ["interface", "num_vms", "direction", "system", "vnf", "size", "fw_size"]
+    info(f"FirewallTest execution plan:")
+    FirewallTest.estimate_time2(tests, args_reboot)
 
     if plan_only:
         return
@@ -468,11 +145,11 @@ def main(measurement: Measurement, plan_only: bool = False) -> None:
             args_reboot = args_reboot,
             brief = G.BRIEF
             ) as (bench, bench_tests):
-        for [num_vms, interface, direction, system, vnf, size], a_tests in bench.multi_iterator(bench_tests, ["num_vms", "interface", "direction", "system", "vnf", "size"]):
+        for [num_vms, interface, direction, system, vnf, size, fw_size], a_tests in bench.multi_iterator(bench_tests, ["num_vms", "interface", "direction", "system", "vnf", "size", "fw_size"]):
             interface = Interface(interface)
 
             info("Booting VM for this test matrix:")
-            info(ThroughputTest.test_matrix_string(a_tests))
+            info(FirewallTest.test_matrix_string(a_tests))
 
             assert len(a_tests) == 1 # we have looped through all variables now, right?
             test = a_tests[0]
