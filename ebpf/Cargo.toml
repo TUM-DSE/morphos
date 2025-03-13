@@ -51,6 +51,10 @@ path = "src/bin/state-migration-v2.rs"
 name = "nat"
 path = "src/bin/nat.rs"
 
+[[bin]]
+name = "firewall"
+path = "src/bin/firewall.rs"
+
 [dependencies]
 network-types = "0.0.6"
 aya-ebpf = "0.1.1"
