@@ -29,7 +29,7 @@ def mirror(interface: str, ip: str, mac: str, extra_element: str = "") -> str:
 
     Script(wait 1s,
         label start,
-        print "Rx rate: $(ic0.count)   TxExt rate: $(ic1.count)   TxInt rate: $(ic1.count)",
+        print "Rx rate: $(ic0.rate)   TxExt rate: $(ic1.rate)   TxInt rate: $(ic1.rate)",
         write ic0.reset,
         write ic1.reset,
         write from_device.reset 1,
@@ -210,7 +210,7 @@ def nat(interface: str, guest_ip: str, guest_mac: str, gw_ip: str, gw_mac: str, 
 
     Script(wait 1s,
         label start,
-        print "Rx rate: $(ic0.count)   TxExt rate: $(ic1.count)   TxInt rate: $(ic2.count)",
+        print "Rx rate: $(ic0.rate)    TxExt rate: $(ic1.rate)    TxInt rate: $(ic2.rate)",
         write ic0.reset,
         write ic1.reset,
         write ic2.reset,
