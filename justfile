@@ -138,8 +138,8 @@ stringmatcher-cpio:
 natebpf-cpio:
     rm -r /tmp/ukcpio-{{user}} || true
     mkdir -p /tmp/ukcpio-{{user}}
-    # cp ./benchmark/configurations/thomer-nat-ebpf.click /tmp/ukcpio-{{user}}/config.click
-    cp ./benchmark/configurations/thomer-nat.click /tmp/ukcpio-{{user}}/config.click
+    cp ./benchmark/configurations/thomer-nat-ebpf.click /tmp/ukcpio-{{user}}/config.click
+    # cp ./benchmark/configurations/thomer-nat.click /tmp/ukcpio-{{user}}/config.click
     # cp ./benchmark/configurations/test.click /tmp/ukcpio-{{user}}/config.click
     # cp ./benchmark/configurations/test2.click /tmp/ukcpio-{{user}}/config.click
     # cp ./benchmark/configurations/stringmatcher.click /tmp/ukcpio-{{user}}/config.click

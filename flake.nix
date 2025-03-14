@@ -112,15 +112,18 @@
                 # ((bpf-linker.override { rustPlatform = makeRustPlatform {
                 #     cargo = rustToolchain;
                 #     rustc = rustToolchain;
-                # };}).overrideAttrs {
+                #     # stdenv = (overrideCC stdenv rustToolchain);
+                # };}).overrideAttrs (final: old: {
+                #     nativeBuildInputs = old.nativeBuildInputs ++ [ rustToolchain ];
                 #     fixupPhase = ''
                 #         ls $out/bin
                 #         patchelf --add-rpath ${zlib}/lib $out/bin/bpf-linker $out/bin/bpf-linker
                 #         patchelf --add-rpath ${ncurses}/lib $out/bin/bpf-linker $out/bin/bpf-linker
                 #         patchelf --add-rpath ${libxml2}/lib $out/bin/bpf-linker $out/bin/bpf-linker
-                #         patchelf --add-rpath ${rustToolchain}/lib $out/bin/bpf-linker $out/bin/bpf-linker
+                #         # patchelf --add-rpath ${rustToolchain}/lib $out/bin/bpf-linker $out/bin/bpf-linker
+                #         patchelf --add-rpath ${libgcc.lib}/lib $out/bin/bpf-linker $out/bin/bpf-linker
                 #     '';
-                # })
+                # }))
             ]);
             buildDeps = pkgs: (with pkgs; [
                 pkg-config
