@@ -188,6 +188,7 @@ int BPFElement::configure(Vector <String> &conf, ErrorHandler *errh) {
         return -1;
     }
 
+	printf("Startup trace (nsec): init ebpf vm: %llu\n", ukplat_monotonic_clock());
     const char *filename = _bpf_file.c_str();
 
     bool reconfigure = _ubpf_vm != NULL;
@@ -212,6 +213,7 @@ int BPFElement::configure(Vector <String> &conf, ErrorHandler *errh) {
     }
 
     uk_rwlock_wlock(&_lock);
+	printf("Startup trace (nsec): jit ebpf: %llu\n", ukplat_monotonic_clock());
     if (reconfigure) {
         ubpf_unload_code(_ubpf_vm);
     }
@@ -243,6 +245,7 @@ int BPFElement::configure(Vector <String> &conf, ErrorHandler *errh) {
         handle_jit_dump(errh, _ubpf_vm, _bpfelement_id);
     }
 
+	printf("Startup trace (nsec): init ebpf done: %llu\n", ukplat_monotonic_clock());
     uk_rwlock_wunlock(&_lock);
 
     if (reconfigure) {
