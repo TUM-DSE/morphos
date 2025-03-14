@@ -50,6 +50,7 @@ sync-firewall:
 
 sync-firewalls:
 	$(MAKE) sync-firewall NR=2
+	$(MAKE) sync-firewall NR=10
 	$(MAKE) sync-firewall NR=100
 	$(MAKE) sync-firewall NR=1000
 	$(MAKE) sync-firewall NR=10000

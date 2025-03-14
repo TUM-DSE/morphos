@@ -55,13 +55,22 @@ class FirewallTest(ThroughputTest):
         if self.direction == "rx" and self.vnf == "filter":
             processing += rx_ip_check
 
+        def ipfilter_rules(fw_size):
+            # IPFilter requires CheckIPHeader preprocessing
+            ret = "-> Strip(14) -> CheckIPHeader -> IPFilter(\n"
+            for i in range(1000, 1000+fw_size, 2):
+                ret += f"    allow dst port {i},\n"
+                ret += f"    deny dst port {i+1},\n"
+            ret += ")"
+            return ret
+
         match (self.system, self.vnf, self.direction):
             case ("linux", "firewall", "rx"):
                 files = []
-                processing += "-> IPFilter(deny dst port 1234, allow all)" # TODO
+                processing += ipfilter_rules(self.fw_size)
             case ("uk", "firewall", "rx"):
                 files = []
-                processing += "-> IPFilter(deny dst port 1234, allow all)" # TODO
+                processing += ipfilter_rules(self.fw_size)
             case ("ukebpf", "firewall", "rx"):
                 name = f"firewall-{self.fw_size}"
                 files = [ f"benchmark/bpfilters/{name}", f"benchmark/bpfilters/{name}.sig" ]
@@ -77,6 +86,24 @@ class FirewallTest(ThroughputTest):
         return files, processing
 
 
+    def start_pktgen(self, guest, loadgen, host, remote_pktgen_log):
+        info("Starting pktgen")
+
+        batch = 32
+        threads = 2
+
+        # when doing localhost measurements, pktgen attaches to virtual devices.
+        # They don't support batching and likely only have 1 queue (thread support).
+        # Therefore, we enable fast pktgen only for non-localhost measurements.
+        if host.fqdn == "localhost":
+            batch = 1
+            threads = 1
+
+        size = self.size - 4 # subtract 4 bytes for the CRC
+        pktgen_cmd = f"{loadgen.project_root}/nix/builds/linux-pktgen/bin/pktgen_sample03_burst_single_flow" + \
+            f" -i {loadgen.test_iface} -s {self.size - 4} -d {strip_subnet_mask(guest.test_iface_ip_net)} -m {guest.test_iface_mac} -b {batch} -t {threads} -p 1000-{self.fw_size+1000-1} | tee {remote_pktgen_log}";
+        self.start_pktgen_helper(guest, loadgen, host, pktgen_cmd)
+
 
 def main(measurement: Measurement, plan_only: bool = False) -> None:
     host, loadgen = measurement.hosts()
@@ -87,15 +114,13 @@ def main(measurement: Measurement, plan_only: bool = False) -> None:
           # Interface.BRIDGE_VHOST,
           ]
     directions = [ "rx" ]
-    systems = [ "linux", "uk", "ukebpfjit" ]
+    systems = [ "linux", "uk", "ukebpf", "ukebpfjit" ]
     vm_nums = [ 1 ]
     sizes = [ 64 ]
     vnfs = [ "firewall" ]
-    fw_sizes = [ 2, 100, 1000
-                # , 10000 # click ebpf: jit target buffer too small
-                ]
+    fw_sizes = [ 2, 10, 100, 1000, 10000 ]
     repetitions = 3
-    G.DURATION_S = 71 if not G.BRIEF else 15
+    G.DURATION_S = 181 if not G.BRIEF else 181
     if safe_vpp_warmup:
         G.DURATION_S = max(30, G.DURATION_S)
     if G.BRIEF:
@@ -107,8 +132,8 @@ def main(measurement: Measurement, plan_only: bool = False) -> None:
         directions = [ "rx" ]
         # systems = [ "linux", "uk", "ukebpfjit" ]
         # systems = [ "uk", "ukebpfjit" ]
-        # systems = [ "uk" ]
-        systems = [ "ukebpfjit" ]
+        systems = [ "uk" ]
+        # systems = [ "ukebpfjit" ]
         # systems = [ "linux" ]
         vm_nums = [ 1 ]
         # vm_nums = [ 128, 160 ]
@@ -116,7 +141,7 @@ def main(measurement: Measurement, plan_only: bool = False) -> None:
         sizes = [ 64 ]
         vnfs = [ "firewall" ]
         # fw_sizes [ 2 ]
-        fw_sizes = [ 2, 100, 1000 ]
+        fw_sizes = [ 10000 ]
         repetitions = 1
 
     test_matrix = dict(
@@ -252,7 +277,7 @@ def main(measurement: Measurement, plan_only: bool = False) -> None:
     all_data['mpps'] = all_data['pps'].apply(lambda pps: pps / 1_000_000)
     del all_data["pps"]
     df = all_data.groupby([ col for col in all_data.columns if col != "mpps" ]).describe()
-    with open(path_join(G.OUT_DIR, f"throughput_summary.log"), 'w') as file:
+    with open(path_join(G.OUT_DIR, f"firewall_summary.log"), 'w') as file:
         file.write(df.to_string())
 
 

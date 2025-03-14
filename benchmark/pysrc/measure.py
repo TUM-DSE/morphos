@@ -170,7 +170,9 @@ class Measurement:
         self.host.exec(f"sudo rm -r {tmpdir} || true")
         self.host.exec(f"sudo rm {initrd} || true")
         self.host.exec(f"mkdir -p {tmpdir}")
-        self.host.write(click_config, f"{tmpdir}/config.click")
+        with open("/tmp/config.click", "w") as text_file:
+            text_file.write(click_config)
+        self.host.copy_to("/tmp/config.click", f"{tmpdir}/config.click")
         for cpio_file in cpio_files:
             with open(f"{self.host.project_root}/{cpio_file}", 'rb') as file:
                 data = file.read()
@@ -189,7 +191,7 @@ class Measurement:
                 )
 
         debug("Waiting for click to start")
-        self.host.wait_for_success(f"grep 'Starting driver...' {vm_log}")
+        self.host.wait_for_success(f"grep 'Starting driver...' {vm_log}", timeout=40)
 
         yield self.guest
 

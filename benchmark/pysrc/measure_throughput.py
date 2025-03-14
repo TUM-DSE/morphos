@@ -239,6 +239,9 @@ class ThroughputTest(AbstractBenchTest):
         size = self.size - 4 # subtract 4 bytes for the CRC
         pktgen_cmd = f"{loadgen.project_root}/nix/builds/linux-pktgen/bin/pktgen_sample03_burst_single_flow" + \
             f" -i {loadgen.test_iface} -s {self.size - 4} -d {strip_subnet_mask(guest.test_iface_ip_net)} -m {guest.test_iface_mac} -b {batch} -t {threads} | tee {remote_pktgen_log}";
+        self.start_pktgen_helper(guest, loadgen, host, pktgen_cmd)
+
+    def start_pktgen_helper(self, guest, loadgen, host, pktgen_cmd):
         loadgen.tmux_kill("pktgen")
 
         # sometimes, pktgen returns immediately with 0 packets sent
@@ -272,7 +275,9 @@ class ThroughputTest(AbstractBenchTest):
         guest.kill_click()
         _, element = self.click_config()
         config = click_tx_config(guest.test_iface, size=self.size, dst_mac=loadgen.test_iface_mac, extra_processing=element)
-        guest.write(config, "/tmp/linux.click")
+        with open("/tmp/linux.click", "w") as text_file:
+            text_file.write(config)
+        guest.copy_to("/tmp/linux.click", "/tmp/linux.click")
         guest.start_click("/tmp/linux.click", remote_click_output, script_args=click_args, dpdk=False)
 
         info("Start measuring with bmon")
@@ -328,7 +333,9 @@ class ThroughputTest(AbstractBenchTest):
             )
         else:
             config = click_rx_config(guest.test_iface, extra_processing=element)
-        guest.write(config, "/tmp/linux.click")
+        with open("/tmp/linux.click", "w") as text_file:
+            text_file.write(config)
+        guest.copy_to("/tmp/linux.click", "/tmp/linux.click")
         guest.start_click("/tmp/linux.click", remote_click_output, script_args=click_args, dpdk=False)
         # start network load
         self.start_pktgen(guest, loadgen, host, remote_pktgen_log)
