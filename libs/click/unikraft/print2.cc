@@ -29,6 +29,7 @@ CLICK_CXX_PROTECT
 CLICK_CXX_UNPROTECT
 # include <click/cxxunprotect.h>
 #endif
+#include <uk/plat/time.h>
 CLICK_DECLS
 
 Print2::Print2()
@@ -123,6 +124,7 @@ Print2::simple_action(Packet *p)
 	sa << sep << p->timestamp_anno();
 	sep = ": ";
     }
+  sa << sep << ukplat_monotonic_clock() << " ns";
 
     // sa.reserve() must return non-null; we checked capacity above
     int len;
