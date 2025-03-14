@@ -210,8 +210,10 @@ get_config()
 		cstr_len = strlen(CONFIGSTRING);
 	}
 	cfg->append(cstr, cstr_len);
+	printf("Startup trace (nsec): print config: %llu\n", ukplat_monotonic_clock());
 	printf("Received config (length %d):\n", cfg->length());
 	printf("%s\n", cfg->c_str());
+	printf("Startup trace (nsec): print config done: %llu\n", ukplat_monotonic_clock());
 	return cfg;
 }
 

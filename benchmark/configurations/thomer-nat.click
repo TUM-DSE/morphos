@@ -25,7 +25,7 @@ AddressInfo(
 elementclass SniffGatewayDevice {
   $device |
   from :: FromDevice($device)
-    -> Print('Received packet from device')
+    -> Print2('Received packet from device')
     -> t1 :: Tee
     -> output;
   input -> q :: Queue(1024)
