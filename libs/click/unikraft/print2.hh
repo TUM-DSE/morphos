@@ -1,5 +1,5 @@
-#ifndef CLICK_PRINT_HH
-#define CLICK_PRINT_HH
+#ifndef CLICK_PRINT2_HH
+#define CLICK_PRINT2_HH
 #include <click/element.hh>
 #include <click/string.hh>
 CLICK_DECLS
@@ -7,7 +7,7 @@ CLICK_DECLS
 /*
 =c
 
-Print([LABEL, MAXLENGTH, I<keywords>])
+Print2([LABEL, MAXLENGTH, I<keywords>])
 
 =s debugging
 
@@ -15,7 +15,7 @@ prints packet contents
 
 =d
 
-Prints up to MAXLENGTH bytes of data from each packet, in hex, preceded by the
+Print2s up to MAXLENGTH bytes of data from each packet, in hex, preceded by the
 LABEL text. Default MAXLENGTH is 24.
 
 Keyword arguments are:
@@ -65,13 +65,13 @@ Returns or sets the ACTIVE parameter.
 
 =a
 
-IPPrint */
+IPPrint2 */
 
-class Print : public Element { public:
+class Print2 : public Element { public:
 
-    Print() CLICK_COLD;
+    Print2() CLICK_COLD;
 
-    const char *class_name() const		{ return "Print"; }
+    const char *class_name() const		{ return "Print2"; }
     const char *port_count() const		{ return PORTS_1_1; }
 
     int configure(Vector<String> &, ErrorHandler *) CLICK_COLD;

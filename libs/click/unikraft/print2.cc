@@ -17,7 +17,7 @@
  */
 
 #include <click/config.h>
-#include "print.hh"
+#include "print2.hh"
 #include <click/glue.hh>
 #include <click/args.hh>
 #include <click/error.hh>
@@ -31,12 +31,12 @@ CLICK_CXX_UNPROTECT
 #endif
 CLICK_DECLS
 
-Print::Print()
+Print2::Print2()
 {
 }
 
 int
-Print::configure(Vector<String> &conf, ErrorHandler* errh)
+Print2::configure(Vector<String> &conf, ErrorHandler* errh)
 {
   bool timestamp = false;
 #ifdef CLICK_LINUXMODULE
@@ -86,7 +86,7 @@ Print::configure(Vector<String> &conf, ErrorHandler* errh)
 }
 
 Packet *
-Print::simple_action(Packet *p)
+Print2::simple_action(Packet *p)
 {
     if (!_active)
 	return p;
@@ -102,7 +102,7 @@ Print::simple_action(Packet *p)
 		   + Packet::anno_size*2 + 3 // annotations |
 		   + 3 * bytes);
     if (sa.out_of_memory()) {
-	click_chatter("no memory for Print");
+	click_chatter("no memory for Print2");
 	return p;
     }
 
@@ -174,11 +174,11 @@ Print::simple_action(Packet *p)
 }
 
 void
-Print::add_handlers()
+Print2::add_handlers()
 {
     add_data_handlers("active", Handler::OP_READ | Handler::OP_WRITE | Handler::CHECKBOX | Handler::CALM, &_active);
 }
 
 CLICK_ENDDECLS
-EXPORT_ELEMENT(Print)
-ELEMENT_MT_SAFE(Print)
+EXPORT_ELEMENT(Print2)
+ELEMENT_MT_SAFE(Print2)
