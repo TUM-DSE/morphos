@@ -63,6 +63,7 @@ void BPFElement::init_ubpf_vm() {
     ubpf_toggle_bounds_check(vm, false);
     ubpf_toggle_undefined_behavior_check(vm, false);
     ubpf_register_data_relocation(vm, this->_bpf_map_ctx, do_map_relocation);
+    ubpf_set_jit_code_size(vm, 128*1024); // default is 64KB
 
     // register bpf helpers
     ubpf_register(vm, 1, "bpf_map_lookup_elem", as_external_function_t((void *) bpf_map_lookup_elem));
