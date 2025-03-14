@@ -66,6 +66,11 @@ void *__dso_handle = NULL;
 	printf("[%s:%d] " fmt "\n", \
 		__FUNCTION__, __LINE__, ##__VA_ARGS__)
 
+static inline void outb(__u16 port, __u8 v)
+{
+  __asm__ __volatile__("outb %0,%1" : : "a"(v), "dN"(port));
+}
+
 u_int _shutdown = 0;
 u_int _reason = 0;
 
@@ -236,6 +241,7 @@ router_thread(void *thread_data)
         exit(1);
 		return;
 	}
+	outb(0xf4, 0xFD);
 	printf("Startup trace (nsec): initialize elements done: %lu\n", ukplat_monotonic_clock());
 
 	ri->r->use();
@@ -449,6 +455,7 @@ extern "C" int click_main(int argc, char **argv);
 /* runs the event loop */
 int CLICK_MAIN(int argc, char **argv)
 {
+	outb(0xf4, 0xFE);
 	printf("Startup trace (nsec): click main(): %lu\n", ukplat_monotonic_clock());
 	struct uk_thread *router;
 

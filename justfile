@@ -201,6 +201,16 @@ perf-qemu-record:
     sudo perf record -g -p $(pgrep qemu)
     sudo perf script > perf.trace
 
+qemu-startup:
+    BPFTRACE_MAX_STRLEN=123 sudo -E bpftrace -e " \
+    BEGIN { @a = 0; } \
+    tracepoint:kvm:kvm_entry / @a == 0 / { printf(\"qemu kvm entry ns %lld\n\", nsecs()); @a = 1; } \
+    tracepoint:kvm:kvm_pio / args.port == 0xf4 / { printf(\"qemu kvm port %d ns %lld\n\", args->val, nsecs()); } \
+    tracepoint:syscalls:sys_enter_execve* \
+    / str(args.filename) == \"$(which qemu-system-x86_64)\" / \
+    { printf(\"qemu start ns %lld\n\", nsecs()); printf(\"filename %s\n\", str(args.filename))}" \
+
+
 UBUNTU_PATH := "~/.vagrant.d/boxes/ubuntu-VAGRANTSLASH-jammy64/20241002.0.0/virtualbox/ubuntu-jammy-22.04-cloudimg.vmdk"
 ALPINE_PATH := "~/.vagrant.d/boxes/generic-VAGRANTSLASH-alpine319/4.3.12/virtualbox/generic-alpine319-virtualbox-x64-disk001.vmdk"
 
