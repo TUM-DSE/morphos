@@ -7,12 +7,13 @@ edition = "2021"
 [lib]
 
 [[bin]]
-name = "consolidate-criterion"
-path = "src/bin/consolidate-criterion.rs"
+name = "bench-helper"
+path = "src/bin/bench-helper.rs"
+# name = "consolidate-criterion"
+# path = "src/bin/consolidate-criterion.rs"
 
 [dependencies]
 anyhow = "1.0"
-criterion = "0.5.1"
 tempfile = "3.10.1"
 mac_address = "1.1.7"
 serde = { version = "1.0.203", features = ["derive"] }
