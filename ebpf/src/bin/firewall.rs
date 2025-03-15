@@ -54,6 +54,8 @@ fn try_classify(ctx: &mut BpfContext) -> Result<FilterResult, ()> {
     // for some time)
     Ok(match dst_port {
         // start
+1000 => FilterResult::Pass,
+1001 => FilterResult::Drop,
         // end
         _ => FilterResult::Drop,
     })

@@ -54,6 +54,8 @@ sync-firewalls:
 	$(MAKE) sync-firewall NR=100
 	$(MAKE) sync-firewall NR=1000
 	$(MAKE) sync-firewall NR=10000
+	# restore sane, original state:
+	$(MAKE) sync-firewall NR=2
 
 all: $(BINS)
 
