@@ -14,6 +14,7 @@ path = "src/bin/bench-helper.rs"
 
 [dependencies]
 anyhow = "1.0"
+criterion = { version = "0.5.1", features = ["csv_output"]}
 tempfile = "3.10.1"
 mac_address = "1.1.7"
 serde = { version = "1.0.203", features = ["derive"] }

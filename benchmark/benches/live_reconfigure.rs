@@ -82,9 +82,34 @@ const CONFIGURATIONS: &[Configuration] = &[
 const BPFILTER_BASE_PATH: &str = "bpfilters";
 
 pub fn live_reconfigure(c: &mut Criterion) {
+    let only = match  std::env::var("ONLY") {
+        Ok(val) => val.split(',').map(|s| s.to_string()).collect::<Vec<String>>(),
+        Err(_) => vec![],
+    };
+    let mut configs: Vec<&Configuration> = CONFIGURATIONS.iter().collect();
+    if only.len() > 0 {
+        let new_configs: Vec<&Configuration> = CONFIGURATIONS
+            .iter()
+            .filter(|config| only.contains(&config.name.to_string()))
+            .collect();
+        configs = new_configs;
+    }
+
+    let mut qemu_out_args = match std::env::var("QEMU_OUT") {
+        Ok(out_path) => vec![
+            "-chardev".to_string(),
+            format!("stdio,id=char0,mux=on,logfile={},signal=off", out_path),
+            "-serial".to_string(),
+            "chardev:char0".to_string(),
+            "-mon".to_string(),
+            "chardev=char0".to_string(),
+        ],
+        Err(_) => vec![],
+    };
+
     let mut group = c.benchmark_group("live-reconfigure");
 
-    for config in CONFIGURATIONS {
+    for config in configs {
         // prepare click VM
         let cpio = prepare_cpio_archive(
             &create_click_configuration(config.click_config),
@@ -92,14 +117,22 @@ pub fn live_reconfigure(c: &mut Criterion) {
         )
         .expect("couldn't prepare cpio archive");
 
-        let mut click_vm = vm::start_click(
-            FileSystem::CpioArchive(&cpio.path.to_string_lossy()),
-            &[
+        qemu_out_args.append(&mut vec![
                 "-netdev".to_string(),
                 "bridge,id=en1,br=controlnet".to_string(),
                 "-device".to_string(),
                 "virtio-net-pci,netdev=en1".to_string(),
-            ],
+                // "-chardev".to_string(),
+                // "stdio,id=char0,mux=on,logfile=/tmp/foobar,signal=off".to_string(),
+                // "-serial".to_string(),
+                // "chardev:char0".to_string(),
+                // "-mon".to_string(),
+                // "chardev=char0".to_string(),
+        ]);
+
+        let mut click_vm = vm::start_click(
+            FileSystem::CpioArchive(&cpio.path.to_string_lossy()),
+            &qemu_out_args,
         )
         .expect("couldn't start click");
 
@@ -129,11 +162,11 @@ pub fn live_reconfigure(c: &mut Criterion) {
 }
 
 fn run_benchmark(config: &Configuration, lines: &mut Lines<BufReader<ChildStdout>>) -> Duration {
+    let now = Instant::now();
     trigger_reconfiguration(config.bpfilter_program, config.signature_file)
         .expect("couldn't trigger reconfiguration");
     wait_until_reconfiguration_start(lines);
 
-    let now = Instant::now();
     wait_until_reconfiguration_end(lines);
 
     now.elapsed()
@@ -149,9 +182,10 @@ fn trigger_reconfiguration(program: &str, signature: &str) -> anyhow::Result<()>
     data.extend_from_slice(signature.as_bytes());
 
     let socket = UdpSocket::bind("0.0.0.0:0").context("couldn't bind to control addr")?;
-    socket
+    let written = socket
         .send_to(&data, CONTROL_ADDR)
         .context("couldn't send packet")?;
+    assert_eq!(written, data.len());
 
     Ok(())
 }
@@ -159,13 +193,13 @@ fn trigger_reconfiguration(program: &str, signature: &str) -> anyhow::Result<()>
 fn wait_until_reconfiguration_start(lines: &mut Lines<BufReader<ChildStdout>>) {
     lines
         .filter_map(Result::ok)
-        .find(|line| line.contains("Reconfiguring "));
+        .find(|line| line.contains("init ebpf vm"));
 }
 
 fn wait_until_reconfiguration_end(lines: &mut Lines<BufReader<ChildStdout>>) {
     lines
         .filter_map(Result::ok)
-        .find(|line| line.contains("Reconfigured "));
+        .find(|line| line.contains("init ebpf done"));
 }
 
 fn create_click_configuration(click_config: &str) -> String {
