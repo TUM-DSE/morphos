@@ -29,7 +29,9 @@ CLICK_CXX_PROTECT
 CLICK_CXX_UNPROTECT
 # include <click/cxxunprotect.h>
 #endif
+#ifdef CONFIG_LIBCLICK
 #include <uk/plat/time.h>
+#endif
 CLICK_DECLS
 
 Print2::Print2()
@@ -124,7 +126,14 @@ Print2::simple_action(Packet *p)
 	sa << sep << p->timestamp_anno();
 	sep = ": ";
     }
+#ifdef CONFIG_LIBCLICK
   sa << sep << ukplat_monotonic_clock() << " ns";
+#else
+  struct timespec ts;
+  clock_gettime(CLOCK_MONOTONIC, &ts);
+  uint64_t time_ns = (uint64_t)ts.tv_sec * 1000000000ULL + (uint64_t)ts.tv_nsec;
+  sa << sep << time_ns << " ns";
+#endif
 
     // sa.reserve() must return non-null; we checked capacity above
     int len;
@@ -170,7 +179,7 @@ Print2::simple_action(Packet *p)
 	sa.adjust_length(buf - (sa.data() + sa.length()));
     }
 
-  click_chatter("%s", sa.c_str());
+  printf("%s", sa.c_str());
 
   return p;
 }
