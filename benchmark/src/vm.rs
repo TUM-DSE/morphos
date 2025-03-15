@@ -74,6 +74,8 @@ pub fn start_click(fs: FileSystem, extra_args: &[String]) -> anyhow::Result<Clic
         "kvm",
         "-cpu",
         "max",
+        "-m",
+        "3G",
         "-netdev",
         "bridge,id=en0,br=clicknet",
         "-device",
@@ -97,6 +99,33 @@ pub fn start_click(fs: FileSystem, extra_args: &[String]) -> anyhow::Result<Clic
         .spawn()?;
 
     let stdout = BufReader::new(child.stdout.take().expect("cannot get stdout of click vm"));
+
+    Ok(ClickVm {
+        child,
+        stdout: Some(stdout),
+    })
+}
+
+pub fn start_linux_click(config: &str, extra_args: &[String]) -> anyhow::Result<ClickVm> {
+    let mut args = [
+        "taskset",
+        "-c",
+        "3,4",
+        "../nix/builds/click/bin/click",
+        config,
+    ]
+    .map(|s| s.to_string())
+    .to_vec();
+
+    args.extend_from_slice(extra_args);
+
+    let mut child = Command::new("sudo")
+        .args(args)
+        .stdout(Stdio::piped())
+        // .stderr(Stdio::piped())
+        .spawn()?;
+
+    let stdout = BufReader::new(child.stdout.take().expect("cannot get stdout of click"));
 
     Ok(ClickVm {
         child,
