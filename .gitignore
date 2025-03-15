@@ -18,6 +18,9 @@ libs/libunwind/
 libs/musl/
 libs/openssl/
 libs/click-og/
+libs/click-og.zip
+
+.cache/
 
 VMs/
 out*/
