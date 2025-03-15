@@ -37,6 +37,10 @@ pkgs.stdenv.mkDerivation rec {
     jansson
   ] ++ [ dpdk ];
 
+  patches = [
+    ./click.startup-time.patch
+  ];
+
   postPatch = ''
     # sln /bin/echo ${pkgs.coreutils}/bin/echo
     find . -type f -exec sed -i 's/\/bin\/echo/echo/g' {} \;

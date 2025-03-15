@@ -83,6 +83,7 @@
 
         og-click = {
             url = "git+https://github.com/kohler/click.git";
+            # url = "git+file:///home/okelmann/click";
             flake = false;
         };
 
