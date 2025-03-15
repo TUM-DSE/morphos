@@ -181,7 +181,7 @@ vhost-user:
 
 
 vpp-notes:
-    # sudo vpp -c ./vpp.conf
+    # sudo vpp -c ./benchmark/configurations/vpp.conf
     # sudo vppctl -s /tmp/vpp-cli
     # show log
     # show interface
