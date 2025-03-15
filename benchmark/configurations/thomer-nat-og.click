@@ -12,6 +12,8 @@
 //
 // Author: Thomer M. Gil (click@thomer.com)
 
+define($DEV0 eno1)
+
 AddressInfo(
     eth0-in     192.168.1.1     192.168.1.0/24  00:0d:87:9d:1c:e9,
     eth0-ex     66.58.65.90                     00:0d:87:9d:1c:e9,
@@ -21,26 +23,28 @@ AddressInfo(
 
 elementclass SniffGatewayDevice {
   $device |
-  from :: FromDevice($device)
-    -> t1 :: Tee
+  from :: KernelTun($DEV0)
+    -> Print2('Received packet from device')
+  //  -> t1 :: Tee
     -> output;
   input -> q :: Queue(1024)
-    -> t2 :: PullTee
-    -> to :: ToDevice($device);
-  t1[1] -> ToHostSniffers;
-  t2[1] -> ToHostSniffers($device);
+  //  -> t2 :: PullTee
+    -> from;
+  // t1[1] -> ToHostSniffers;
+  // t2[1] -> ToHostSniffers($device);
   ScheduleInfo(from .1, to 1);
 }
 
 
-device :: SniffGatewayDevice(enp24s0f1);
 arpq_in :: ARPQuerier(eth0-in) -> device;
+device :: SniffGatewayDevice($DEV0);
 ip_to_extern :: GetIPAddress(16)
         -> CheckIPHeader
         -> EtherEncap(0x800, eth0-ex, gw-addr)
         -> device;
 ip_to_host :: EtherEncap(0x800, gw-addr, eth0-ex)
-        -> ToHost;
+        // -> ToHost;
+        -> Discard;
 ip_to_intern :: GetIPAddress(16)
         -> CheckIPHeader
         -> arpq_in;
@@ -56,7 +60,7 @@ device -> arp_class;
 // ARP crap
 arp_class[0] -> ARPResponder(eth0-in, eth0-ex) -> device;
 arp_class[1] -> arp_t :: Tee;
-                arp_t[0] -> ToHost;
+                arp_t[0] -> Discard; // ToHost;
                 arp_t[1] -> [1]arpq_in;
 
 
@@ -77,7 +81,7 @@ rw :: IPRewriter(pattern NAT 0 1,
                  pass 1);
 
 // Rewriting rules for ICMP packets
-irw :: ICMPPingRewriter(eth0-ex, -);
+irw :: ICMPPingRewriter(pass);
 irw[0] -> ip_to_extern;
 irw[1] -> icmp_me_or_intern :: IPClassifier(dst host eth0-ex, -);
           icmp_me_or_intern[0] -> ip_to_host;
@@ -140,3 +144,11 @@ ipclass[2] -> inter_class :: IPClassifier(dst net eth0-in, -);
                                                              icmp type echo);
                                 ip_udp_class[0] -> [0]rw;
                                 ip_udp_class[1] -> [0]irw;
+
+
+Script(print "Btw: sleeping first increases startup time.",
+       wait 1s,
+       label start,
+       wait 1s,
+       goto start,
+)

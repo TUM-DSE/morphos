@@ -15,6 +15,8 @@
 //
 // Author: Thomer M. Gil (click@thomer.com)
 
+define($DEV0 0)
+
 AddressInfo(
     dev0-in     172.44.0.2    172.44.0.2/24    00:0d:87:9d:1c:e9,
     dev0-ex     172.44.0.3                     00:0d:87:9d:1c:e9,
@@ -37,7 +39,7 @@ elementclass SniffGatewayDevice {
 }
 
 
-device :: SniffGatewayDevice(0);
+device :: SniffGatewayDevice($DEV0);
 arpq_in :: ARPQuerier(dev0-in) -> device;
 ip_to_extern :: GetIPAddress(16)
         -> CheckIPHeader
