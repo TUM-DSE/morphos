@@ -30,7 +30,7 @@ unikraft_interface = "0"
 class ReconfigurationTest(AbstractBenchTest):
 
     vnf: str # workload
-    system: str # linux | uk | ukebpfjit
+    system: str # linux | uk | uktrace | ukebpfjit
 
     def test_infix(self):
         return f"reconfiguration_{self.system}_{self.vnf}"
@@ -53,7 +53,7 @@ class ReconfigurationTest(AbstractBenchTest):
                         time_s = float(time_str.split("m")[0]) * 60 + float(time_str.split("m")[1][:-1])
                         values += [ ("total", int(time_s*1000000000)) ]
 
-        if self.system == "ukebpfjit":
+        if self.system in [ "uk", "ukebpfjit"]:
             # parse output
             with open(self.output_filepath(repetition), 'r') as f:
                 for line in f.readlines():
@@ -347,7 +347,7 @@ def main(measurement: Measurement, plan_only: bool = False) -> None:
     if G.BRIEF:
         # systems = [ "linux", "uk", "ukebpfjit" ]
         # systems = [ "uk", "ukebpfjit" ]
-        systems = [ "ukebpfjit" ]
+        systems = [ "uk" ]
         # systems = [ "xdp" ]
         # systems = [ "linux" ]
         # vnfs = [ "empty" ]
@@ -404,6 +404,7 @@ def main(measurement: Measurement, plan_only: bool = False) -> None:
                     env_vars = f"QEMU_OUT='{remote_qemu_log}' ONLY='pass (BPFFilter - JIT)'"
                     bench_cmd = "cargo bench --bench live_reconfigure"
                     cmd = f"cd {dir}; {env_vars} nix develop --command {bench_cmd}; echo done > {remote_test_done}"
+                    host.tmux_kill("qemu0")
                     host.tmux_new("qemu0", cmd)
 
                     # wait for test to complete
@@ -411,15 +412,43 @@ def main(measurement: Measurement, plan_only: bool = False) -> None:
                     try:
                         host.wait_for_success(f'[[ -e {remote_test_done} ]]', timeout=30)
                     except TimeoutError:
-                        error('Waiting for fastclick output file to appear timed out')
+                        error('Waiting for test to finish timed out')
 
                     # collect results
                     host.tmux_kill("qemu0")
                     host.copy_from(remote_qemu_log, local_outfile)
 
-
                 elif test.system == "uk":
-                    print("")
+                    remote_qemu_log = "/tmp/qemu.log"
+                    remote_test_done = "/tmp/test_done"
+                    local_outfile = test.output_filepath(repetition)
+                    dir = f"{host.project_root}/benchmark"
+                    iterations = 10
+
+                    # clean old outfiles
+                    host.exec(f"sudo rm {remote_qemu_log} || true")
+
+                    for itertaion in range(iterations):
+                        host.exec(f"sudo rm {remote_test_done} || true")
+
+                        # start test
+                        env_vars = ""
+                        bench_cmd = "cargo run --bin bench-helper --features print-output"
+                        cmd = f"cd {dir}; {env_vars} nix develop --command {bench_cmd} 2>&1 | tee -a {remote_qemu_log}; echo done > {remote_test_done}"
+                        host.tmux_kill("qemu0")
+                        host.tmux_new("qemu0", cmd)
+
+                        # wait for test to complete
+                        time.sleep(3)
+                        try:
+                            host.wait_for_success(f'[[ -e {remote_test_done} ]]', timeout=30)
+                        except TimeoutError:
+                            error('Waiting for test to finish timed out')
+                        host.tmux_kill("qemu0")
+
+                    # collect results
+                    host.copy_from(remote_qemu_log, local_outfile)
+
                 elif test.system == "linux":
                     print("")
                 elif test.system == "xdp":
