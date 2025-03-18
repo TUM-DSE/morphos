@@ -526,7 +526,7 @@ class Server(ABC):
         if self.ssh_as_root == True:
             sudo = "sudo "
 
-        self.__exec_local(f'{sudo}scp{options} {self.fqdn}:{source} {destination}')
+        self.__exec_local(f'{sudo}scp{options} "{self.fqdn}:{source}" "{destination}"')
 
     def copy_to(self: 'Server', source: str, destination: str, recursive: bool = False) -> None:
         """

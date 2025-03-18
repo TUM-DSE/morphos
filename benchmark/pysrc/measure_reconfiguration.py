@@ -80,7 +80,6 @@ class ReconfigurationTest(AbstractBenchTest):
                     if line.startswith("Bench-helper startup time (nsec):"):
                         value = int(line.split(":")[1].strip())
                         values += [ ("total startup time", value) ]
-            # TODO output of criterion.rs itself
 
             if self.system == "uktrace":
                 with open(self.output_filepath(repetition, extension="bpftrace.log"), 'r') as f:
@@ -91,7 +90,13 @@ class ReconfigurationTest(AbstractBenchTest):
                             value = int(splits[1].strip())
                             values += [ (label, value) ]
 
-
+            if self.system == "ukebpfjit":
+                data = pd.read_csv(self.output_filepath(repetition, extension="criterion.csv"))
+                for index, row in data.iterrows():
+                    assert row["unit"] == "ns"
+                    iterations = int(row["iteration_count"])
+                    value = int(int(row["sample_measured_value"]) / float(iterations))
+                    values += [ ("total", value) for _ in range(iterations) ]
 
         else:
             raise ValueError(f"Unknown system: {self.system}")
@@ -378,6 +383,7 @@ def main(measurement: Measurement, plan_only: bool = False) -> None:
         # systems = [ "linux", "uk", "ukebpfjit" ]
         # systems = [ "uk", "ukebpfjit" ]
         systems = [ "uktrace" ]
+        systems = [ "ukebpfjit" ]
         # systems = [ "xdp" ]
         # systems = [ "linux" ]
         # vnfs = [ "empty" ]
@@ -422,17 +428,21 @@ def main(measurement: Measurement, plan_only: bool = False) -> None:
 
             for repetition in range(repetitions):
                 if test.system == "ukebpfjit":
+                    dir = f"{host.project_root}/benchmark"
+                    criterion_selector = "pass (BPFFilter - JIT)" # escaped for bash commands without quotes
                     remote_qemu_log = "/tmp/qemu.log"
                     remote_test_done = "/tmp/test_done"
                     local_outfile = test.output_filepath(repetition)
-                    dir = f"{host.project_root}/benchmark"
+                    remote_criterion_file = f"{dir}/target/criterion/live-reconfigure/{criterion_selector}/new/raw.csv"
+                    local_criterion_file = test.output_filepath(repetition, extension="criterion.csv")
 
                     # clean old outfiles
                     host.exec(f"sudo rm {remote_qemu_log} || true")
                     host.exec(f"sudo rm {remote_test_done} || true")
+                    host.exec(f"sudo rm '{remote_criterion_file}' || true")
 
                     # start test
-                    env_vars = f"QEMU_OUT='{remote_qemu_log}' ONLY='pass (BPFFilter - JIT)'"
+                    env_vars = f"QEMU_OUT='{remote_qemu_log}' ONLY='{criterion_selector}'"
                     bench_cmd = "cargo bench --bench live_reconfigure"
                     cmd = f"cd {dir}; {env_vars} nix develop --command {bench_cmd}; echo done > {remote_test_done}"
                     host.tmux_kill("qemu0")
@@ -448,6 +458,7 @@ def main(measurement: Measurement, plan_only: bool = False) -> None:
                     # collect results
                     host.tmux_kill("qemu0")
                     host.copy_from(remote_qemu_log, local_outfile)
+                    host.copy_from(remote_criterion_file, local_criterion_file)
 
                 elif test.system in [ "uk", "uktrace" ]:
                     remote_qemu_log = "/tmp/qemu.log"
