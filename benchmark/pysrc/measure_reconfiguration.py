@@ -51,15 +51,27 @@ class ReconfigurationTest(AbstractBenchTest):
                     if line.startswith("real"):
                         time_str = line.split("\t")[1].strip()
                         time_s = float(time_str.split("m")[0]) * 60 + float(time_str.split("m")[1][:-1])
-                        values += [ int(time_s*1000000000) ]
+                        values += [ ("total", int(time_s*1000000000)) ]
+
+        if self.system == "ukebpfjit":
+            # parse output
+            with open(self.output_filepath(repetition), 'r') as f:
+                for line in f.readlines():
+                    if line.startswith("Startup trace (nsec):"):
+                        splits = line.split(":")
+                        label = splits[1].strip()
+                        value = splits[2].strip()
+                        values += [ (label, int(value)) ]
+
         else:
             raise ValueError(f"Unknown system: {self.system}")
 
         data = []
-        for value in values:
+        for (label, value) in values:
             data += [{
                 **asdict(self), # put selfs member variables and values into this dict
                 "repetition": repetition,
+                "label": label,
                 "nsec": value,
             }]
         return DataFrame(data=data)
@@ -335,12 +347,12 @@ def main(measurement: Measurement, plan_only: bool = False) -> None:
     if G.BRIEF:
         # systems = [ "linux", "uk", "ukebpfjit" ]
         # systems = [ "uk", "ukebpfjit" ]
-        # systems = [ "uk" ]
-        systems = [ "xdp" ]
+        systems = [ "ukebpfjit" ]
+        # systems = [ "xdp" ]
         # systems = [ "linux" ]
         # vnfs = [ "empty" ]
         vnfs = [ "empty" ]
-        repetitions = 2
+        repetitions = 1
 
     def exclude(test):
         return False
@@ -377,15 +389,41 @@ def main(measurement: Measurement, plan_only: bool = False) -> None:
             info(f"Running {test}")
 
 
-            if test.system == "uk":
-                print("")
-            elif test.system == "ukebpfjit":
-                print("")
-            elif test.system == "linux":
-                print("")
-            elif test.system == "xdp":
-                for repetition in range(repetitions):
-                    iface = "eno1"
+            for repetition in range(repetitions):
+                if test.system == "ukebpfjit":
+                    remote_qemu_log = "/tmp/qemu.log"
+                    remote_test_done = "/tmp/test_done"
+                    local_outfile = test.output_filepath(repetition)
+                    dir = f"{host.project_root}/benchmark"
+
+                    # clean old outfiles
+                    host.exec(f"sudo rm {remote_qemu_log} || true")
+                    host.exec(f"sudo rm {remote_test_done} || true")
+
+                    # start test
+                    env_vars = f"QEMU_OUT='{remote_qemu_log}' ONLY='pass (BPFFilter - JIT)'"
+                    bench_cmd = "cargo bench --bench live_reconfigure"
+                    cmd = f"cd {dir}; {env_vars} nix develop --command {bench_cmd}; echo done > {remote_test_done}"
+                    host.tmux_new("qemu0", cmd)
+
+                    # wait for test to complete
+                    time.sleep(15) # by default, citerion.rs tries to run benchmarks for 5 seconds
+                    try:
+                        host.wait_for_success(f'[[ -e {remote_test_done} ]]', timeout=30)
+                    except TimeoutError:
+                        error('Waiting for fastclick output file to appear timed out')
+
+                    # collect results
+                    host.tmux_kill("qemu0")
+                    host.copy_from(remote_qemu_log, local_outfile)
+
+
+                elif test.system == "uk":
+                    print("")
+                elif test.system == "linux":
+                    print("")
+                elif test.system == "xdp":
+                    iface = "eno1" # TODO
                     xdp_program = f"{host.project_root}/nix/builds/xdp/lib/reflector.o"
                     remote_outfile = "/tmp/xdp.log"
                     local_outfile = test.output_filepath(repetition)
