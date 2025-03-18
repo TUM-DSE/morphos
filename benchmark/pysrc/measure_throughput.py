@@ -179,8 +179,8 @@ class ThroughputTest(AbstractBenchTest):
                 files = []
                 processing += "-> IPFilter(deny dst port 1234, allow all)"
             case ("ukebpf", "filter", _):
-                files = [ "benchmark/bpfilters/stringmatcher", "benchmark/bpfilters/stringmatcher.sig" ]
-                processing += "-> BPFilter(ID 1, FILE stringmatcher, SIGNATURE stringmatcher.sig, JIT false)"
+                files = [ "benchmark/bpfilters/target-port", "benchmark/bpfilters/target-port.sig" ]
+                processing += "-> BPFilter(ID 1, FILE target-port, SIGNATURE target-port.sig, JIT false)"
             case ("ukebpfjit", "filter", _):
                 files = [ "benchmark/bpfilters/target-port", "benchmark/bpfilters/target-port.sig" ]
                 processing += "-> BPFilter(ID 1, FILE target-port, SIGNATURE target-port.sig, JIT true)"
