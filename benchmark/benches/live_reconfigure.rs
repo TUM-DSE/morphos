@@ -77,6 +77,44 @@ const CONFIGURATIONS: &[Configuration] = &[
         signature_file: "strip-ether-vlan-header.sig",
         click_config: "-> BPFRewriter(ID 1, FILE strip-ether-vlan-header, SIGNATURE strip-ether-vlan-header.sig, JIT true)",
     },
+
+    // vnfs = [ "empty", "filter", "ids", "mirror", "nat", "firewall-2" ]
+    Configuration {
+        name: "empty-jit",
+        bpfilter_program: "pass",
+        signature_file: "pass.sig",
+        click_config: "-> BPFilter(ID 1, FILE pass, SIGNATURE pass.sig, JIT true)",
+    },
+    Configuration {
+        name: "filter-jit",
+        bpfilter_program: "target-port",
+        signature_file: "target-port.sig",
+        click_config: "-> BPFilter(ID 1, FILE target-port, SIGNATURE target-port.sig, JIT true)",
+    },
+    Configuration {
+        name: "ids-jit",
+        bpfilter_program: "stringmatcher",
+        signature_file: "stringmatcher.sig",
+        click_config: "-> BPFilter(ID 1, FILE stringmatcher, SIGNATURE stringmatcher.sig, JIT true)",
+    },
+    Configuration {
+        name: "mirror-jit",
+        bpfilter_program: "ether-mirror",
+        signature_file: "ether-mirror.sig",
+        click_config: "-> BPFRewriter(ID 1, FILE ether-mirror, SIGNATURE ether-mirror.sig, JIT true)",
+    },
+    Configuration {
+        name: "nat-jit",
+        bpfilter_program: "nat",
+        signature_file: "nat.sig",
+        click_config: "-> BPFRewriter(ID 1, FILE nat, SIGNATURE nat.sig, JIT true)",
+    },
+    Configuration {
+        name: "firewall-2-jit",
+        bpfilter_program: "firewall-2",
+        signature_file: "firewall-2.sig",
+        click_config: "-> BPFRewriter(ID 1, FILE firewall-2, SIGNATURE firewall-2.sig, JIT true)",
+    },
 ];
 
 const BPFILTER_BASE_PATH: &str = "bpfilters";

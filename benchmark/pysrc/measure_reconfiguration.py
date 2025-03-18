@@ -374,9 +374,9 @@ def main(measurement: Measurement, plan_only: bool = False) -> None:
     host, loadgen = measurement.hosts()
 
     # set up test plan
-    systems = [ "linux", "uk", "ukebpfjit" ]
+    systems = [ "linux", "uk", "uktrace", "ukebpfjit" ]
     vm_nums = [ 1 ]
-    vnfs = [ "empty", "filter", "nat", "ids", "mirror" ]
+    vnfs = [ "empty", "filter", "ids", "mirror", "nat", "firewall-2" ]
     repetitions = 3
     G.DURATION_S = 71 if not G.BRIEF else 15
     if G.BRIEF:
@@ -388,6 +388,7 @@ def main(measurement: Measurement, plan_only: bool = False) -> None:
         # systems = [ "linux" ]
         # vnfs = [ "empty" ]
         vnfs = [ "empty" ]
+        vnfs = [ "empty", "filter", "ids", "mirror", "nat", "firewall-2" ]
         repetitions = 1
 
     def exclude(test):
@@ -428,8 +429,9 @@ def main(measurement: Measurement, plan_only: bool = False) -> None:
 
             for repetition in range(repetitions):
                 if test.system == "ukebpfjit":
+                    # cargo bench --bench live_reconfigure
                     dir = f"{host.project_root}/benchmark"
-                    criterion_selector = "pass (BPFFilter - JIT)" # escaped for bash commands without quotes
+                    criterion_selector = f"{test.vnf}-jit"
                     remote_qemu_log = "/tmp/qemu.log"
                     remote_test_done = "/tmp/test_done"
                     local_outfile = test.output_filepath(repetition)
@@ -461,6 +463,7 @@ def main(measurement: Measurement, plan_only: bool = False) -> None:
                     host.copy_from(remote_criterion_file, local_criterion_file)
 
                 elif test.system in [ "uk", "uktrace" ]:
+                    # cargo run --bin bench-helper --features print-output
                     remote_qemu_log = "/tmp/qemu.log"
                     remote_bpftrace_log = "/tmp/bpftrace.log"
                     remote_test_done = "/tmp/test_done"
@@ -508,7 +511,7 @@ def main(measurement: Measurement, plan_only: bool = False) -> None:
                         host.copy_from(remote_bpftrace_log, local_tracefile)
 
                 elif test.system == "linux":
-                    print("")
+                    print("") # TODO
                 elif test.system == "xdp":
                     iface = "eno1" # TODO
                     xdp_program = f"{host.project_root}/nix/builds/xdp/lib/reflector.o"
@@ -522,8 +525,6 @@ def main(measurement: Measurement, plan_only: bool = False) -> None:
                     cmd = f"sudo /bin/sh -c \"for i in {{1..{iterations}}}; do {xdp_del_cmd}; time {xdp_add_cmd}; done\" 2>&1 | tee -a {remote_outfile}"
                     host.exec(cmd)
                     host.copy_from(remote_outfile, local_outfile)
-            breakpoint()
-
 
             bench.done(test)
 
