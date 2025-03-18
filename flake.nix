@@ -164,6 +164,7 @@
                  cp -r ${pkgs.libgcc.out}/libexec/ $out/
                  '')
                 gdb
+                bpftrace
             ]);
             unikraftDeps = pkgs: (with pkgs; [
             ]);

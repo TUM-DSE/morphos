@@ -26,6 +26,15 @@ from conf import G
 
 unikraft_interface = "0"
 
+def bpftrace_program(which_qemu):
+    return """
+        tracepoint:kvm:kvm_entry / @a[pid] == 0 / { printf(\\"qemu kvm entry ns %lld\\n\\", nsecs()); @a[pid] = 1; }
+        tracepoint:kvm:kvm_pio / args.port == 0xf4 / { printf(\\"qemu kvm port %d ns %lld\\n\\", args->val, nsecs()); }
+        tracepoint:syscalls:sys_enter_execve*
+        / str(args.filename) == \\"WHICH_QEMU\\" /
+        { printf(\\"qemu start ns %lld\\n\\", nsecs()); printf(\\"filename %s\\n\\", str(args.filename)); }
+    """.replace("WHICH_QEMU", which_qemu)
+
 @dataclass
 class ReconfigurationTest(AbstractBenchTest):
 
@@ -53,7 +62,7 @@ class ReconfigurationTest(AbstractBenchTest):
                         time_s = float(time_str.split("m")[0]) * 60 + float(time_str.split("m")[1][:-1])
                         values += [ ("total", int(time_s*1000000000)) ]
 
-        if self.system in [ "uk", "ukebpfjit"]:
+        elif self.system in [ "uk", "uktrace", "ukebpfjit"]:
             # parse output
             with open(self.output_filepath(repetition), 'r') as f:
                 for line in f.readlines():
@@ -62,6 +71,27 @@ class ReconfigurationTest(AbstractBenchTest):
                         label = splits[1].strip()
                         value = splits[2].strip()
                         values += [ (label, int(value)) ]
+
+                    if line.startswith("Received packet from device:"):
+                        value = int(line.split(":")[1].split("ns")[0].strip())
+                        values += [ ("first packet", value) ]
+
+
+                    if line.startswith("Bench-helper startup time (nsec):"):
+                        value = int(line.split(":")[1].strip())
+                        values += [ ("total startup time", value) ]
+            # TODO output of criterion.rs itself
+
+            if self.system == "uktrace":
+                with open(self.output_filepath(repetition, extension="bpftrace.log"), 'r') as f:
+                    for line in f.readlines():
+                        if "qemu" in line and "ns" in line:
+                            splits = line.split("ns")
+                            label = splits[0].strip()
+                            value = int(splits[1].strip())
+                            values += [ (label, value) ]
+
+
 
         else:
             raise ValueError(f"Unknown system: {self.system}")
@@ -347,7 +377,7 @@ def main(measurement: Measurement, plan_only: bool = False) -> None:
     if G.BRIEF:
         # systems = [ "linux", "uk", "ukebpfjit" ]
         # systems = [ "uk", "ukebpfjit" ]
-        systems = [ "uk" ]
+        systems = [ "uktrace" ]
         # systems = [ "xdp" ]
         # systems = [ "linux" ]
         # vnfs = [ "empty" ]
@@ -388,6 +418,7 @@ def main(measurement: Measurement, plan_only: bool = False) -> None:
             test = a_tests[0]
             info(f"Running {test}")
 
+            # TODO we are not setting up network yet `make -C benchmark setup`
 
             for repetition in range(repetitions):
                 if test.system == "ukebpfjit":
@@ -418,23 +449,36 @@ def main(measurement: Measurement, plan_only: bool = False) -> None:
                     host.tmux_kill("qemu0")
                     host.copy_from(remote_qemu_log, local_outfile)
 
-                elif test.system == "uk":
+                elif test.system in [ "uk", "uktrace" ]:
                     remote_qemu_log = "/tmp/qemu.log"
+                    remote_bpftrace_log = "/tmp/bpftrace.log"
                     remote_test_done = "/tmp/test_done"
                     local_outfile = test.output_filepath(repetition)
-                    dir = f"{host.project_root}/benchmark"
+                    local_tracefile = test.output_filepath(repetition, extension="bpftrace.log")
+                    dir = f"{host.project_root}"
                     iterations = 10
+                    def nix_prefix(env_vars="", subdir=""):
+                        return f"cd {dir}/{subdir}; {env_vars} nix develop --command"
+                    which_qemu = host.exec(f"{nix_prefix()} which qemu-system-x86_64")
+                    which_qemu = which_qemu.strip().splitlines()[-1]
 
-                    # clean old outfiles
+                    # clean old stuff
                     host.exec(f"sudo rm {remote_qemu_log} || true")
+                    host.tmux_kill("bpftrace")
+                    host.tmux_kill("qemu0")
+                    if test.system == "uktrace":
+                        env_vars = "BPFTRACE_MAX_STRLEN=123"
+                        bpftrace_cmd = f"{nix_prefix(env_vars=env_vars)} sudo -E bpftrace -e '{bpftrace_program(which_qemu)}' 2>&1 | tee {remote_bpftrace_log}; sleep 999"
+                        host.tmux_new("bpftrace", bpftrace_cmd)
+                        host.wait_for_success(f'[[ $(tail -n 5 {remote_bpftrace_log}) = *"Attaching"* ]]')
 
-                    for itertaion in range(iterations):
+                    for iteration in range(iterations):
                         host.exec(f"sudo rm {remote_test_done} || true")
 
                         # start test
                         env_vars = ""
                         bench_cmd = "cargo run --bin bench-helper --features print-output"
-                        cmd = f"cd {dir}; {env_vars} nix develop --command {bench_cmd} 2>&1 | tee -a {remote_qemu_log}; echo done > {remote_test_done}"
+                        cmd = f"{nix_prefix(env_vars=env_vars, subdir='benchmark')} {bench_cmd} 2>&1 | tee -a {remote_qemu_log}; echo done > {remote_test_done}"
                         host.tmux_kill("qemu0")
                         host.tmux_new("qemu0", cmd)
 
@@ -448,6 +492,9 @@ def main(measurement: Measurement, plan_only: bool = False) -> None:
 
                     # collect results
                     host.copy_from(remote_qemu_log, local_outfile)
+                    if test.system == "uktrace":
+                        host.tmux_kill("bpftrace")
+                        host.copy_from(remote_bpftrace_log, local_tracefile)
 
                 elif test.system == "linux":
                     print("")

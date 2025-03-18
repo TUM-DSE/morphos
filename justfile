@@ -99,6 +99,7 @@ build-dependencies:
   nix build .#vpp2 -o {{proot}}/nix/builds/vpp
   nix build .#click -o {{proot}}/nix/builds/click
   nix build -o {{proot}}/nix/builds/xdp github:vmuxio/vmuxio#xdp-reflector
+  nix build --inputs-from . nixpkgs#time -o {{proot}}/nix/builds/time
 
 build-click-og:
   nix develop --unpack .#click
@@ -203,8 +204,7 @@ perf-qemu-record:
 
 qemu-startup:
     BPFTRACE_MAX_STRLEN=123 sudo -E bpftrace -e " \
-    BEGIN { @a = 0; } \
-    tracepoint:kvm:kvm_entry / @a == 0 / { printf(\"qemu kvm entry ns %lld\n\", nsecs()); @a = 1; } \
+    tracepoint:kvm:kvm_entry / @a[pid] == 0 / { printf(\"qemu kvm entry ns %lld\n\", nsecs()); @a[pid] = 1; } \
     tracepoint:kvm:kvm_pio / args.port == 0xf4 / { printf(\"qemu kvm port %d ns %lld\n\", args->val, nsecs()); } \
     tracepoint:syscalls:sys_enter_execve* \
     / str(args.filename) == \"$(which qemu-system-x86_64)\" / \

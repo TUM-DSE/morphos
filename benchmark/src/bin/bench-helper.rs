@@ -19,6 +19,6 @@ fn main() {
         startup_base::send_packet_loop().expect("error in send packet loop");
     });
 
-    let nsec = startup_base::run_benchmark(&config);
-    dbg!(nsec);
+    let nsec = startup_base::run_benchmark(&config).as_nanos();
+    println!("Bench-helper startup time (nsec): {}", nsec);
 }
