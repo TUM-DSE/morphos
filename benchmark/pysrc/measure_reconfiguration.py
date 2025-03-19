@@ -62,7 +62,7 @@ class ReconfigurationTest(AbstractBenchTest):
                         time_s = float(time_str.split("m")[0]) * 60 + float(time_str.split("m")[1][:-1])
                         values += [ ("total", int(time_s*1000000000)) ]
 
-        elif self.system in [ "uk", "uktrace", "ukebpfjit"]:
+        elif self.system in [ "uk", "uktrace", "ukebpfjit", "linux" ]:
             # parse output
             with open(self.output_filepath(repetition), 'r') as f:
                 for line in f.readlines():
@@ -374,22 +374,30 @@ def main(measurement: Measurement, plan_only: bool = False) -> None:
     host, loadgen = measurement.hosts()
 
     # set up test plan
-    systems = [ "linux", "uk", "uktrace", "ukebpfjit" ]
+    systems = [
+        # we define these manually below:
+        # "linux",
+        # "uk",
+        # "uktrace",
+        "ukebpfjit"
+    ]
     vm_nums = [ 1 ]
-    vnfs = [ "empty", "filter", "ids", "mirror", "nat", "firewall-2" ]
+    vnfs = [ "empty", "filter", "ids", "mirror", "nat", "firewall-2", "firewall-10000" ]
     repetitions = 3
-    G.DURATION_S = 71 if not G.BRIEF else 15
+    iterations = 10 # some benchmarks need to be told how often to run before returning
+    G.DURATION_S = 0
     if G.BRIEF:
         # systems = [ "linux", "uk", "ukebpfjit" ]
         # systems = [ "uk", "ukebpfjit" ]
         systems = [ "uktrace" ]
-        systems = [ "ukebpfjit" ]
+        systems = [ "uk", "uktrace", "linux" ]
         # systems = [ "xdp" ]
         # systems = [ "linux" ]
         # vnfs = [ "empty" ]
         vnfs = [ "empty" ]
-        vnfs = [ "empty", "filter", "ids", "mirror", "nat", "firewall-2" ]
+        # vnfs = [ "empty", "filter", "ids", "mirror", "nat", "firewall-2" ]
         repetitions = 1
+        iterations = 3
 
     def exclude(test):
         return False
@@ -402,6 +410,11 @@ def main(measurement: Measurement, plan_only: bool = False) -> None:
     )
     tests: List[ReconfigurationTest] = []
     tests = ReconfigurationTest.list_tests(test_matrix, exclude_test=exclude)
+    if not G.BRIEF:
+        tests += [ ReconfigurationTest(repetitions=repetitions, num_vms=1, vnf="reflector", system="xdp") ]
+        tests += [ ReconfigurationTest(repetitions=repetitions, num_vms=1, vnf="nat", system="linux") ]
+        tests += [ ReconfigurationTest(repetitions=repetitions, num_vms=1, vnf="nat", system="uk") ]
+        tests += [ ReconfigurationTest(repetitions=repetitions, num_vms=1, vnf="nat", system="uktrace") ]
 
 
     args_reboot = ["num_vms", "system", "vnf"]
@@ -462,7 +475,7 @@ def main(measurement: Measurement, plan_only: bool = False) -> None:
                     host.copy_from(remote_qemu_log, local_outfile)
                     host.copy_from(remote_criterion_file, local_criterion_file)
 
-                elif test.system in [ "uk", "uktrace" ]:
+                elif test.system in [ "linux", "uk", "uktrace" ]:
                     # cargo run --bin bench-helper --features print-output
                     remote_qemu_log = "/tmp/qemu.log"
                     remote_bpftrace_log = "/tmp/bpftrace.log"
@@ -470,7 +483,6 @@ def main(measurement: Measurement, plan_only: bool = False) -> None:
                     local_outfile = test.output_filepath(repetition)
                     local_tracefile = test.output_filepath(repetition, extension="bpftrace.log")
                     dir = f"{host.project_root}"
-                    iterations = 10
                     def nix_prefix(env_vars="", subdir=""):
                         return f"cd {dir}/{subdir}; {env_vars} nix develop --command"
                     which_qemu = host.exec(f"{nix_prefix()} which qemu-system-x86_64")
@@ -490,7 +502,15 @@ def main(measurement: Measurement, plan_only: bool = False) -> None:
                         host.exec(f"sudo rm {remote_test_done} || true")
 
                         # start test
-                        env_vars = ""
+                        match (test.system, test.vnf):
+                            case ("linux", "nat"):
+                                env_vars = "ONLY=linux-thomer-nat"
+                            case ("uk", "nat"):
+                                env_vars = "ONLY=uk-thomer-nat"
+                            case ("uktrace", "nat"):
+                                env_vars = "ONLY=uk-thomer-nat"
+                            case (_, _):
+                                raise ValueError(f"Unsupported system/vnf combination: {test.system}/{test.vnf}")
                         bench_cmd = "cargo run --bin bench-helper --features print-output"
                         cmd = f"{nix_prefix(env_vars=env_vars, subdir='benchmark')} {bench_cmd} 2>&1 | tee -a {remote_qemu_log}; echo done > {remote_test_done}"
                         host.tmux_kill("qemu0")
@@ -510,8 +530,6 @@ def main(measurement: Measurement, plan_only: bool = False) -> None:
                         host.tmux_kill("bpftrace")
                         host.copy_from(remote_bpftrace_log, local_tracefile)
 
-                elif test.system == "linux":
-                    print("") # TODO
                 elif test.system == "xdp":
                     iface = "eno1" # TODO
                     xdp_program = f"{host.project_root}/nix/builds/xdp/lib/reflector.o"
