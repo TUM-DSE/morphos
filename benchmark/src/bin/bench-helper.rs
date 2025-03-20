@@ -23,7 +23,7 @@ const CONFIGURATIONS: &[Configuration] = &[
     Configuration {
         name: "linux",
         click_configuration: "/tmp/config.click",
-        vm_extra_args: &["DEV0=172.44.0.2/24"],
+        vm_extra_args: &[],
         system: System::Linux,
     },
 ];

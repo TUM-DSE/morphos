@@ -23,6 +23,8 @@ import pandas as pd
 import traceback
 import click_configs
 from conf import G
+import measure_throughput
+import measure_firewall
 
 unikraft_interface = "0"
 
@@ -34,6 +36,26 @@ def bpftrace_program(which_qemu):
         / str(args.filename) == \\"WHICH_QEMU\\" /
         { printf(\\"qemu start ns %lld\\n\\", nsecs()); printf(\\"filename %s\\n\\", str(args.filename)); }
     """.replace("WHICH_QEMU", which_qemu)
+
+def click_rx_config(from_device: str, extra_processing: str = "") -> str:
+    return f"""
+{from_device}
+{extra_processing}
+-> ic0 :: AverageCounter()
+-> Discard;
+
+Script(TYPE ACTIVE,
+       print "sleeping first increases startup time"
+       print "sleeping first increases startup time"
+       print "sleeping first increases startup time"
+       print "sleeping first increases startup time"
+       wait 5ms,
+       label start,
+       print "Rx rate: $(ic0.rate)",
+       wait 1s,
+       goto start
+       )
+    """
 
 @dataclass
 class ReconfigurationTest(AbstractBenchTest):
@@ -111,263 +133,29 @@ class ReconfigurationTest(AbstractBenchTest):
             }]
         return DataFrame(data=data)
 
-
-    def click_config(self) -> Tuple[List[str], str]:
-        files = [] # relative to project root
-        processing = ""
-
-        rx_ip_check = """
-            // stripping only makes sense, once we've looked at the ethernet header
-            -> Classifier(12/0800)
-            // check ip header doesn't want ethernet header
-            -> Strip(14)
-            // some elements like IPFilter segfault with some packets if we don't check them
-            -> CheckIPHeader
-        """
-        if self.direction == "rx" and self.vnf == "filter":
-            processing += rx_ip_check
-
-        match (self.system, self.vnf, self.direction):
-            case (_, "empty", _):
-                files = []
-                processing += ""
-
-            case ("linux", "filter", "rx"):
-                files = []
-                processing += "-> IPFilter(deny dst port 1234, allow all)" # push/pull mismatch for tx
-            case ("linux", "filter", "tx"):
-                files = []
-                processing += "-> IPFilter2(deny dst port 1234, allow all)" # push/pull mismatch for tx
-            case ("uk", "filter", _):
-                files = []
-                processing += "-> IPFilter(deny dst port 1234, allow all)"
-            case ("ukebpf", "filter", _):
-                files = [ "benchmark/bpfilters/target-port", "benchmark/bpfilters/target-port.sig" ]
-                processing += "-> BPFilter(ID 1, FILE target-port, SIGNATURE target-port.sig, JIT false)"
-            case ("ukebpfjit", "filter", _):
-                files = [ "benchmark/bpfilters/target-port", "benchmark/bpfilters/target-port.sig" ]
-                processing += "-> BPFilter(ID 1, FILE target-port, SIGNATURE target-port.sig, JIT true)"
-
-            case ("ukebpf", "nat", "rx"):
-                files = [ "benchmark/bpfilters/nat", "benchmark/bpfilters/nat.sig" ]
-                processing += "rw :: BPFClassifier(ID 1, FILE nat, SIGNATURE nat.sig, JIT false)"
-            case ("ukebpfjit", "nat", "rx"):
-                files = [ "benchmark/bpfilters/nat", "benchmark/bpfilters/nat.sig" ]
-                processing += "rw :: BPFClassifier(ID 1, FILE nat, SIGNATURE nat.sig, JIT true)"
-            case (_, "nat", _):
-                files = []
-                processing += "rw :: IPRewriter(pattern NAT 0 1, pass 1);"
-
-            case ("ukebpf", "mirror", "rx"):
-                files = [ "benchmark/bpfilters/ether-mirror", "benchmark/bpfilters/ether-mirror.sig" ]
-                processing += "-> BPFRewriter(ID 1, FILE ether-mirror, SIGNATURE ether-mirror.sig, JIT false)"
-            case ("ukebpfjit", "mirror", "rx"):
-                files = [ "benchmark/bpfilters/ether-mirror", "benchmark/bpfilters/ether-mirror.sig" ]
-                processing += "-> BPFRewriter(ID 1, FILE ether-mirror, SIGNATURE ether-mirror.sig, JIT true)"
-            case ("uk", "mirror", "rx"):
-                files = []
-                processing += "-> EtherMirror()" # this and its ebpf version should probably also do IPMirror()
-            case ("linux", "mirror", "rx"):
-                files = []
-                processing += "-> EtherMirror() -> SimpleQueue(256)"
-
-            case ("ukebpf", "ids", _):
-                files = [ "benchmark/bpfilters/stringmatcher", "benchmark/bpfilters/stringmatcher.sig" ]
-                processing += "-> BPFilter(ID 1, FILE stringmatcher, SIGNATURE stringmatcher.sig, JIT false)"
-            case ("ukebpfjit", "ids", _):
-                files = [ "benchmark/bpfilters/stringmatcher", "benchmark/bpfilters/stringmatcher.sig" ]
-                processing += "-> BPFilter(ID 1, FILE stringmatcher, SIGNATURE stringmatcher.sig, JIT true)"
-            case (_, "ids", _):
-                files = []
-                processing += "-> StringMatcher(teststringtomatch)"
-
-            case _:
-                raise ValueError(f"Unknown system/vnf combination: {self.system}/{self.vnf}")
-
-        return files, processing
-
-    def start_pktgen(self, guest, loadgen, host, remote_pktgen_log):
-        info("Starting pktgen")
-
-        batch = 32
-        threads = 2
-
-        # when doing localhost measurements, pktgen attaches to virtual devices.
-        # They don't support batching and likely only have 1 queue (thread support).
-        # Therefore, we enable fast pktgen only for non-localhost measurements.
-        if host.fqdn == "localhost":
-            batch = 1
-            threads = 1
-
-        size = self.size - 4 # subtract 4 bytes for the CRC
-        pktgen_cmd = f"{loadgen.project_root}/nix/builds/linux-pktgen/bin/pktgen_sample03_burst_single_flow" + \
-            f" -i {loadgen.test_iface} -s {self.size - 4} -d {strip_subnet_mask(guest.test_iface_ip_net)} -m {guest.test_iface_mac} -b {batch} -t {threads} | tee {remote_pktgen_log}";
-        self.start_pktgen_helper(guest, loadgen, host, pktgen_cmd)
-
-    def start_pktgen_helper(self, guest, loadgen, host, pktgen_cmd):
-        loadgen.tmux_kill("pktgen")
-
-        # sometimes, pktgen returns immediately with 0 packets sent
-        # i believe this happens, when the link is not ready due to peer reset
-        retries = 10
-        for i in range(retries + 1):
-            if i >= retries:
-                raise Exception("Failed to start pktgen")
-
-            # start pktgen
-            loadgen.tmux_new("pktgen", pktgen_cmd)
-
-            time.sleep(1)
-            if loadgen.tmux_is_alive("pktgen"):
-                break
-            debug("Pktgen exited immediately, restarting")
-
-    def stop_pktgen(self, loadgen):
-        loadgen.exec("sudo pkill -SIGINT pktgen")
-
-    def run_linux_tx(self, repetition: int, guest, loadgen, host):
-        remote_monitor_file = "/tmp/throughput.tsv"
-        remote_click_output = "/tmp/click.log"
-        local_monitor_file = self.output_filepath(repetition)
-        local_click_output = self.output_filepath(repetition, "click.log")
-
-        loadgen.exec(f"sudo rm {remote_monitor_file} || true")
-        guest.exec(f"sudo rm {remote_click_output} || true")
-
-        click_args = { "R": 0 }
-        guest.kill_click()
-        _, element = self.click_config()
-        config = click_tx_config(guest.test_iface, size=self.size, dst_mac=loadgen.test_iface_mac, extra_processing=element)
-        with open("/tmp/linux.click", "w") as text_file:
-            text_file.write(config)
-        guest.copy_to("/tmp/linux.click", "/tmp/linux.click")
-        guest.start_click("/tmp/linux.click", remote_click_output, script_args=click_args, dpdk=False)
-
-        info("Start measuring with bmon")
-        # count packets that actually arrive, but cut first line because it is always zero
-        monitor_cmd = f"bmon -p {loadgen.test_iface} -o '{bmon_format}' | tee {remote_monitor_file}"
-        loadgen.tmux_kill("monitor")
-        loadgen.tmux_new("monitor", monitor_cmd)
-
-        time.sleep(G.DURATION_S)
-
-        loadgen.tmux_kill("monitor")
-        guest.stop_click()
-        guest.kill_click()
-
-        loadgen.copy_from(remote_monitor_file, local_monitor_file)
-        guest.copy_from(remote_click_output, local_click_output)
-
-    def run_linux_rx(self, repetition: int, guest, loadgen, host):
-        loadgen.exec(f"sudo modprobe pktgen")
-
-        remote_click_output = "/tmp/click.log"
-        remote_pktgen_log = "/tmp/pktgen.log"
-        local_click_output = self.output_filepath(repetition)
-        local_pktgen_log = self.pktgen_output_filepath(repetition)
-
-        loadgen.exec(f"sudo rm {remote_pktgen_log} || true")
-        guest.exec(f"sudo rm {remote_click_output} || true")
-
-        click_args = {}
-        guest.kill_click()
-        _, element = self.click_config()
-        if self.vnf == "nat":
-            config = click_configs.nat(
-                interface=guest.test_iface,
-                guest_ip=GUEST_IP,
-                guest_mac=measurement.guest.test_iface_mac,
-                gw_ip=strip_subnet_mask(loadgen.test_iface_ip_net),
-                gw_mac=loadgen.test_iface_mac,
-                src_ip=TEST_CLIENT_IP,
-                src_mac=loadgen.test_iface_mac,
-                dst_ip=strip_subnet_mask(loadgen.test_iface_ip_net),
-                dst_mac=measurement.guest.test_iface_mac,
-                size=self.size,
-                direction=self.direction,
-                rewriter=element
-            )
-        elif self.vnf == "mirror":
-            config = click_configs.mirror(
-                interface=guest.test_iface,
-                ip=strip_subnet_mask(loadgen.test_iface_ip_net),
-                mac=loadgen.test_iface_mac,
-                extra_element=element
-            )
+    def click_config(self) -> str:
+        if self.system == "linux":
+            from_device = "from :: KernelTun(172.44.0.2/24)"
         else:
-            config = click_rx_config(guest.test_iface, extra_processing=element)
-        with open("/tmp/linux.click", "w") as text_file:
-            text_file.write(config)
-        guest.copy_to("/tmp/linux.click", "/tmp/linux.click")
-        guest.start_click("/tmp/linux.click", remote_click_output, script_args=click_args, dpdk=False)
-        # start network load
-        self.start_pktgen(guest, loadgen, host, remote_pktgen_log)
+            from_device = "from :: FromDevice(0)"
 
-        time.sleep(G.DURATION_S)
+        if self.system == "uktrace":
+            system = "uk"
+        else:
+            system = self.system
 
-        # stop network load
-        self.stop_pktgen(loadgen)
+        if "firewall" in self.vnf:
+            fw_size = int(self.vnf.split("-")[1])
+            reference_test = measure_firewall.FirewallTest(direction="rx", interface="any", size=0, repetitions=0, num_vms=1, vnf="firewall", system=system, fw_size=fw_size)
+            (files, element) = reference_test.click_config()
+        else:
+            reference_test = measure_throughput.ThroughputTest(direction="rx", interface="any", size=0, repetitions=0, num_vms=1, vnf=self.vnf, system=system)
+            (files, element) = reference_test.click_config()
+        assert len(files) == 0
+        element = f" -> Print2('Received packet from device') {element}"
+        config = click_rx_config(from_device, extra_processing=element)
+        return config
 
-        guest.stop_click()
-        guest.kill_click()
-
-        loadgen.copy_from(remote_pktgen_log, local_pktgen_log)
-        guest.copy_from(remote_click_output, local_click_output)
-
-
-    def run_unikraft_tx(self, repetition: int, guest, loadgen, host, remote_unikraft_log_raw):
-        remote_monitor_file = "/tmp/throughput.tsv"
-        remote_unikraft_log = f"{remote_unikraft_log_raw}.{repetition}"
-        local_monitor_file = self.output_filepath(repetition)
-        local_unikraft_log = self.output_filepath(repetition, "unikraft.log")
-
-        loadgen.exec(f"sudo rm {remote_monitor_file} || true")
-        host.exec(f"sudo rm {remote_unikraft_log} || true")
-
-        # reset unikraft log
-        host.exec(f"sudo truncate -s 0 {remote_unikraft_log_raw}")
-
-        info("Start measuring with bmon")
-        monitor_cmd = f"bmon -p {loadgen.test_iface} -o '{bmon_format}' | tee {remote_monitor_file}"
-        loadgen.tmux_kill("monitor")
-        loadgen.tmux_new("monitor", monitor_cmd)
-
-        time.sleep(G.DURATION_S)
-
-        loadgen.tmux_kill("monitor")
-
-        # copy raw to log, but only printable characters (cut leading null bytes)
-        host.exec(f"strings {remote_unikraft_log_raw} | sudo tee {remote_unikraft_log}")
-        host.copy_from(remote_unikraft_log, local_unikraft_log)
-        loadgen.copy_from(remote_monitor_file, local_monitor_file)
-        pass
-
-    def run_unikraft_rx(self, repetition: int, guest, loadgen, host, remote_unikraft_log_raw):
-        loadgen.exec(f"sudo modprobe pktgen")
-
-        remote_pktgen_log = "/tmp/pktgen.log"
-        remote_unikraft_log = f"{remote_unikraft_log_raw}.{repetition}"
-        local_unikraft_log = self.output_filepath(repetition)
-        local_pktgen_log = self.pktgen_output_filepath(repetition)
-
-        loadgen.exec(f"sudo rm {remote_pktgen_log} || true")
-        host.exec(f"sudo rm {remote_unikraft_log} || true")
-
-        # start network load
-        self.start_pktgen(guest, loadgen, host, remote_pktgen_log)
-        # reset unikraft log
-        host.exec(f"sudo truncate -s 0 {remote_unikraft_log_raw}")
-
-        time.sleep(G.DURATION_S)
-
-        # copy raw to log, but only printable characters (cut leading null bytes)
-        host.exec(f"strings {remote_unikraft_log_raw} | sudo tee {remote_unikraft_log}")
-        # stop network load
-        self.stop_pktgen(loadgen)
-
-        host.copy_from(remote_unikraft_log, local_unikraft_log)
-        loadgen.copy_from(remote_pktgen_log, local_pktgen_log)
-        pass
 
 
 def main(measurement: Measurement, plan_only: bool = False) -> None:
@@ -376,9 +164,9 @@ def main(measurement: Measurement, plan_only: bool = False) -> None:
     # set up test plan
     systems = [
         # we define these manually below:
-        # "linux",
-        # "uk",
-        # "uktrace",
+        "linux",
+        "uk",
+        "uktrace",
         "ukebpfjit"
     ]
     vm_nums = [ 1 ]
@@ -389,15 +177,15 @@ def main(measurement: Measurement, plan_only: bool = False) -> None:
     if G.BRIEF:
         # systems = [ "linux", "uk", "ukebpfjit" ]
         # systems = [ "uk", "ukebpfjit" ]
-        systems = [ "uktrace" ]
-        systems = [ "uk", "uktrace", "linux" ]
+        # systems = [ "uk" ]
+        # systems = [ "uk", "uktrace", "linux" ]
         # systems = [ "xdp" ]
-        # systems = [ "linux" ]
+        systems = [ "linux" ]
         # vnfs = [ "empty" ]
-        vnfs = [ "empty" ]
+        vnfs = [ "firewall-10000" ]
         # vnfs = [ "empty", "filter", "ids", "mirror", "nat", "firewall-2" ]
-        repetitions = 1
-        iterations = 3
+        repetitions = 3
+        iterations = 1
 
     def exclude(test):
         return False
@@ -412,9 +200,9 @@ def main(measurement: Measurement, plan_only: bool = False) -> None:
     tests = ReconfigurationTest.list_tests(test_matrix, exclude_test=exclude)
     if not G.BRIEF:
         tests += [ ReconfigurationTest(repetitions=repetitions, num_vms=1, vnf="reflector", system="xdp") ]
-        tests += [ ReconfigurationTest(repetitions=repetitions, num_vms=1, vnf="nat", system="linux") ]
-        tests += [ ReconfigurationTest(repetitions=repetitions, num_vms=1, vnf="nat", system="uk") ]
-        tests += [ ReconfigurationTest(repetitions=repetitions, num_vms=1, vnf="nat", system="uktrace") ]
+        # tests += [ ReconfigurationTest(repetitions=repetitions, num_vms=1, vnf="nat", system="linux") ]
+        # tests += [ ReconfigurationTest(repetitions=repetitions, num_vms=1, vnf="nat", system="uk") ]
+        # tests += [ ReconfigurationTest(repetitions=repetitions, num_vms=1, vnf="nat", system="uktrace") ]
 
 
     args_reboot = ["num_vms", "system", "vnf"]
@@ -510,7 +298,14 @@ def main(measurement: Measurement, plan_only: bool = False) -> None:
                             case ("uktrace", "nat"):
                                 env_vars = "ONLY=uk-thomer-nat"
                             case (_, _):
-                                raise ValueError(f"Unsupported system/vnf combination: {test.system}/{test.vnf}")
+                                config = test.click_config()
+                                with open("/tmp/linux.click", "w") as text_file:
+                                    text_file.write(config)
+                                host.copy_to("/tmp/linux.click", "/tmp/config.click")
+                                if test.system == "uktrace":
+                                    env_vars = "ONLY=uk"
+                                else:
+                                    env_vars = f"ONLY={test.system}"
                         bench_cmd = "cargo run --bin bench-helper --features print-output"
                         cmd = f"{nix_prefix(env_vars=env_vars, subdir='benchmark')} {bench_cmd} 2>&1 | tee -a {remote_qemu_log}; echo done > {remote_test_done}"
                         host.tmux_kill("qemu0")
@@ -519,7 +314,7 @@ def main(measurement: Measurement, plan_only: bool = False) -> None:
                         # wait for test to complete
                         time.sleep(3)
                         try:
-                            host.wait_for_success(f'[[ -e {remote_test_done} ]]', timeout=30)
+                            host.wait_for_success(f'[[ -e {remote_test_done} ]]', timeout=60)
                         except TimeoutError:
                             error('Waiting for test to finish timed out')
                         host.tmux_kill("qemu0")
