@@ -56,10 +56,16 @@ LIBUBPF_SRC = $(LIBUBPF_BASE)
 
 ################################################################################
 
-$(LIBUBPF_SRC)/vm/inc/ubpf_config.h: $(LIBUBPF_SRC)
-	make -C $(LIBUBPF_SRC)/vm
-
-UK_PREPARE-$(CONFIG_LIBUBPF) += $(LIBUBPF_SRC)/vm/inc/ubpf_config.h
+# This target is called by some (but not all) cleanbuilds. I think it's a race
+# confdition if it is built or not. Certainly does not depend on the state of
+# the code repo. Also, it only rebuilds, if the committed target file is older
+# than the last modification to the lib/ubpf folder, making it very ambiguous,
+# what happens during a clean build.
+# Since the output file is committed anyways, we comment this for now.
+# $(LIBUBPF_SRC)/vm/inc/ubpf_config.h: $(LIBUBPF_SRC)
+#   make -C $(LIBUBPF_SRC)/vm
+#
+# UK_PREPARE-$(CONFIG_LIBUBPF) += $(LIBUBPF_SRC)/vm/inc/ubpf_config.h
 
 ################################################################################
 # Library includes
