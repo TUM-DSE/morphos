@@ -7,6 +7,7 @@ local hist   = require "histogram"
 local timer  = require "timer"
 local log    = require "log"
 local dpdkc  = require "dpdkc"
+local eth    = require "proto.ethernet"
 
 local function getRstFile(...)
 	local args = { ... }
@@ -39,12 +40,13 @@ function master(args)
 	for i = 0, args.threads - 1 do
 	    dev:getTxQueue(i):setRate(args.rate * (args.size + 4) * 8 / 1000)
 	    mg.startTask("loadSlave", dev:getTxQueue(i), dev:getMac(true), args.mac, args.size, args.macs, args.ethertypes)
-    end
+  end
 	stats.startStatsTask{dev}
 	if args.csv ~= "" then
 		stats.startStatsTask{devices={dev}, format="csv", file=args.csv}
 	end
 	-- mg.startSharedTask("timerSlave", dev:getTxQueue(args.threads), dev:getRxQueue(args.threads), args.mac, args.file)
+	mg.startTask("txTimestampThread", dev:getTxQueue(args.threads), args.size, args.mac)
 	mg.startTask("rxTimestamps", dev:getRxQueue(0), args.mac, args.file)
 	if args.time >= 0 then
 		runtime = timer:new(args.time)
@@ -71,12 +73,13 @@ function setEthertype(buf, type)
 end
 
 function sendSimple(queue, bufs, pktSize)
-	local rateLimit = timer:new(0.001)
+	-- local rateLimit = timer:new(0.00001)
 	while mg.running() do
+		-- print("load")
     bufs:alloc(pktSize)
-    queue:sendWithTimestamp(bufs) -- see for a full software example: https://github.com/emmericp/MoonGen/blob/master/examples/timestamping-tests/timestamps-software.lua
-    rateLimit:wait()
-  	rateLimit:reset()
+    queue:send(bufs)
+   --  rateLimit:wait()
+  	-- rateLimit:reset()
   end
 end
 
@@ -112,7 +115,7 @@ function loadSlave(queue, srcMac, dstMac, pktSize, numDstMacs, numEthertypes)
 			ethType = 0x0800
 		}
 	end)
-	local bufs = mem:bufArray(1)
+	local bufs = mem:bufArray()
 	if numDstMacs > 1 or numEthertypes > 1 then
 		-- error("Sending to multiple MACs and ethertypes at the same time is not supproted.") -- no it is
 		sendMacs(queue, bufs, pktSize, dstMac, numDstMacs, numEthertypes)
@@ -121,22 +124,45 @@ function loadSlave(queue, srcMac, dstMac, pktSize, numDstMacs, numEthertypes)
 	end
 end
 
+function txTimestampThread(txQueue, pktSize, dstMac)
+	local mem = memory.createMemPool(function(buf)
+		local pkt = buf:getPtpPacket()
+		pkt.eth:fill{
+			ethSrc = txQueue,
+			ethDst = dstMac,
+			ethType = eth.TYPE_PTP,
+		}
+		pkt.eth:setType(eth.TYPE_PTP)
+	end)
+	-- mg.sleepMillis(1000) -- ensure that the load task is running
+	local rateLimit = timer:new(0.001) -- 1000 latency samples per second
+	local bufs = mem:bufArray(1)
+	while mg.running() do
+    bufs:alloc(pktSize)
+    txQueue:sendWithTimestamp(bufs) -- see for a full software example: https://github.com/emmericp/MoonGen/blob/master/examples/timestamping-tests/timestamps-software.lua
+    rateLimit:wait()
+  	rateLimit:reset()
+  end
+end
+
 function rxTimestamps(rxQueue, dstMac, histfile)
 	local tscFreq = mg.getCyclesFrequency()
 	local bufs = memory.bufArray(64)
 	-- use whatever filter appropriate for your packet type
-	rxQueue:filterL2Timestamps()
+	-- rxQueue:filterL2Timestamps()
 	print("ok")
 
 	local hist = hist:new()
 	while mg.running() do
 		local numPkts = rxQueue:recvWithTimestamps(bufs)
 		for i = 1, numPkts do
-			local rxTs = dpdkc.get_timestamp_dynfield(bufs[i])
-			local txTs = bufs[i]:getSoftwareTxTimestamp()
-			local latency = tonumber(rxTs - txTs) / tscFreq * 10^9 -- to nanoseconds
-			-- print(" rxTs: ", rxTs, " txTs: ", txTs, "lat: ", latency)
-			hist:update(latency) -- to nanoseconds
+			if bufs[i]:getEthernetPacket().eth:getType() == eth.TYPE_PTP then
+				local rxTs = dpdkc.get_timestamp_dynfield(bufs[i])
+				local txTs = bufs[i]:getSoftwareTxTimestamp()
+				local latency = tonumber(rxTs - txTs) / tscFreq * 10^9 -- to nanoseconds
+				-- print(" rxTs: ", rxTs, " txTs: ", txTs, "lat: ", latency)
+				hist:update(latency) -- to nanoseconds
+			end
 		end
 		bufs:free(numPkts)
 	end
