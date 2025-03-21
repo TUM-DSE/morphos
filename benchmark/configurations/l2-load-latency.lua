@@ -41,18 +41,35 @@ function master(args)
 	    dev:getTxQueue(i):setRate(args.rate * (args.size + 4) * 8 / 1000)
 	    mg.startTask("loadSlave", dev:getTxQueue(i), dev:getMac(true), args.mac, args.size, args.macs, args.ethertypes)
   end
+	-- warmup
+	print("Wraming up...")
+	-- mg.startSharedTask("timerSlave", dev:getTxQueue(args.threads), dev:getRxQueue(args.threads), args.mac, args.file)
+	mg.startTask("txTimestampThread", dev:getTxQueue(args.threads), args.size, args.mac)
+	mg.startTask("rxTimestamps", dev:getRxQueue(0), args.mac, "")
+	mg.sleepMillis(5000)
+	print("Starting benchmark...")
+	mg:stop()
+	mg.waitForTasks()
+	mg.setRuntime(9999)
+
+	for i = 0, args.threads - 1 do
+	    dev:getTxQueue(i):setRate(args.rate * (args.size + 4) * 8 / 1000)
+	    mg.startTask("loadSlave", dev:getTxQueue(i), dev:getMac(true), args.mac, args.size, args.macs, args.ethertypes)
+  end
+	mg.startTask("txTimestampThread", dev:getTxQueue(args.threads), args.size, args.mac)
+	mg.startTask("rxTimestamps", dev:getRxQueue(0), args.mac, "")
+	-- start measuring
 	stats.startStatsTask{dev}
 	if args.csv ~= "" then
 		stats.startStatsTask{devices={dev}, format="csv", file=args.csv}
 	end
-	-- mg.startSharedTask("timerSlave", dev:getTxQueue(args.threads), dev:getRxQueue(args.threads), args.mac, args.file)
-	mg.startTask("txTimestampThread", dev:getTxQueue(args.threads), args.size, args.mac)
-	mg.startTask("rxTimestamps", dev:getRxQueue(0), args.mac, args.file)
+
 	if args.time >= 0 then
 		runtime = timer:new(args.time)
 		runtime:wait()
 		mg:stop()
 	end
+
 	mg.waitForTasks()
 end
 
@@ -167,7 +184,9 @@ function rxTimestamps(rxQueue, dstMac, histfile)
 		bufs:free(numPkts)
 	end
 	hist:print()
-	hist:save(histfile)
+	if histfile ~= "" then
+		hist:save(histfile)
+	end
 end
 
 function timerSlave(txQueue, rxQueue, dstMac, histfile)
