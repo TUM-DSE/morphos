@@ -6,6 +6,7 @@ local stats  = require "stats"
 local hist   = require "histogram"
 local timer  = require "timer"
 local log    = require "log"
+local dpdkc  = require "dpdkc"
 
 local function getRstFile(...)
 	local args = { ... }
@@ -43,7 +44,8 @@ function master(args)
 	if args.csv ~= "" then
 		stats.startStatsTask{devices={dev}, format="csv", file=args.csv}
 	end
-	mg.startSharedTask("timerSlave", dev:getTxQueue(args.threads), dev:getRxQueue(args.threads), args.mac, args.file)
+	-- mg.startSharedTask("timerSlave", dev:getTxQueue(args.threads), dev:getRxQueue(args.threads), args.mac, args.file)
+	mg.startSharedTask("rxTimestamps", dev:getRxQueue(0), args.mac, args.file)
 	if args.time >= 0 then
 		runtime = timer:new(args.time)
 		runtime:wait()
@@ -71,7 +73,7 @@ end
 function sendSimple(queue, bufs, pktSize)
 	while mg.running() do
     bufs:alloc(pktSize)
-    queue:send(bufs)
+    queue:sendWithTimestamp(bufs) -- see for a full software example: https://github.com/emmericp/MoonGen/blob/master/examples/timestamping-tests/timestamps-software.lua
   end
 end
 
@@ -104,7 +106,7 @@ function loadSlave(queue, srcMac, dstMac, pktSize, numDstMacs, numEthertypes)
 		buf:getEthernetPacket():fill{
 			ethSrc = srcMac,
 			ethDst = dstMac,
-			ethType = 0x1234
+			ethType = 0x0800
 		}
 	end)
 	local bufs = mem:bufArray()
@@ -114,6 +116,33 @@ function loadSlave(queue, srcMac, dstMac, pktSize, numDstMacs, numEthertypes)
 	else
 			sendSimple(queue, bufs, pktSize)
 	end
+end
+
+function rxTimestamps(rxQueue, dstMac, histfile)
+	local tscFreq = mg.getCyclesFrequency()
+	local bufs = memory.bufArray(64)
+	-- use whatever filter appropriate for your packet type
+	rxQueue:filterL2Timestamps()
+	print("ok")
+
+  local results = {}
+	local rxts = {}
+	while mg.running() do
+		local numPkts = rxQueue:recvWithTimestamps(bufs)
+		print(numPkts)
+		for i = 1, numPkts do
+			local rxTs = dpdkc.get_timestamp_dynfield(bufs[i]) -- bufs[i].udata64
+			local txTs = bufs[i]:getSoftwareTxTimestamp()
+			results[#results + 1] = tonumber(rxTs - txTs) / tscFreq * 10^9 -- to nanoseconds
+			rxts[#rxts + 1] = tonumber(rxTs)
+		end
+		bufs:free(numPkts)
+	end
+	local f = io.open("pings.txt", "w+")
+	for i, v in ipairs(results) do
+		f:write(v .. "\n")
+	end
+	f:close()
 end
 
 function timerSlave(txQueue, rxQueue, dstMac, histfile)
@@ -126,3 +155,4 @@ function timerSlave(txQueue, rxQueue, dstMac, histfile)
 	hist:print()
 	hist:save(histfile)
 end
+
