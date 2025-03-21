@@ -139,7 +139,8 @@ stringmatcher-cpio:
 natebpf-cpio:
     rm -r /tmp/ukcpio-{{user}} || true
     mkdir -p /tmp/ukcpio-{{user}}
-    cp ./benchmark/configurations/thomer-nat-ebpf.click /tmp/ukcpio-{{user}}/config.click
+    cp ./benchmark/configurations/firewall-10000.click /tmp/ukcpio-{{user}}/config.click
+    # cp ./benchmark/configurations/thomer-nat-ebpf.click /tmp/ukcpio-{{user}}/config.click
     # cp ./benchmark/configurations/thomer-nat.click /tmp/ukcpio-{{user}}/config.click
     # cp ./benchmark/configurations/test.click /tmp/ukcpio-{{user}}/config.click
     # cp ./benchmark/configurations/test2.click /tmp/ukcpio-{{user}}/config.click
@@ -148,12 +149,14 @@ natebpf-cpio:
     cp ./benchmark/bpfilters/round-robin.sig /tmp/ukcpio-{{user}}/round-robin.sig
     cp ./benchmark/bpfilters/nat /tmp/ukcpio-{{user}}/nat
     cp ./benchmark/bpfilters/nat.sig /tmp/ukcpio-{{user}}/nat.sig
+    cp ./benchmark/bpfilters/firewall-10000 /tmp/ukcpio-{{user}}/firewall-10000
+    cp ./benchmark/bpfilters/firewall-10000.sig /tmp/ukcpio-{{user}}/firewall-10000.sig
     ./libs/unikraft/support/scripts/mkcpio ./throughput.cpio /tmp/ukcpio-{{user}}
 
 vm: natebpf-cpio
     sudo taskset -c 3,4 qemu-system-x86_64 \
         -accel kvm -cpu max \
-        -m 1024M -object memory-backend-file,id=mem,size=1024M,mem-path=/dev/hugepages,share=on \
+        -m 4G -object memory-backend-file,id=mem,size=4G,mem-path=/dev/hugepages,share=on \
         -mem-prealloc -numa node,memdev=mem \
         -netdev bridge,id=en0,br=clicknet \
         -device virtio-net-pci,netdev=en0 \
