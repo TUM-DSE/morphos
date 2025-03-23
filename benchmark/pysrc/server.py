@@ -2270,6 +2270,10 @@ class LoadGen(Server):
     @staticmethod
     def run_l2_load_latency(server: Server,
                             mac: str,
+                            srcIp: str = "10.0.0.1",
+                            dstIp: str = "10.0.0.2",
+                            srcPort: int = 2,
+                            dstPort: int = 3,
                             rate: int = 10000,
                             runtime: int = 60,
                             size: int = 60,
@@ -2314,6 +2318,8 @@ class LoadGen(Server):
                       f'{server.project_root}/benchmark/configurations/l2-load-latency.lua ' +
                       f'-r {rate} -f {histfile} -T {runtime} -s {size} ' +
                       f' -c {statsfile} -m {nr_macs} -e {nr_ethertypes} ' +
+                      f'--srcIp {srcIp} --dstIp {dstIp} ' +
+                      f'--srcPort {srcPort} --dstPort {dstPort} ' +
                       f'{server._test_iface_id} {mac} ' +
                       f'2>&1 | tee {outfile}; echo TEST_DONE >> {outfile}; sleep 999')
 

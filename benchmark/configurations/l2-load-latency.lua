@@ -121,6 +121,8 @@ function sendSimple(queue, bufs, pktSize)
 		-- print("load")
     bufs:alloc(pktSize)
     queue:send(bufs)
+		-- bufs:offloadIP4Checksums()
+		-- bufs:offloadUdpChecksums()
    --  rateLimit:wait()
   	-- rateLimit:reset()
   end
@@ -162,6 +164,8 @@ function loadSlave(queue, srcMac, dstMac, srcIp, dstIp, srcPort, dstPort, pktSiz
 			portDst = dstPort,
 			pktLength = pktSize,
 		}
+		buf:getIP4Packet().ip4:calculateChecksum()
+		-- buf.getUdpPacket().udp:calculateChecksum() -- not implemented but also never checked by our click
 	end)
 	local bufs = mem:bufArray()
 	if numDstMacs > 1 or numEthertypes > 1 then

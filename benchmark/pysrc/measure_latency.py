@@ -345,6 +345,7 @@ class LatencyTest(AbstractBenchTest):
         LoadGen.stop_l2_load_latency(loadgen)
         LoadGen.run_l2_load_latency(server=loadgen,
                             mac=guest.test_iface_mac,
+                            dstIp=strip_subnet_mask(guest.test_iface_ip_net),
                             rate=self.rate,
                             runtime=G.DURATION_S,
                             size=self.size,
@@ -419,6 +420,8 @@ class LatencyTest(AbstractBenchTest):
         LoadGen.stop_l2_load_latency(loadgen)
         LoadGen.run_l2_load_latency(server=loadgen,
                             mac=guest.test_iface_mac,
+                            srcIp=TEST_CLIENT_IP,
+                            dstIp=strip_subnet_mask(guest.test_iface_ip_net),
                             rate=self.rate,
                             runtime=G.DURATION_S,
                             size=self.size,
