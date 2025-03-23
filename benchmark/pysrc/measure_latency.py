@@ -23,6 +23,7 @@ import pandas as pd
 import traceback
 import click_configs
 from conf import G
+import measure_throughput
 
 unikraft_interface = "0"
 safe_vpp_warmup = False # without we rarely get excessive standard deviations
@@ -89,28 +90,25 @@ Script(TYPE ACTIVE,
 bmon_format = "format:fmt=\$(attr:rxrate:packets)\t\$(attr:rxrate:bytes)\n"
 
 @dataclass
-class ThroughputTest(AbstractBenchTest):
+class LatencyTest(AbstractBenchTest):
 
     # test options
-    direction: str # VM's point of view: rx | tx
+    direction: str # rx | tx (describes the logical direction in bi-directional tests)
 
     interface: str # network interface used
     size: int # packet size
     vnf: str # workload
     system: str # linux | uk | ukebpf | ukebpfjit
+    rate: int # background load in kpps
 
     def test_infix(self):
-        return f"throughput_{self.system}_{self.interface}_{self.direction}_{self.vnf}_{self.size}B"
-
-    def pktgen_output_filepath(self, repetition: int) -> str:
-        return self.output_filepath(repetition, extension="pktgen.log")
+        return f"latency_{self.system}_{self.size}B_{self.interface}_{self.vnf}_{self.rate}kpps"
 
     def estimated_runtime(self) -> float:
         """
         estimate time needed to run this benchmark excluding boot time in seconds
         """
-        overheads = 5
-        return (self.repetitions * (G.DURATION_S + 2) ) + overheads
+        return 0
 
 
     def parse_results(self, repetition: int) -> DataFrame:
@@ -298,12 +296,18 @@ class ThroughputTest(AbstractBenchTest):
     def run_linux_rx(self, repetition: int, guest, loadgen, host):
         loadgen.exec(f"sudo modprobe pktgen")
 
+        remote_histfile = "/tmp/histogram.csv"
+        remote_statsfile = "/tmp/throughput.csv"
+        remote_moongen_log = "/tmp/moongen.log"
         remote_click_output = "/tmp/click.log"
-        remote_pktgen_log = "/tmp/pktgen.log"
+        local_histfile = self.output_filepath(repetition, "histogram.csv")
+        local_statsfile = self.output_filepath(repetition, "throughput.csv")
+        local_moongen_log = self.output_filepath(repetition, "moongen.log")
         local_click_output = self.output_filepath(repetition)
-        local_pktgen_log = self.pktgen_output_filepath(repetition)
 
-        loadgen.exec(f"sudo rm {remote_pktgen_log} || true")
+        loadgen.exec(f"sudo rm {remote_histfile} || true")
+        loadgen.exec(f"sudo rm {remote_statsfile} || true")
+        loadgen.exec(f"sudo rm {remote_moongen_log} || true")
         guest.exec(f"sudo rm {remote_click_output} || true")
 
         click_args = {}
@@ -338,18 +342,33 @@ class ThroughputTest(AbstractBenchTest):
         guest.copy_to("/tmp/linux.click", "/tmp/linux.click")
         guest.start_click("/tmp/linux.click", remote_click_output, script_args=click_args, dpdk=False)
         # start network load
-        self.start_pktgen(guest, loadgen, host, remote_pktgen_log)
+        LoadGen.stop_l2_load_latency(loadgen)
+        LoadGen.run_l2_load_latency(server=loadgen,
+                            mac=guest.test_iface_mac,
+                            rate=self.rate,
+                            runtime=G.DURATION_S,
+                            size=self.size,
+                            histfile=remote_histfile,
+                            statsfile=remote_statsfile,
+                            outfile=remote_moongen_log,
+                            )
 
-        time.sleep(G.DURATION_S)
+        time.sleep(G.DURATION_S + 15)
 
         # stop network load
-        self.stop_pktgen(loadgen)
+        try:
+            loadgen.wait_for_success(f'[[ $(tail -n 5 {remote_moongen_log}) = *"TEST_DONE"* ]]', timeout=60)
+        except TimeoutError:
+            error('Waiting for moongen to finish timed out')
+        LoadGen.stop_l2_load_latency(loadgen)
 
         guest.stop_click()
         guest.kill_click()
 
-        loadgen.copy_from(remote_pktgen_log, local_pktgen_log)
         guest.copy_from(remote_click_output, local_click_output)
+        loadgen.copy_from(remote_histfile, local_histfile)
+        loadgen.copy_from(remote_statsfile, local_statsfile)
+        loadgen.copy_from(remote_moongen_log, local_moongen_log)
 
 
     def run_unikraft_tx(self, repetition: int, guest, loadgen, host, remote_unikraft_log_raw):
@@ -382,28 +401,49 @@ class ThroughputTest(AbstractBenchTest):
     def run_unikraft_rx(self, repetition: int, guest, loadgen, host, remote_unikraft_log_raw):
         loadgen.exec(f"sudo modprobe pktgen")
 
-        remote_pktgen_log = "/tmp/pktgen.log"
+        remote_histfile = "/tmp/histogram.csv"
+        remote_statsfile = "/tmp/throughput.csv"
+        remote_moongen_log = "/tmp/moongen.log"
         remote_unikraft_log = f"{remote_unikraft_log_raw}.{repetition}"
+        local_histfile = self.output_filepath(repetition, "histogram.csv")
+        local_statsfile = self.output_filepath(repetition, "throughput.csv")
+        local_moongen_log = self.output_filepath(repetition, "moongen.log")
         local_unikraft_log = self.output_filepath(repetition)
-        local_pktgen_log = self.pktgen_output_filepath(repetition)
 
-        loadgen.exec(f"sudo rm {remote_pktgen_log} || true")
+        loadgen.exec(f"sudo rm {remote_histfile} || true")
+        loadgen.exec(f"sudo rm {remote_statsfile} || true")
+        loadgen.exec(f"sudo rm {remote_moongen_log} || true")
         host.exec(f"sudo rm {remote_unikraft_log} || true")
 
         # start network load
-        self.start_pktgen(guest, loadgen, host, remote_pktgen_log)
+        LoadGen.stop_l2_load_latency(loadgen)
+        LoadGen.run_l2_load_latency(server=loadgen,
+                            mac=guest.test_iface_mac,
+                            rate=self.rate,
+                            runtime=G.DURATION_S,
+                            size=self.size,
+                            histfile=remote_histfile,
+                            statsfile=remote_statsfile,
+                            outfile=remote_moongen_log,
+                            )
         # reset unikraft log
         host.exec(f"sudo truncate -s 0 {remote_unikraft_log_raw}")
 
-        time.sleep(G.DURATION_S)
+        time.sleep(G.DURATION_S + 15)
 
+        try:
+            loadgen.wait_for_success(f'[[ $(tail -n 5 {remote_moongen_log}) = *"TEST_DONE"* ]]', timeout=60)
+        except TimeoutError:
+            error('Waiting for moongen to finish timed out')
         # copy raw to log, but only printable characters (cut leading null bytes)
         host.exec(f"strings {remote_unikraft_log_raw} | sudo tee {remote_unikraft_log}")
         # stop network load
-        self.stop_pktgen(loadgen)
+        LoadGen.stop_l2_load_latency(loadgen)
 
         host.copy_from(remote_unikraft_log, local_unikraft_log)
-        loadgen.copy_from(remote_pktgen_log, local_pktgen_log)
+        loadgen.copy_from(remote_histfile, local_histfile)
+        loadgen.copy_from(remote_statsfile, local_statsfile)
+        loadgen.copy_from(remote_moongen_log, local_moongen_log)
         pass
 
 
@@ -415,11 +455,15 @@ def main(measurement: Measurement, plan_only: bool = False) -> None:
           Interface.VPP,
           # Interface.BRIDGE_VHOST,
           ]
-    directions = [ "rx", "tx" ]
     systems = [ "linux", "uk", "ukebpfjit" ]
     vm_nums = [ 1 ]
-    sizes = [ 64, 256, 1024, 1518 ]
-    vnfs = [ "empty", "filter", "nat", "ids", "mirror" ]
+    directions = [ "rx" ]
+    sizes = [ 64 ]
+    vnfs = [
+        "mirror",
+        "nat"
+    ]
+    rates = [ 100 ]
     repetitions = 3
     G.DURATION_S = 71 if not G.BRIEF else 15
     if safe_vpp_warmup:
@@ -430,24 +474,21 @@ def main(measurement: Measurement, plan_only: bool = False) -> None:
         interfaces = [ Interface.VPP ]
         # interfaces = [ Interface.BRIDGE_VHOST, Interface.VPP ]
         # directions = [ "rx", "tx" ]
-        directions = [ "tx" ]
         # systems = [ "linux", "uk", "ukebpfjit" ]
         # systems = [ "uk", "ukebpfjit" ]
         # systems = [ "uk" ]
-        systems = [ "ukebpfjit" ]
-        # systems = [ "linux" ]
+        # systems = [ "ukebpfjit" ]
+        systems = [ "linux" ]
         vm_nums = [ 1 ]
         # vm_nums = [ 128, 160 ]
         # vnfs = [ "empty" ]
         sizes = [ 64 ]
-        vnfs = [ "empty" ]
+        rates = [ 100 ]
+        vnfs = [ "mirror" ]
         repetitions = 1
 
     def exclude(test):
-        return ((Interface(test.interface).is_passthrough() and test.num_vms > 1) or
-                    (test.vnf == "nat" and test.direction == "tx") or # packets get stuck in queue
-                    (test.vnf == "mirror" and test.direction == "tx") # bidirection test
-        )
+        return False
 
     test_matrix = dict(
         repetitions=[ repetitions ],
@@ -457,14 +498,15 @@ def main(measurement: Measurement, plan_only: bool = False) -> None:
         size=sizes,
         vnf=vnfs,
         system=systems,
+        rate=rates,
     )
-    tests: List[ThroughputTest] = []
-    tests = ThroughputTest.list_tests(test_matrix, exclude_test=exclude)
+    tests: List[LatencyTest] = []
+    tests = LatencyTest.list_tests(test_matrix, exclude_test=exclude)
 
 
     args_reboot = ["interface", "num_vms", "direction", "system", "vnf", "size"]
-    info(f"ThroughputTest execution plan:")
-    ThroughputTest.estimate_time2(tests, args_reboot)
+    info(f"LatencyTest execution plan:")
+    LatencyTest.estimate_time2(tests, args_reboot)
 
     if plan_only:
         return
@@ -474,11 +516,11 @@ def main(measurement: Measurement, plan_only: bool = False) -> None:
             args_reboot = args_reboot,
             brief = G.BRIEF
             ) as (bench, bench_tests):
-        for [num_vms, interface, direction, system, vnf, size], a_tests in bench.multi_iterator(bench_tests, ["num_vms", "interface", "direction", "system", "vnf", "size"]):
+        for [num_vms, interface, direction, system, vnf, size, rate], a_tests in bench.multi_iterator(bench_tests, ["num_vms", "interface", "direction", "system", "vnf", "size", "rate"]):
             interface = Interface(interface)
 
             info("Booting VM for this test matrix:")
-            info(ThroughputTest.test_matrix_string(a_tests))
+            info(LatencyTest.test_matrix_string(a_tests))
 
             assert len(a_tests) == 1 # we have looped through all variables now, right?
             test = a_tests[0]
@@ -486,15 +528,7 @@ def main(measurement: Measurement, plan_only: bool = False) -> None:
 
 
             debug('Binding loadgen interface')
-            loadgen.modprobe_test_iface_drivers()
-            loadgen.release_test_iface() # bind linux driver
-            try:
-                loadgen.delete_nic_ip_addresses(loadgen.test_iface)
-            except Exception:
-                pass
-            if test.vnf == "nat":
-                loadgen.exec(f"sudo ip address add {TEST_CLIENT_IP}/32 dev {loadgen.test_iface}")
-            loadgen.setup_test_iface_ip_net()
+            loadgen.bind_test_iface() # bind DPDK driver
 
 
             if system in [ "uk", "ukebpf", "ukebpfjit" ]:

@@ -2311,11 +2311,11 @@ class LoadGen(Server):
         """
         server.tmux_new('loadlatency', f'cd {server.moongen_dir}; ' +
                       'sudo bin/MoonGen '
-                      f'{server.project_root}/l2-load-latency.lua ' +
+                      f'{server.project_root}/benchmark/configurations/l2-load-latency.lua ' +
                       f'-r {rate} -f {histfile} -T {runtime} -s {size} ' +
                       f' -c {statsfile} -m {nr_macs} -e {nr_ethertypes} ' +
                       f'{server._test_iface_id} {mac} ' +
-                      f'2>&1 | tee {outfile}')
+                      f'2>&1 | tee {outfile}; echo TEST_DONE >> {outfile}; sleep 999')
 
     @staticmethod
     def stop_l2_load_latency(server: 'Server'):

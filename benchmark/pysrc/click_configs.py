@@ -9,23 +9,27 @@ def mirror(interface: str, ip: str, mac: str, extra_element: str = "") -> str:
     return f"""
     from_device :: FromDevice({interface})
     -> ic0 :: AverageCounter()
-    -> c1 :: Classifier(12/0806 20/0001,
+    -> c1 :: Classifier(12/88f7, // PTP
+                        12/0806 20/0001,
                         12/0800,
                         -);
+    for_processing :: Null;
+    c1[0] -> for_processing;
+    c1[2] -> for_processing;
 
     // Answer ARP requests
-    c1[0] -> Discard;
+    c1[1] -> Discard;
     // Needs a queue to convert push/pull contexts. But only on Linux.
-    // c1[0] -> ARPResponder({ip} $MAC0)
+    // c1[1] -> ARPResponder({ip} $MAC0)
     //    -> ToDevice({interface});
 
     // Handle IP Packets
-    c1[1]
+    for_processing
         {extra_element}
         -> ic1 :: AverageCounter()
         -> ToDevice({interface});
 
-    c1[2] -> Discard;
+    c1[3] -> Discard;
 
     Script(wait 1s,
         label start,

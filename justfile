@@ -100,7 +100,7 @@ build-dependencies:
   nix build .#click -o {{proot}}/nix/builds/click
   nix build -o {{proot}}/nix/builds/xdp github:vmuxio/vmuxio#xdp-reflector
   nix build --inputs-from . nixpkgs#time -o {{proot}}/nix/builds/time
-  nix build .#moongen-lacknit -o {{proot}}/nix/builds/moongen-lachnit
+  nix build .#moongen-lachnit -o {{proot}}/nix/builds/moongen-lachnit
 
 build-click-og:
   nix develop --unpack .#click
