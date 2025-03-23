@@ -108,7 +108,7 @@ class LatencyTest(AbstractBenchTest):
         """
         estimate time needed to run this benchmark excluding boot time in seconds
         """
-        return 0
+        return G.DURATION_S + 20 + (20 if self.system == "linux" else 0)
 
 
     def parse_results(self, repetition: int) -> DataFrame:
@@ -507,6 +507,7 @@ def main(measurement: Measurement, plan_only: bool = False) -> None:
     args_reboot = ["interface", "num_vms", "direction", "system", "vnf", "size"]
     info(f"LatencyTest execution plan:")
     LatencyTest.estimate_time2(tests, args_reboot)
+    info(LatencyTest.test_matrix_string(tests))
 
     if plan_only:
         return

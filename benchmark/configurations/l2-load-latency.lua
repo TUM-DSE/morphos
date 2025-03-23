@@ -57,7 +57,7 @@ function master(args)
 	    mg.startTask("loadSlave", dev:getTxQueue(i), dev:getMac(true), args.mac, args.size, args.macs, args.ethertypes)
   end
 	mg.startTask("txTimestampThread", dev:getTxQueue(args.threads), args.size, args.mac)
-	mg.startTask("rxTimestamps", dev:getRxQueue(0), args.mac, "")
+	mg.startTask("rxTimestamps", dev:getRxQueue(0), args.mac, args.file)
 	-- start measuring
 	stats.startStatsTask{dev}
 	if args.csv ~= "" then

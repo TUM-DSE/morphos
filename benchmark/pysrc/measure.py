@@ -24,6 +24,7 @@ import subprocess
 from conf import G
 from tqdm import tqdm
 from tqdm.contrib.telegram import tqdm as tqdm_telegram
+import getpass
 
 NUM_WORKERS = 8 # with 16, it already starts failing on rose
 
@@ -562,8 +563,7 @@ class Bench(Generic[T], ContextDecorator):
     def probe_peter(self):
         if not self.brief:
             try:
-                runtime_dir = os.environ["XDG_RUNTIME_DIR"]
-                with open(f"{runtime_dir}/telegram_bot_token", 'r') as file:
+                with open(f"/home/{getpass.getuser()}/.config/sops-nix/telegram_bot_token", 'r') as file:
                     data = file.read().strip()
                 def my_tqdm(*args, **kwargs):
                     return tqdm_telegram(*args, chat_id="272730663", token=data, **kwargs)
