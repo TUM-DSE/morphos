@@ -24,8 +24,12 @@ function configure(parser)
 	parser:description("Generates bidirectional CBR traffic with hardware rate control and measure latencies.")
 	parser:argument("dev", "Device to transmit/receive from."):convert(tonumber)
 	parser:argument("mac", "MAC address of the destination device. (bytes in inverse order)")
+	parser:option("--srcIp", "Source IPv4 address."):default("10.0.0.1")
+	parser:option("--dstIp", "Destination IPv4 address."):default("10.0.0.2")
+	parser:option("--srcPort", "Source port."):default(2):convert(tonumber)
+	parser:option("--dstPort", "Destination port."):default(3):convert(tonumber)
 	parser:option("-r --rate", "Transmit rate in kpps."):default(14000):convert(tonumber)
-    parser:option("-s --size", "Packet size in bytes."):default(60):convert(tonumber)
+  parser:option("-s --size", "Packet size in bytes."):default(60):convert(tonumber)
 	parser:option("-f --file", "Filename of the latency histogram."):default("histogram.csv")
 	parser:option("-c --csv", "Filename of the output csv."):default("")
 	parser:option("-t --threads", "Number of threads per device."):args(1):convert(tonumber):default(1)
@@ -39,7 +43,18 @@ function master(args)
 	device.waitForLinks()
 	for i = 0, args.threads - 1 do
 	    dev:getTxQueue(i):setRate(args.rate * (args.size + 4) * 8 / 1000)
-	    mg.startTask("loadSlave", dev:getTxQueue(i), dev:getMac(true), args.mac, args.size, args.macs, args.ethertypes)
+	    mg.startTask("loadSlave",
+	      dev:getTxQueue(i),
+	    	dev:getMac(true),
+	      args.mac,
+	      args.srcIp,
+	      args.dstIp,
+	      args.srcPort,
+	      args.dstPort,
+	      args.size,
+	      args.macs,
+	      args.ethertypes
+	    )
   end
 	-- warmup
 	print("Wraming up...")
@@ -54,7 +69,18 @@ function master(args)
 
 	for i = 0, args.threads - 1 do
 	    dev:getTxQueue(i):setRate(args.rate * (args.size + 4) * 8 / 1000)
-	    mg.startTask("loadSlave", dev:getTxQueue(i), dev:getMac(true), args.mac, args.size, args.macs, args.ethertypes)
+	    mg.startTask("loadSlave",
+	      dev:getTxQueue(i),
+	    	dev:getMac(true),
+	      args.mac,
+	      args.srcIp,
+	      args.dstIp,
+	      args.srcPort,
+	      args.dstPort,
+	      args.size,
+	      args.macs,
+	      args.ethertypes
+	    )
   end
 	mg.startTask("txTimestampThread", dev:getTxQueue(args.threads), args.size, args.mac)
 	mg.startTask("rxTimestamps", dev:getRxQueue(0), args.mac, args.file)
@@ -121,15 +147,20 @@ function sendMacs(queue, bufs, pktSize, dstMac, numDstMacs, numEthertypes)
   end
 end
 
-function loadSlave(queue, srcMac, dstMac, pktSize, numDstMacs, numEthertypes)
+function loadSlave(queue, srcMac, dstMac, srcIp, dstIp, srcPort, dstPort, pktSize, numDstMacs, numEthertypes)
 	-- local mac_nr = parseMacAddress(dstMac, 1)
 	-- print(srcMac)
 	-- print(mac_nr)
 	local mem = memory.createMemPool(function(buf)
-		buf:getEthernetPacket():fill{
+		buf:getUdpPacket():fill{
 			ethSrc = srcMac,
 			ethDst = dstMac,
-			ethType = 0x0800
+			ethType = 0x0800,
+			ip4Src = srcIp,
+			ip4Dst = dstIp,
+			portSrc = srcPort,
+			portDst = dstPort,
+			pktLength = pktSize,
 		}
 	end)
 	local bufs = mem:bufArray()
