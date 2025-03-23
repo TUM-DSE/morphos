@@ -464,7 +464,7 @@ def main(measurement: Measurement, plan_only: bool = False) -> None:
     sizes = [ 64 ]
     vnfs = [
         "mirror",
-        "nat"
+        # "nat", # doesn't work because NAT doen't actually send packets
     ]
     rates = [ 100 ]
     repetitions = 3

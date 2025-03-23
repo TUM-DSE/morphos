@@ -365,6 +365,7 @@ class ThroughputTest(AbstractBenchTest):
         host.exec(f"sudo truncate -s 0 {remote_unikraft_log_raw}")
 
         info("Start measuring with bmon")
+        # measure on loadgen, because unikraft statistics only get printed very rately when busy sending
         monitor_cmd = f"bmon -p {loadgen.test_iface} -o '{bmon_format}' | tee {remote_monitor_file}"
         loadgen.tmux_kill("monitor")
         loadgen.tmux_new("monitor", monitor_cmd)
@@ -413,7 +414,7 @@ def main(measurement: Measurement, plan_only: bool = False) -> None:
     # set up test plan
     interfaces = [
           Interface.VPP,
-          Interface.BRIDGE_VHOST,
+          # Interface.BRIDGE_VHOST,
           ]
     directions = [ "rx", "tx" ]
     systems = [ "linux", "uk", "ukebpfjit" ]
