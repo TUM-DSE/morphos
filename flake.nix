@@ -92,6 +92,7 @@
       flake = false;
     };
 
+    vmux.url = "github:vmuxIO/vmuxIO";
   };
 
   outputs =
@@ -263,6 +264,8 @@
                 '';
             }
           );
+
+          moongen-lachnit = inputs.vmux.packages.${system}.moongen-lachnit;
 
           linux-pktgen = pkgs.callPackage ./nix/linux-pktgen.nix {
             kernel = pkgs.linuxPackages_6_6.kernel;
