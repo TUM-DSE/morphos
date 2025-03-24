@@ -1,4 +1,5 @@
 #include "bpf_helpers.hh"
+#include <uk/plat/time.h>
 
 #include <cstdarg>
 #include <cstdio>
@@ -174,6 +175,7 @@ uint64_t do_map_relocation(
         uint64_t symbol_size,
         uint64_t imm
 ) {
+	uint64_t ts = ukplat_monotonic_clock();
     // hack to support .rodata section
     if (symbol_size == 0) {
         return do_data_relocation(user_context, map_data, map_data_size, imm);
@@ -232,5 +234,6 @@ uint64_t do_map_relocation(
 
     ctx->map_by_name[symbol_name] = map;
 
+	printf("Startup trace (nsec): load elf > relocate map: %llu\n", ukplat_monotonic_clock() - ts);
     return reinterpret_cast<uint64_t>(map);
 }
