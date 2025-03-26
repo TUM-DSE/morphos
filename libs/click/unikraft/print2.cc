@@ -179,7 +179,8 @@ Print2::simple_action(Packet *p)
 	sa.adjust_length(buf - (sa.data() + sa.length()));
     }
 
-  printf("%s", sa.c_str());
+  printf("%s\n", sa.c_str());
+  fflush(stdout);
 
   return p;
 }
