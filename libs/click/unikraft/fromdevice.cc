@@ -193,7 +193,8 @@ FromDevice::run_task(Task *)
 	nanosleep(&req, NULL);
 	*/
 	uk_sched_yield();
-	_task.reschedule();
+	// _task.reschedule(); // in run_task callback we need to use fast_reschedule
+	_task.fast_reschedule();
 	return false;
 }
 
