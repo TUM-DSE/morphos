@@ -66,6 +66,11 @@ void *__dso_handle = NULL;
 	printf("[%s:%d] " fmt "\n", \
 		__FUNCTION__, __LINE__, ##__VA_ARGS__)
 
+static inline void outb(__u16 port, __u8 v)
+{
+  __asm__ __volatile__("outb %0,%1" : : "a"(v), "dN"(port));
+}
+
 u_int _shutdown = 0;
 u_int _reason = 0;
 
@@ -210,8 +215,10 @@ get_config()
 		cstr_len = strlen(CONFIGSTRING);
 	}
 	cfg->append(cstr, cstr_len);
+	printf("Startup trace (nsec): print config: %lu\n", ukplat_monotonic_clock());
 	printf("Received config (length %d):\n", cfg->length());
 	printf("%s\n", cfg->c_str());
+	printf("Startup trace (nsec): print config done: %lu\n", ukplat_monotonic_clock());
 	return cfg;
 }
 
@@ -227,12 +234,15 @@ router_thread(void *thread_data)
 	String *config = get_config();
 
 	ri->r = click_read_router(*config, true, errh, false, &master);
+	printf("Startup trace (nsec): initialize elements: %lu\n", ukplat_monotonic_clock());
 	if (ri->r->initialize(errh) < 0) {
 		LOG("Router init failed!");
 		ri->f_stop = 1;
         exit(1);
 		return;
 	}
+	outb(0xf4, 0xFD);
+	printf("Startup trace (nsec): initialize elements done: %lu\n", ukplat_monotonic_clock());
 
 	ri->r->use();
 	ri->r->activate(errh);
@@ -445,6 +455,8 @@ extern "C" int click_main(int argc, char **argv);
 /* runs the event loop */
 int CLICK_MAIN(int argc, char **argv)
 {
+	outb(0xf4, 0xFE);
+	printf("Startup trace (nsec): click main(): %lu\n", ukplat_monotonic_clock());
 	struct uk_thread *router;
 
 	click_static_initialize();

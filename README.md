@@ -67,6 +67,8 @@ If you make any changes to the eBPF programs, you can synchronize them with the 
 make sync
 ```
 
+Further information about our ebpf build system: https://aya-rs.dev/book/start/development/
+
 ## Running the Benchmarks
 
 You can run the benchmarks:
@@ -91,8 +93,16 @@ cargo bench
 ```
 
 This will run the benchmarks and generate a report with the results.
-The reports are stored in the `target/criterion` directory for the `startup` and `live-reconfigure` benchmark,
-while the `throughput`, `memory`, and `latency` are stored directly in the `target` directory.
+
+`cargo bench` Criterion reports (`startup` and `live-reconfigure`):
+The reports are stored in the `target/criterion` directory.
+See the source files for what environment variables you can pass.
+
+Ordinary `cargo bench` reports (`throughput`, `memory`, and `latency`) are stored directly in the `target` directory.
+You may limit the tests to be executed, e.g., with `cargo bench --features print-output --bench throughput -- --only="round-robin (BPFClassifier - JIT)"`.
+
+Some benchmarks are implemented as ordinary rust binaries: `cargo run --bin bench-helper --features print-output`.
+
 
 ## Example use cases
 

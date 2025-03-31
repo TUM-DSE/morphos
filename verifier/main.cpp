@@ -21,6 +21,10 @@
 
 #include "config.hpp"
 
+
+int g_verbosity = 0;
+
+
 std::optional<raw_program>
 find_main_program(const std::filesystem::path &bpf_file, const ebpf_verifier_options_t &verifier_options) {
     std::vector <raw_program> raw_programs = read_elf(bpf_file, std::string(), &verifier_options,
@@ -74,9 +78,15 @@ bool run_verification(const std::filesystem::path &bpf_file) {
 
 
     auto verifier_options = ebpf_verifier_default_options;
-    // verifier_options.print_failures = true;
-    // verifier_options.print_line_info = true;
-
+    if (g_verbosity > 0) {
+        verifier_options.print_failures = true;
+    }
+    if (g_verbosity > 1) {
+        verifier_options.print_line_info = true;
+    }
+    if (g_verbosity > 2) {
+        verifier_options.print_invariants = true;
+    }
     std::cout << "Verifying main function" << std::endl;
     auto result = verify_section(bpf_file, verifier_options, main_program.value());
 
@@ -175,7 +185,8 @@ int main(int argc, char **argv) {
             ("file,f", boost::program_options::value<std::string>()->required(), "The BPF bytecode file to verify")
             ("key,k", boost::program_options::value<std::string>()->required(),
              "The key used for signing the BPF bytecode")
-            ("out,o", boost::program_options::value<std::string>()->required(), "The output file for the signature");
+            ("out,o", boost::program_options::value<std::string>()->required(), "The output file for the signature")
+            ("verbosity,v", boost::program_options::value<int>()->default_value(0), "Verbosity level");
 
     boost::program_options::variables_map cli_options_map;
 
@@ -194,6 +205,7 @@ int main(int argc, char **argv) {
     auto file = cli_options_map["file"].as<std::string>();
     auto key = cli_options_map["key"].as<std::string>();
     auto out_signature_file = cli_options_map["out"].as<std::string>();
+    g_verbosity = cli_options_map["verbosity"].as<int>();
 
     auto success = run_verification(file);
     if (!success) {

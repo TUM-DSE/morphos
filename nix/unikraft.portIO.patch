@@ -1,0 +1,32 @@
+From fa008f8a6fd927064e2b235e109a6aacc405e576 Mon Sep 17 00:00:00 2001
+From: Pogobanane <aenderboy@gmx.de>
+Date: Fri, 14 Mar 2025 15:45:03 +0000
+Subject: [PATCH] write 0xFF to port 0xf4
+
+---
+ plat/kvm/x86/setup.c | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/plat/kvm/x86/setup.c b/plat/kvm/x86/setup.c
+index e6b8ec72..13e708ea 100644
+--- a/plat/kvm/x86/setup.c
++++ b/plat/kvm/x86/setup.c
+@@ -23,6 +23,7 @@
+ #include <uk/plat/common/lcpu.h>
+ #include <uk/plat/common/sections.h>
+ #include <uk/plat/common/bootinfo.h>
++#include <uk/plat/time.h>
+ 
+ static char *cmdline;
+ static __sz cmdline_len;
+@@ -75,6 +76,7 @@ void _ukplat_entry(struct lcpu *lcpu, struct ukplat_bootinfo *bi)
+ 	int rc;
+ 	void *bstack;
+ 
++	outb(0xf4, 0xFF); // indicate to outside world that unikraft has now taken over from firmware
+ 	_libkvmplat_init_console();
+ 
+ 	/* Initialize trap vector table */
+-- 
+2.42.0
+

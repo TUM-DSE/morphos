@@ -24,6 +24,7 @@ import subprocess
 from conf import G
 from tqdm import tqdm
 from tqdm.contrib.telegram import tqdm as tqdm_telegram
+import getpass
 
 NUM_WORKERS = 8 # with 16, it already starts failing on rose
 
@@ -170,7 +171,9 @@ class Measurement:
         self.host.exec(f"sudo rm -r {tmpdir} || true")
         self.host.exec(f"sudo rm {initrd} || true")
         self.host.exec(f"mkdir -p {tmpdir}")
-        self.host.write(click_config, f"{tmpdir}/config.click")
+        with open("/tmp/config.click", "w") as text_file:
+            text_file.write(click_config)
+        self.host.copy_to("/tmp/config.click", f"{tmpdir}/config.click")
         for cpio_file in cpio_files:
             with open(f"{self.host.project_root}/{cpio_file}", 'rb') as file:
                 data = file.read()
@@ -189,7 +192,7 @@ class Measurement:
                 )
 
         debug("Waiting for click to start")
-        self.host.wait_for_success(f"grep 'Starting driver...' {vm_log}")
+        self.host.wait_for_success(f"grep 'Starting driver...' {vm_log}", timeout=40)
 
         yield self.guest
 
@@ -560,8 +563,7 @@ class Bench(Generic[T], ContextDecorator):
     def probe_peter(self):
         if not self.brief:
             try:
-                runtime_dir = os.environ["XDG_RUNTIME_DIR"]
-                with open(f"{runtime_dir}/telegram_bot_token", 'r') as file:
+                with open(f"/home/{getpass.getuser()}/.config/sops-nix/telegram_bot_token", 'r') as file:
                     data = file.read().strip()
                 def my_tqdm(*args, **kwargs):
                     return tqdm_telegram(*args, chat_id="272730663", token=data, **kwargs)

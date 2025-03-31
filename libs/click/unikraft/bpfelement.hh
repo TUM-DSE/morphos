@@ -24,11 +24,11 @@ public:
 protected:
 
     struct uk_rwlock _lock = UK_RWLOCK_INITIALIZER(_lock, 0);
-    struct ubpf_vm *_ubpf_vm;
+    struct ubpf_vm *_ubpf_vm = nullptr;
 
     virtual void register_additional_bpf_helpers(void) { }
 
-    uint32_t exec(Packet *p);
+    uint32_t exec(int port, Packet *p);
 
 private:
 
@@ -50,6 +50,7 @@ private:
 typedef struct {
     void* data;
     void* data_end;
+    uint32_t port;
 } bpfelement_md;
 
 CLICK_ENDDECLS

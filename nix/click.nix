@@ -37,6 +37,10 @@ pkgs.stdenv.mkDerivation rec {
     jansson
   ] ++ [ dpdk ];
 
+  patches = [
+    ./click.startup-time.patch
+  ];
+
   postPatch = ''
     # sln /bin/echo ${pkgs.coreutils}/bin/echo
     find . -type f -exec sed -i 's/\/bin\/echo/echo/g' {} \;
@@ -46,6 +50,15 @@ pkgs.stdenv.mkDerivation rec {
     #   --replace "/bin/echo" "echo"
 
     cp ${thisgit}/libs/click/unikraft/ipfilter2.* ./elements/ip/
+    cp ${thisgit}/libs/click/unikraft/stringmatcher.* ./elements/ip/
+    cp ${thisgit}/libs/click/unikraft/replace.* ./elements/ip/
+    cp ${thisgit}/libs/click/unikraft/node.* ./elements/ip/
+    cp ${thisgit}/libs/click/unikraft/mpool.* ./elements/ip/
+    cp ${thisgit}/libs/click/unikraft/ahocorasickplus.* ./elements/ip/
+    cp ${thisgit}/libs/click/unikraft/ahocorasick.* ./elements/ip/
+    cp ${thisgit}/libs/click/unikraft/actypes.* ./elements/ip/
+    cp ${thisgit}/libs/click/unikraft/infinitesource2.* ./elements/ip/
+    cp ${thisgit}/libs/click/unikraft/print2.* ./elements/standard/
 
     mkdir -p $RTE_SDK_BIN
     cp -r ${dpdk}/* $RTE_SDK_BIN/
@@ -125,10 +138,10 @@ pkgs.stdenv.mkDerivation rec {
 
   ];
 
-  #CFLAGS = "-msse4.1 -mavx" + lib.optionalString (!debug) " -O3" + lib.optionalString debug " -g";
-  CFLAGS = "-msse4.1 -mavx -O3";
-  #CXXFLAGS = "-std=c++11 -msse4.1 -mavx" + lib.optionalString (!debug) " -O3" + lib.optionalString debug " -g";
-  CXXFLAGS = "-std=c++11 -msse4.1 -mavx -O3";
+  CFLAGS = "-msse4.1 -mavx" + lib.optionalString (!debug) " -O3" + lib.optionalString debug " -g";
+  # CFLAGS = "-msse4.1 -mavx -O3";
+  CXXFLAGS = "-std=c++11 -msse4.1 -mavx" + lib.optionalString (!debug) " -O3" + lib.optionalString debug " -g";
+  # CXXFLAGS = "-std=c++11 -msse4.1 -mavx -O3";
   NIX_LDFLAGS = "-lrte_eal -lrte_ring -lrte_mempool -lrte_ethdev -lrte_mbuf -lrte_net -lrte_latencystats -lrte_cmdline -lrte_net_bond -lrte_metrics -lrte_gso -lrte_gro -lrte_net_ixgbe -lrte_net_i40e -lrte_net_bnxt -lrte_net_dpaa -lrte_bpf -lrte_bitratestats -ljansson -lbsd";
   #RTE_VER_YEAR = "21"; # does this bubble through to the makefile variable? i dont think so. Then we can remove it.
   enableParallelBuilding = true;

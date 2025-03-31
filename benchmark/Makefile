@@ -15,4 +15,5 @@ kill:
 	pkill cargo || true
 	pkill throughput || true
 	sudo pkill -f click_qemu-x86_64
+	pkill -f "^$$(pwd)"
 

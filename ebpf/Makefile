@@ -5,7 +5,7 @@ TARGET_DIR:=$(DIR)/target/bpfel-unknown-none/release
 EXAMPLES_DIR:=$(DIR)/../examples
 BENCHMARK_DIR:=$(DIR)/../benchmark/bpfilters
 
-BINS := dns-filter drop ether-mirror pass rate-limiter round-robin strip-ether-vlan-header target-port udp-tcp-classifier state-migration-v1 state-migration-v2
+BINS := dns-filter drop ether-mirror pass rate-limiter round-robin strip-ether-vlan-header target-port udp-tcp-classifier state-migration-v1 state-migration-v2 stringmatcher nat firewall
 
 VERIFY ?= 0
 
@@ -21,6 +21,41 @@ $(1):
 endef
 
 $(foreach bin,$(BINS),$(eval $(call BUILD_TARGET,$(bin))))
+
+TMPFILE ?= /tmp/cases.txt
+PATCH_FILE ?= $(DIR)/src/bin/firewall.rs
+START ?= 1000
+END ?= 1010
+# escape markers for regex
+START_MARKER ?= \/\/ start
+END_MARKER ?= \/\/ end
+
+generate-cases:
+	@rm -f $(TMPFILE)
+	sed -i '/$(START_MARKER)/,/$(END_MARKER)/{/$(START_MARKER)/!{/$(END_MARKER)/!d;};}' $(PATCH_FILE)
+	@for i in $$(seq $(START) 2 $(END)); do \
+		echo "$$i => FilterResult::Pass," >> $(TMPFILE); \
+		j=$$(( $$i + 1 )); \
+		echo "$$j => FilterResult::Drop," >> $(TMPFILE); \
+	done
+	sed -i '/$(START_MARKER)/r $(TMPFILE)' $(PATCH_FILE)
+
+
+sync-firewall:
+	$(eval END := $(shell echo $$(($(START) + $(NR) - 1))))
+	$(MAKE) generate-cases END=$(END)
+	$(MAKE) firewall
+	@-cp $(TARGET_DIR)/firewall.sig $(BENCHMARK_DIR)/firewall-$(NR).sig
+	@-cp $(TARGET_DIR)/firewall $(BENCHMARK_DIR)/firewall-$(NR)
+
+sync-firewalls:
+	$(MAKE) sync-firewall NR=2
+	$(MAKE) sync-firewall NR=10
+	$(MAKE) sync-firewall NR=100
+	$(MAKE) sync-firewall NR=1000
+	$(MAKE) sync-firewall NR=10000
+	# restore sane, original state:
+	$(MAKE) sync-firewall NR=2
 
 all: $(BINS)
 
@@ -61,6 +96,8 @@ sync:
 	@-cp $(TARGET_DIR)/pass.sig $(BENCHMARK_DIR)/pass.sig
 	@-cp $(TARGET_DIR)/drop $(BENCHMARK_DIR)/drop
 	@-cp $(TARGET_DIR)/drop.sig $(BENCHMARK_DIR)/drop.sig
+	@-cp $(TARGET_DIR)/ether-mirror $(BENCHMARK_DIR)/ether-mirror
+	@-cp $(TARGET_DIR)/ether-mirror.sig $(BENCHMARK_DIR)/ether-mirror.sig
 	@-cp $(TARGET_DIR)/target-port $(BENCHMARK_DIR)/target-port
 	@-cp $(TARGET_DIR)/target-port.sig $(BENCHMARK_DIR)/target-port.sig
 	@-cp $(TARGET_DIR)/round-robin $(BENCHMARK_DIR)/round-robin
@@ -71,3 +108,7 @@ sync:
 	@-cp $(TARGET_DIR)/udp-tcp-classifier.sig $(BENCHMARK_DIR)/udp-tcp-classifier.sig
 	@-cp $(TARGET_DIR)/strip-ether-vlan-header $(BENCHMARK_DIR)/strip-ether-vlan-header
 	@-cp $(TARGET_DIR)/strip-ether-vlan-header.sig $(BENCHMARK_DIR)/strip-ether-vlan-header.sig
+	@-cp $(TARGET_DIR)/stringmatcher $(BENCHMARK_DIR)/
+	@-cp $(TARGET_DIR)/nat.sig $(BENCHMARK_DIR)/
+	@-cp $(TARGET_DIR)/nat $(BENCHMARK_DIR)/
+	@-cp $(TARGET_DIR)/stringmatcher.sig $(BENCHMARK_DIR)/

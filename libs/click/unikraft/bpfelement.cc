@@ -63,6 +63,7 @@ void BPFElement::init_ubpf_vm() {
     ubpf_toggle_bounds_check(vm, false);
     ubpf_toggle_undefined_behavior_check(vm, false);
     ubpf_register_data_relocation(vm, this->_bpf_map_ctx, do_map_relocation);
+    ubpf_set_jit_code_size(vm, 128*1024); // default is 64KB
 
     // register bpf helpers
     ubpf_register(vm, 1, "bpf_map_lookup_elem", as_external_function_t((void *) bpf_map_lookup_elem));
@@ -187,6 +188,9 @@ int BPFElement::configure(Vector <String> &conf, ErrorHandler *errh) {
         return -1;
     }
 
+	uint64_t ts = ukplat_monotonic_clock();
+	printf("Startup trace (nsec): init ebpf vm: %llu\n", ts);
+    uint64_t ts_start = ukplat_monotonic_clock();
     const char *filename = _bpf_file.c_str();
 
     bool reconfigure = _ubpf_vm != NULL;
@@ -202,6 +206,7 @@ int BPFElement::configure(Vector <String> &conf, ErrorHandler *errh) {
     if (buffer.empty()) {
         return errh->error("Error reading file %s\n", filename);
     }
+	uint64_t ts_read = ukplat_monotonic_clock();
 
     if (!reconfigure) {
         this->init_ubpf_vm();
@@ -211,6 +216,7 @@ int BPFElement::configure(Vector <String> &conf, ErrorHandler *errh) {
     }
 
     uk_rwlock_wlock(&_lock);
+	uint64_t ts_lock = ukplat_monotonic_clock();
     if (reconfigure) {
         ubpf_unload_code(_ubpf_vm);
     }
@@ -221,13 +227,17 @@ int BPFElement::configure(Vector <String> &conf, ErrorHandler *errh) {
     if (error_msg != NULL) {
         return errh->error("Error loading ubpf program: %s\n", error_msg);
     }
+	uint64_t ts_load = ukplat_monotonic_clock();
 
+#ifdef CONFIG_LIBCLICK_UBPF_VERIFY_SIGNATURE
     if (CONFIG_LIBCLICK_UBPF_VERIFY_SIGNATURE) {
         auto return_code = check_bpf_verification_signature(errh);
         if (return_code < 0) {
             return return_code;
         }
     }
+#endif
+	uint64_t ts_validate = ukplat_monotonic_clock();
 
     if (_jit) {
         _ubpf_jit_fn = ubpf_compile(_ubpf_vm, &error_msg);
@@ -239,6 +249,17 @@ int BPFElement::configure(Vector <String> &conf, ErrorHandler *errh) {
     if (_dump_jit) {
         handle_jit_dump(errh, _ubpf_vm, _bpfelement_id);
     }
+
+	uint64_t ts_jit = ukplat_monotonic_clock();
+	printf("Startup trace (nsec): init ebpf done: %llu\n", ts_jit);
+
+	printf("Startup trace (nsec): read program: %llu\n", ts_read - ts_start);
+	printf("Startup trace (nsec): lock: %llu\n", ts_lock - ts_read);
+	printf("Startup trace (nsec): load elf: %llu\n", ts_load - ts_lock);
+	printf("Startup trace (nsec): signature: %llu\n", ts_validate - ts_load);
+	printf("Startup trace (nsec): jit: %llu\n", ts_jit - ts_validate);
+	uint64_t ts_print = ukplat_monotonic_clock();
+	printf("Startup trace (nsec): print: %llu\n", ts_print - ts_jit);
 
     uk_rwlock_wunlock(&_lock);
 
@@ -253,10 +274,11 @@ int BPFElement::configure(Vector <String> &conf, ErrorHandler *errh) {
     return 0;
 }
 
-uint32_t BPFElement::exec(Packet *p) {
+uint32_t BPFElement::exec(int port, Packet *p) {
     auto ctx = (bpfelement_md) {
             .data = (void *) p->data(),
-            .data_end = (void *) p->end_data()
+            .data_end = (void *) p->end_data(),
+            .port = port,
     };
 
     if (_jit) {

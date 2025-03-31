@@ -98,6 +98,9 @@ build-dependencies:
   nix build --inputs-from . nixpkgs#qemu -o {{proot}}/nix/builds/qemu
   nix build .#vpp2 -o {{proot}}/nix/builds/vpp
   nix build .#click -o {{proot}}/nix/builds/click
+  nix build -o {{proot}}/nix/builds/xdp github:vmuxio/vmuxio#xdp-reflector
+  nix build --inputs-from . nixpkgs#time -o {{proot}}/nix/builds/time
+  nix build .#moongen-lachnit -o {{proot}}/nix/builds/moongen-lachnit
 
 build-click-og:
   nix develop --unpack .#click
@@ -120,10 +123,41 @@ throughput-cpio:
     cp ./throughput.click /tmp/ukcpio-$(USER)/config.click
     ./libs/unikraft/support/scripts/mkcpio ./throughput.cpio /tmp/ukcpio-$(USER)
 
-vm: throughput-cpio
+nat-cpio:
+    rm -r /tmp/ukcpio-{{user}} || true
+    mkdir -p /tmp/ukcpio-{{user}}
+    cp ./benchmark/configurations/thomer-nat.click /tmp/ukcpio-{{user}}/config.click
+    ./libs/unikraft/support/scripts/mkcpio ./throughput.cpio /tmp/ukcpio-{{user}}
+
+stringmatcher-cpio:
+    rm -r /tmp/ukcpio-{{user}} || true
+    mkdir -p /tmp/ukcpio-{{user}}
+    cp ./benchmark/configurations/stringmatcher.click /tmp/ukcpio-{{user}}/config.click
+    cp ./benchmark/bpfilters/stringmatcher /tmp/ukcpio-{{user}}/stringmatcher
+    cp ./benchmark/bpfilters/stringmatcher.sig /tmp/ukcpio-{{user}}/stringmatcher.sig
+    ./libs/unikraft/support/scripts/mkcpio ./throughput.cpio /tmp/ukcpio-{{user}}
+
+natebpf-cpio:
+    rm -r /tmp/ukcpio-{{user}} || true
+    mkdir -p /tmp/ukcpio-{{user}}
+    cp ./benchmark/configurations/firewall-10000.click /tmp/ukcpio-{{user}}/config.click
+    # cp ./benchmark/configurations/thomer-nat-ebpf.click /tmp/ukcpio-{{user}}/config.click
+    # cp ./benchmark/configurations/thomer-nat.click /tmp/ukcpio-{{user}}/config.click
+    # cp ./benchmark/configurations/test.click /tmp/ukcpio-{{user}}/config.click
+    # cp ./benchmark/configurations/test2.click /tmp/ukcpio-{{user}}/config.click
+    # cp ./benchmark/configurations/stringmatcher.click /tmp/ukcpio-{{user}}/config.click
+    cp ./benchmark/bpfilters/round-robin /tmp/ukcpio-{{user}}/round-robin
+    cp ./benchmark/bpfilters/round-robin.sig /tmp/ukcpio-{{user}}/round-robin.sig
+    cp ./benchmark/bpfilters/nat /tmp/ukcpio-{{user}}/nat
+    cp ./benchmark/bpfilters/nat.sig /tmp/ukcpio-{{user}}/nat.sig
+    cp ./benchmark/bpfilters/firewall-10000 /tmp/ukcpio-{{user}}/firewall-10000
+    cp ./benchmark/bpfilters/firewall-10000.sig /tmp/ukcpio-{{user}}/firewall-10000.sig
+    ./libs/unikraft/support/scripts/mkcpio ./throughput.cpio /tmp/ukcpio-{{user}}
+
+vm: natebpf-cpio
     sudo taskset -c 3,4 qemu-system-x86_64 \
         -accel kvm -cpu max \
-        -m 1024M -object memory-backend-file,id=mem,size=1024M,mem-path=/dev/hugepages,share=on \
+        -m 4G -object memory-backend-file,id=mem,size=4G,mem-path=/dev/hugepages,share=on \
         -mem-prealloc -numa node,memdev=mem \
         -netdev bridge,id=en0,br=clicknet \
         -device virtio-net-pci,netdev=en0 \
@@ -131,6 +165,7 @@ vm: throughput-cpio
         -kernel ./.unikraft/build/click_qemu-x86_64 \
         -initrd ./throughput.cpio \
         -nographic
+
 
 vm-vhost: throughput-cpio
     sudo taskset -c 3,4 qemu-system-x86_64 \
@@ -151,7 +186,7 @@ vhost-user:
 
 
 vpp-notes:
-    # sudo vpp -c ./vpp.conf
+    # sudo vpp -c ./benchmark/configurations/vpp.conf
     # sudo vppctl -s /tmp/vpp-cli
     # show log
     # show interface
@@ -170,4 +205,33 @@ perf-kvm-record:
 perf-qemu-record:
     sudo perf record -g -p $(pgrep qemu)
     sudo perf script > perf.trace
+
+qemu-startup:
+    BPFTRACE_MAX_STRLEN=123 sudo -E bpftrace -e " \
+    tracepoint:kvm:kvm_entry / @a[pid] == 0 / { printf(\"qemu kvm entry ns %lld\n\", nsecs()); @a[pid] = 1; } \
+    tracepoint:kvm:kvm_pio / args.port == 0xf4 / { printf(\"qemu kvm port %d ns %lld\n\", args->val, nsecs()); } \
+    tracepoint:syscalls:sys_enter_execve* \
+    / str(args.filename) == \"$(which qemu-system-x86_64)\" / \
+    { printf(\"qemu start ns %lld\n\", nsecs()); printf(\"filename %s\n\", str(args.filename))}" \
+
+
+UBUNTU_PATH := "~/.vagrant.d/boxes/ubuntu-VAGRANTSLASH-jammy64/20241002.0.0/virtualbox/ubuntu-jammy-22.04-cloudimg.vmdk"
+ALPINE_PATH := "~/.vagrant.d/boxes/generic-VAGRANTSLASH-alpine319/4.3.12/virtualbox/generic-alpine319-virtualbox-x64-disk001.vmdk"
+
+imagesizes: natebpf-cpio
+    # downloading images
+    [ -e {{ALPINE_PATH}} ] || nix run --inputs-from ./ nixpkgs#vagrant -- box add generic/alpine319 --provider virtualbox --box-version 4.3.12
+    [ -e {{UBUNTU_PATH}} ] || nix run --inputs-from ./ nixpkgs#vagrant -- box add ubuntu/jammy64 --provider virtualbox --box-version 20241002.0.0
+    # click unikraft nat ebpf
+    ls -l ./.unikraft/build/click_qemu-x86_64
+    ls -l ./throughput.cpio
+    # click linux nat ebpf
+    # we should also count non-trivial click dependencies: dpdk, libjannson
+    ls -l ./nix/builds/click/bin/click
+    ls -l ./benchmark/configurations/thomer-nat-ebpf.click
+    ls -l ./benchmark/bpfilters/nat
+    ls -l ./benchmark/bpfilters/nat.sig
+    ls -l {{ALPINE_PATH}}
+    ls -l {{UBUNTU_PATH}}
+
 

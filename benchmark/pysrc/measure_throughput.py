@@ -21,12 +21,17 @@ import os
 from pandas import DataFrame
 import pandas as pd
 import traceback
+import click_configs
 from conf import G
 
 unikraft_interface = "0"
 safe_vpp_warmup = False # without we rarely get excessive standard deviations
+GUEST_IP = "10.10.0.1"
+TEST_CLIENT_IP = "10.10.0.2"
 
 def click_tx_config(interface: str, size: int = 1460, dst_mac: str = "90:e2:ba:c3:76:6e", extra_processing: str = "") -> str:
+    # size - 4 bytes ethernet CRC - 14 ethernet header - 20 IP header - 20 ethernet peamble maybe?
+    size = size - 4 - 14 - 20 - 20
     return f"""
 //Default values for packet length, number of packets and amountfs of time to replay them
 define($L 60, $R 0, $S 100000);
@@ -44,9 +49,11 @@ define($blocking true)
 
 
 InfiniteSource(DATA \<0800>, LENGTH {size}, LIMIT -1, BURST 100000)
--> UDPIPEncap($myip, 5678, $dstip, 5678)
+// InfiniteSource2(DATA \<0800>, SRCIP $myip, DSTIP $dstip, LENGTH {size}, LIMIT -1, BURST 100000)
+ -> UDPIPEncap($myip, 5678, $dstip, 5678)
 {extra_processing}
 -> EtherEncap(0x0800, $mymac, $dmac)
+// FastUDPFlows(RATE 0, LIMIT -1, LENGTH {size}, SRCETH $mymac, DSTETH $dmac, SRCIP $myip, DSTIP $dstip, FLOWS 1, FLOWSIZE 100000)
 -> ic0 :: AverageCounter()
 -> ToDevice({interface});
 
@@ -103,7 +110,7 @@ class ThroughputTest(AbstractBenchTest):
         estimate time needed to run this benchmark excluding boot time in seconds
         """
         overheads = 5
-        return (self.repetitions * (DURATION_S + 2) ) + overheads
+        return (self.repetitions * (G.DURATION_S + 2) ) + overheads
 
 
     def parse_results(self, repetition: int) -> DataFrame:
@@ -118,7 +125,7 @@ class ThroughputTest(AbstractBenchTest):
                 lines = f.readlines()
             lines = [ line for line in lines if "Rx rate: " in line ]
             # pps values
-            values = [ float(line.split("Rx rate: ")[1].strip()) for line in lines ]
+            values = [ float(line.split("Rx rate: ")[1].strip().split(" ")[0].strip()) for line in lines ]
             values = values[warmup:]
 
         elif self.direction == "tx":
@@ -178,6 +185,39 @@ class ThroughputTest(AbstractBenchTest):
                 files = [ "benchmark/bpfilters/target-port", "benchmark/bpfilters/target-port.sig" ]
                 processing += "-> BPFilter(ID 1, FILE target-port, SIGNATURE target-port.sig, JIT true)"
 
+            case ("ukebpf", "nat", "rx"):
+                files = [ "benchmark/bpfilters/nat", "benchmark/bpfilters/nat.sig" ]
+                processing += "rw :: BPFClassifier(ID 1, FILE nat, SIGNATURE nat.sig, JIT false)"
+            case ("ukebpfjit", "nat", "rx"):
+                files = [ "benchmark/bpfilters/nat", "benchmark/bpfilters/nat.sig" ]
+                processing += "rw :: BPFClassifier(ID 1, FILE nat, SIGNATURE nat.sig, JIT true)"
+            case (_, "nat", _):
+                files = []
+                processing += "rw :: IPRewriter(pattern NAT 0 1, pass 1);"
+
+            case ("ukebpf", "mirror", "rx"):
+                files = [ "benchmark/bpfilters/ether-mirror", "benchmark/bpfilters/ether-mirror.sig" ]
+                processing += "-> BPFRewriter(ID 1, FILE ether-mirror, SIGNATURE ether-mirror.sig, JIT false)"
+            case ("ukebpfjit", "mirror", "rx"):
+                files = [ "benchmark/bpfilters/ether-mirror", "benchmark/bpfilters/ether-mirror.sig" ]
+                processing += "-> BPFRewriter(ID 1, FILE ether-mirror, SIGNATURE ether-mirror.sig, JIT true)"
+            case ("uk", "mirror", "rx"):
+                files = []
+                processing += "-> EtherMirror()" # this and its ebpf version should probably also do IPMirror()
+            case ("linux", "mirror", "rx"):
+                files = []
+                processing += "-> EtherMirror() -> SimpleQueue(256)"
+
+            case ("ukebpf", "ids", _):
+                files = [ "benchmark/bpfilters/stringmatcher", "benchmark/bpfilters/stringmatcher.sig" ]
+                processing += "-> BPFilter(ID 1, FILE stringmatcher, SIGNATURE stringmatcher.sig, JIT false)"
+            case ("ukebpfjit", "ids", _):
+                files = [ "benchmark/bpfilters/stringmatcher", "benchmark/bpfilters/stringmatcher.sig" ]
+                processing += "-> BPFilter(ID 1, FILE stringmatcher, SIGNATURE stringmatcher.sig, JIT true)"
+            case (_, "ids", _):
+                files = []
+                processing += "-> StringMatcher(teststringtomatch)"
+
             case _:
                 raise ValueError(f"Unknown system/vnf combination: {self.system}/{self.vnf}")
 
@@ -196,8 +236,12 @@ class ThroughputTest(AbstractBenchTest):
             batch = 1
             threads = 1
 
+        size = self.size - 4 # subtract 4 bytes for the CRC
         pktgen_cmd = f"{loadgen.project_root}/nix/builds/linux-pktgen/bin/pktgen_sample03_burst_single_flow" + \
-            f" -i {loadgen.test_iface} -s {self.size} -d {guest.test_iface_ip_net} -m {guest.test_iface_mac} -b {batch} -t {threads} | tee {remote_pktgen_log}";
+            f" -i {loadgen.test_iface} -s {self.size - 4} -d {strip_subnet_mask(guest.test_iface_ip_net)} -m {guest.test_iface_mac} -b {batch} -t {threads} | tee {remote_pktgen_log}";
+        self.start_pktgen_helper(guest, loadgen, host, pktgen_cmd)
+
+    def start_pktgen_helper(self, guest, loadgen, host, pktgen_cmd):
         loadgen.tmux_kill("pktgen")
 
         # sometimes, pktgen returns immediately with 0 packets sent
@@ -231,7 +275,9 @@ class ThroughputTest(AbstractBenchTest):
         guest.kill_click()
         _, element = self.click_config()
         config = click_tx_config(guest.test_iface, size=self.size, dst_mac=loadgen.test_iface_mac, extra_processing=element)
-        guest.write(config, "/tmp/linux.click")
+        with open("/tmp/linux.click", "w") as text_file:
+            text_file.write(config)
+        guest.copy_to("/tmp/linux.click", "/tmp/linux.click")
         guest.start_click("/tmp/linux.click", remote_click_output, script_args=click_args, dpdk=False)
 
         info("Start measuring with bmon")
@@ -240,7 +286,7 @@ class ThroughputTest(AbstractBenchTest):
         loadgen.tmux_kill("monitor")
         loadgen.tmux_new("monitor", monitor_cmd)
 
-        time.sleep(DURATION_S)
+        time.sleep(G.DURATION_S)
 
         loadgen.tmux_kill("monitor")
         guest.stop_click()
@@ -263,12 +309,38 @@ class ThroughputTest(AbstractBenchTest):
         click_args = {}
         guest.kill_click()
         _, element = self.click_config()
-        guest.write(click_rx_config(guest.test_iface, extra_processing=element), "/tmp/linux.click")
+        if self.vnf == "nat":
+            config = click_configs.nat(
+                interface=guest.test_iface,
+                guest_ip=GUEST_IP,
+                guest_mac=measurement.guest.test_iface_mac,
+                gw_ip=strip_subnet_mask(loadgen.test_iface_ip_net),
+                gw_mac=loadgen.test_iface_mac,
+                src_ip=TEST_CLIENT_IP,
+                src_mac=loadgen.test_iface_mac,
+                dst_ip=strip_subnet_mask(loadgen.test_iface_ip_net),
+                dst_mac=measurement.guest.test_iface_mac,
+                size=self.size,
+                direction=self.direction,
+                rewriter=element
+            )
+        elif self.vnf == "mirror":
+            config = click_configs.mirror(
+                interface=guest.test_iface,
+                ip=strip_subnet_mask(loadgen.test_iface_ip_net),
+                mac=loadgen.test_iface_mac,
+                extra_element=element
+            )
+        else:
+            config = click_rx_config(guest.test_iface, extra_processing=element)
+        with open("/tmp/linux.click", "w") as text_file:
+            text_file.write(config)
+        guest.copy_to("/tmp/linux.click", "/tmp/linux.click")
         guest.start_click("/tmp/linux.click", remote_click_output, script_args=click_args, dpdk=False)
         # start network load
         self.start_pktgen(guest, loadgen, host, remote_pktgen_log)
 
-        time.sleep(DURATION_S)
+        time.sleep(G.DURATION_S)
 
         # stop network load
         self.stop_pktgen(loadgen)
@@ -293,11 +365,12 @@ class ThroughputTest(AbstractBenchTest):
         host.exec(f"sudo truncate -s 0 {remote_unikraft_log_raw}")
 
         info("Start measuring with bmon")
+        # measure on loadgen, because unikraft statistics only get printed very rately when busy sending
         monitor_cmd = f"bmon -p {loadgen.test_iface} -o '{bmon_format}' | tee {remote_monitor_file}"
         loadgen.tmux_kill("monitor")
         loadgen.tmux_new("monitor", monitor_cmd)
 
-        time.sleep(DURATION_S)
+        time.sleep(G.DURATION_S)
 
         loadgen.tmux_kill("monitor")
 
@@ -323,7 +396,7 @@ class ThroughputTest(AbstractBenchTest):
         # reset unikraft log
         host.exec(f"sudo truncate -s 0 {remote_unikraft_log_raw}")
 
-        time.sleep(DURATION_S)
+        time.sleep(G.DURATION_S)
 
         # copy raw to log, but only printable characters (cut leading null bytes)
         host.exec(f"strings {remote_unikraft_log_raw} | sudo tee {remote_unikraft_log}")
@@ -337,39 +410,46 @@ class ThroughputTest(AbstractBenchTest):
 
 def main(measurement: Measurement, plan_only: bool = False) -> None:
     host, loadgen = measurement.hosts()
-    global DURATION_S
 
     # set up test plan
     interfaces = [
           Interface.VPP,
-          Interface.BRIDGE_VHOST,
+          # Interface.BRIDGE_VHOST,
           ]
     directions = [ "rx", "tx" ]
     systems = [ "linux", "uk", "ukebpfjit" ]
     vm_nums = [ 1 ]
-    sizes = [ 64 ]
-    vnfs = [ "empty", "filter" ]
+    sizes = [ 64, 256, 1024, 1518 ]
+    vnfs = [ "empty", "filter", "nat", "ids", "mirror" ]
     repetitions = 3
-    DURATION_S = 71 if not G.BRIEF else 15
+    G.DURATION_S = 71 if not G.BRIEF else 15
     if safe_vpp_warmup:
-        DURATION_S = max(30, DURATION_S)
+        G.DURATION_S = max(30, G.DURATION_S)
     if G.BRIEF:
         # interfaces = [ Interface.BRIDGE ]
-        interfaces = [ Interface.BRIDGE_VHOST ]
-        # interfaces = [ Interface.VPP ]
+        # interfaces = [ Interface.BRIDGE_VHOST ]
+        interfaces = [ Interface.VPP ]
         # interfaces = [ Interface.BRIDGE_VHOST, Interface.VPP ]
-        directions = [ "tx" ]
+        # directions = [ "rx", "tx" ]
+        directions = [ "rx" ]
         # systems = [ "linux", "uk", "ukebpfjit" ]
-        systems = [ "uk" ]
+        # systems = [ "uk", "ukebpfjit" ]
+        # systems = [ "uk" ]
+        # systems = [ "ukebpfjit" ]
+        systems = [ "linux" ]
         vm_nums = [ 1 ]
         # vm_nums = [ 128, 160 ]
-        vnfs = [ "empty" ]
+        # vnfs = [ "empty" ]
+        sizes = [ 64 ]
+        vnfs = [ "mirror" ]
         repetitions = 1
 
     def exclude(test):
-        return (Interface(test.interface).is_passthrough() and test.num_vms > 1)
+        return ((Interface(test.interface).is_passthrough() and test.num_vms > 1) or
+                    (test.vnf == "nat" and test.direction == "tx") or # packets get stuck in queue
+                    (test.vnf == "mirror" and test.direction == "tx") # bidirection test
+        )
 
-    # multi-VM TCP tests, but only one length
     test_matrix = dict(
         repetitions=[ repetitions ],
         direction=directions,
@@ -383,7 +463,7 @@ def main(measurement: Measurement, plan_only: bool = False) -> None:
     tests = ThroughputTest.list_tests(test_matrix, exclude_test=exclude)
 
 
-    args_reboot = ["interface", "num_vms", "direction", "system", "vnf"]
+    args_reboot = ["interface", "num_vms", "direction", "system", "vnf", "size"]
     info(f"ThroughputTest execution plan:")
     ThroughputTest.estimate_time2(tests, args_reboot)
 
@@ -395,8 +475,9 @@ def main(measurement: Measurement, plan_only: bool = False) -> None:
             args_reboot = args_reboot,
             brief = G.BRIEF
             ) as (bench, bench_tests):
-        for [num_vms, interface, direction, system, vnf], a_tests in bench.multi_iterator(bench_tests, ["num_vms", "interface", "direction", "system", "vnf"]):
+        for [num_vms, interface, direction, system, vnf, size], a_tests in bench.multi_iterator(bench_tests, ["num_vms", "interface", "direction", "system", "vnf", "size"]):
             interface = Interface(interface)
+
             info("Booting VM for this test matrix:")
             info(ThroughputTest.test_matrix_string(a_tests))
 
@@ -404,10 +485,45 @@ def main(measurement: Measurement, plan_only: bool = False) -> None:
             test = a_tests[0]
             info(f"Running {test}")
 
+
+            debug('Binding loadgen interface')
+            loadgen.modprobe_test_iface_drivers()
+            loadgen.release_test_iface() # bind linux driver
+            try:
+                loadgen.delete_nic_ip_addresses(loadgen.test_iface)
+            except Exception:
+                pass
+            if test.vnf == "nat":
+                loadgen.exec(f"sudo ip address add {TEST_CLIENT_IP}/32 dev {loadgen.test_iface}")
+            loadgen.setup_test_iface_ip_net()
+
+
             if system in [ "uk", "ukebpf", "ukebpfjit" ]:
                 files, element = test.click_config()
                 click_config = ""
-                if test.direction == "tx":
+                if test.vnf == "nat":
+                    click_config = click_configs.nat(
+                        interface=unikraft_interface,
+                        guest_ip=GUEST_IP,
+                        guest_mac=measurement.guest.test_iface_mac,
+                        gw_ip=strip_subnet_mask(loadgen.test_iface_ip_net),
+                        gw_mac=loadgen.test_iface_mac,
+                        src_ip=TEST_CLIENT_IP,
+                        src_mac=loadgen.test_iface_mac,
+                        dst_ip=strip_subnet_mask(loadgen.test_iface_ip_net),
+                        dst_mac=measurement.guest.test_iface_mac,
+                        size=test.size,
+                        direction=test.direction,
+                        rewriter=element
+                    )
+                elif test.vnf == "mirror":
+                    click_config = click_configs.mirror(
+                        interface=unikraft_interface,
+                        ip=strip_subnet_mask(loadgen.test_iface_ip_net),
+                        mac=loadgen.test_iface_mac,
+                        extra_element=element
+                    )
+                elif test.direction == "tx":
                     click_config = click_tx_config(unikraft_interface, size=test.size, dst_mac=loadgen.test_iface_mac, extra_processing=element)
                 elif test.direction == "rx":
                     click_config = click_rx_config(unikraft_interface, extra_processing=element)

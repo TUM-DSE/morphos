@@ -28,5 +28,6 @@ class Globals:
     """
     OUT_DIR = "/tmp/uninitialized"
     BRIEF = False
+    DURATION_S = 0
 
 G: Globals = Globals()

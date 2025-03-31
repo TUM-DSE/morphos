@@ -34,6 +34,7 @@ in pkgs.stdenv.mkDerivation {
         pushd $sourceRoot/libs/unikraft
         echo Patching $(pwd)
         patch -p1 < ../../nix/unikraft.disable-assert.patch
+        patch -p1 < ../../nix/unikraft.portIO.patch
         popd
 
         srcsUnpack ${inputs.lib-musl} libs/musl

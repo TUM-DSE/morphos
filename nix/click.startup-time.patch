@@ -1,0 +1,59 @@
+From fd565912513b28e3427f23b1c447fa80750f86f5 Mon Sep 17 00:00:00 2001
+From: Pogobanane <aenderboy@gmx.de>
+Date: Sat, 15 Mar 2025 20:54:13 +0000
+Subject: [PATCH] Startup tracing: print timestamps
+
+---
+ userlevel/click.cc | 21 +++++++++++++++++++--
+ 1 file changed, 19 insertions(+), 2 deletions(-)
+
+diff --git a/userlevel/click.cc b/userlevel/click.cc
+index 3ed152625..8b826d061 100644
+--- a/userlevel/click.cc
++++ b/userlevel/click.cc
+@@ -110,6 +110,21 @@ static const Clp_Option options[] = {
+ 
+ static const char *program_name;
+ 
++void print_time(const char *label) {
++    struct timespec ts;
++
++    if (clock_gettime(CLOCK_MONOTONIC, &ts) != 0) {
++        perror("clock_gettime failed");
++        return;
++    }
++
++    // Convert to nanoseconds
++    uint64_t time_ns = (uint64_t)ts.tv_sec * 1000000000ULL + (uint64_t)ts.tv_nsec;
++
++    // Print the time in nanoseconds
++    printf("Startup trace (nsec): %s: %lu\n", label, time_ns);
++}
++
+ void
+ short_usage()
+ {
+@@ -397,9 +412,10 @@ parse_configuration(const String &text, bool text_is_expr, bool hotswap,
+       router->set_hotswap_router(click_router);
+ 
+   if (errh->nerrors() == before_errors
+-      && router->initialize(errh) >= 0)
++      && router->initialize(errh) >= 0) {
++    print_time("init done");
+     return router;
+-  else {
++  } else {
+     delete router;
+     return 0;
+   }
+@@ -516,6 +532,7 @@ void do_set_affinity(pthread_t p, int cpu) {
+ int
+ main(int argc, char **argv)
+ {
++  print_time("main");
+   click_static_initialize();
+   errh = ErrorHandler::default_handler();
+ 
+-- 
+2.47.0
+

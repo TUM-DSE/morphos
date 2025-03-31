@@ -15,6 +15,8 @@
 //
 // Author: Thomer M. Gil (click@thomer.com)
 
+define($DEV0 0)
+
 AddressInfo(
     dev0-in     172.44.0.2    172.44.0.2/24    00:0d:87:9d:1c:e9,
     dev0-ex     172.44.0.3                     00:0d:87:9d:1c:e9,
@@ -25,7 +27,7 @@ AddressInfo(
 elementclass SniffGatewayDevice {
   $device |
   from :: FromDevice($device)
-    -> Print('Received packet from device')
+    -> Print2('Received packet from device')
     -> t1 :: Tee
     -> output;
   input -> q :: Queue(1024)
@@ -37,7 +39,7 @@ elementclass SniffGatewayDevice {
 }
 
 
-device :: SniffGatewayDevice(0);
+device :: SniffGatewayDevice($DEV0);
 arpq_in :: ARPQuerier(dev0-in) -> device;
 ip_to_extern :: GetIPAddress(16)
         -> CheckIPHeader
@@ -97,14 +99,14 @@ ierw[1] -> icmp_me_or_intern;
 // Send it through IPRewriter(pass).  If there was a mapping, it will be
 // rewritten such that dst is dev0-in:net, otherwise dst will still be for
 // dev0-ex.
-ipclass[0] -> [1]rw;
+ipclass[0] -> Print("->1x") -> [1]rw;
 
 // packets that were rewritten, heading into the wild world.
-rw[0] -> ip_to_extern;
+rw[0] -> Print("0->") -> ip_to_extern;
 
 // packets that come back from the wild or are not part of an established
 // connection.
-rw[1] -> established_class :: IPClassifier(dst host dev0-ex,
+rw[1] -> Print("1->") -> established_class :: IPClassifier(dst host dev0-ex,
                                            dst net dev0-in);
 
          // not established yet or returning packets for a connection that was
@@ -142,5 +144,5 @@ ipclass[2] -> inter_class :: IPClassifier(dst net dev0-in, -);
               inter_class[0] -> ip_to_intern;
               inter_class[1] -> ip_udp_class :: IPClassifier(tcp or udp,
                                                              icmp type echo);
-                                ip_udp_class[0] -> [0]rw;
+                                ip_udp_class[0] -> Print("->0") -> [0]rw;
                                 ip_udp_class[1] -> [0]irw;
