@@ -326,7 +326,8 @@ class LatencyTest(AbstractBenchTest):
                 dst_mac=measurement.guest.test_iface_mac,
                 size=self.size,
                 direction=self.direction,
-                rewriter=element
+                rewriter=element,
+                is_tx=True,
             )
         elif self.vnf == "mirror":
             config = click_configs.mirror(
@@ -552,7 +553,8 @@ def main(measurement: Measurement, plan_only: bool = False) -> None:
                         dst_mac=measurement.guest.test_iface_mac,
                         size=test.size,
                         direction=test.direction,
-                        rewriter=element
+                        rewriter=element,
+                        is_tx=True,
                     )
                 elif test.vnf == "mirror":
                     click_config = click_configs.mirror(
