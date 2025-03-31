@@ -127,18 +127,19 @@ bool
 ToDevice::run_task(Task *)
 {
 	Packet* p;
+	int i = 0;
 	p = input(0).pull();
-	if (p) {
+	for (int i = 0; p && i < 128; i++) { // burstsize 128
 		push(0, p);
+		p = input(0).pull();
 	}
 
-	uk_sched_yield();
+	// uk_sched_yield();
 
 	/* TODO: should only fast_reschedule when there is more work to do? */
 	_task.fast_reschedule();
 
-	// return true; // we did useful work
-	return !!p;
+	return i > 0; // return true if we did useful work
 }
 
 CLICK_ENDDECLS
