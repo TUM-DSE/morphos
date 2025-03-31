@@ -479,15 +479,15 @@ def main(measurement: Measurement, plan_only: bool = False) -> None:
         # directions = [ "rx", "tx" ]
         # systems = [ "linux", "uk", "ukebpfjit" ]
         # systems = [ "uk", "ukebpfjit" ]
-        # systems = [ "uk" ]
+        systems = [ "uk" ]
         # systems = [ "ukebpfjit" ]
-        systems = [ "linux" ]
+        # systems = [ "linux" ]
         vm_nums = [ 1 ]
         # vm_nums = [ 128, 160 ]
         # vnfs = [ "empty" ]
         sizes = [ 64 ]
         rates = [ 100 ]
-        vnfs = [ "mirror" ]
+        vnfs = [ "nat" ]
         repetitions = 1
 
     def exclude(test):
@@ -532,6 +532,7 @@ def main(measurement: Measurement, plan_only: bool = False) -> None:
 
 
             debug('Binding loadgen interface')
+            loadgen.delete_nic_ip_addresses(loadgen.test_iface)
             loadgen.bind_test_iface() # bind DPDK driver
 
 

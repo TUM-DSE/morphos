@@ -116,6 +116,12 @@ const CONFIGURATIONS: &[Configuration] = &[
         click_config: "-> BPFRewriter(ID 1, FILE firewall-2, SIGNATURE firewall-2.sig, JIT true)",
     },
     Configuration {
+        name: "firewall-1000-jit",
+        bpfilter_program: "firewall-1000",
+        signature_file: "firewall-1000.sig",
+        click_config: "-> BPFRewriter(ID 1, FILE firewall-1000, SIGNATURE firewall-1000.sig, JIT true)",
+    },
+    Configuration {
         name: "firewall-10000-jit",
         bpfilter_program: "firewall-10000",
         signature_file: "firewall-10000.sig",

@@ -427,18 +427,21 @@ def main(measurement: Measurement, plan_only: bool = False) -> None:
         G.DURATION_S = max(30, G.DURATION_S)
     if G.BRIEF:
         # interfaces = [ Interface.BRIDGE ]
-        interfaces = [ Interface.BRIDGE_VHOST ]
-        # interfaces = [ Interface.VPP ]
+        # interfaces = [ Interface.BRIDGE_VHOST ]
+        interfaces = [ Interface.VPP ]
         # interfaces = [ Interface.BRIDGE_VHOST, Interface.VPP ]
+        # directions = [ "rx", "tx" ]
         directions = [ "rx" ]
         # systems = [ "linux", "uk", "ukebpfjit" ]
+        # systems = [ "uk", "ukebpfjit" ]
+        # systems = [ "uk" ]
         # systems = [ "ukebpfjit" ]
         systems = [ "linux" ]
         vm_nums = [ 1 ]
         # vm_nums = [ 128, 160 ]
         # vnfs = [ "empty" ]
         sizes = [ 64 ]
-        vnfs = [ "nat" ]
+        vnfs = [ "mirror" ]
         repetitions = 1
 
     def exclude(test):

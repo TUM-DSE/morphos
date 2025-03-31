@@ -46,9 +46,6 @@ def click_rx_config(from_device: str, extra_processing: str = "") -> str:
 
 Script(TYPE ACTIVE,
        print "sleeping first increases startup time"
-       print "sleeping first increases startup time"
-       print "sleeping first increases startup time"
-       print "sleeping first increases startup time"
        wait 5ms,
        label start,
        print "Rx rate: $(ic0.rate)",
@@ -170,21 +167,23 @@ def main(measurement: Measurement, plan_only: bool = False) -> None:
         "ukebpfjit"
     ]
     vm_nums = [ 1 ]
-    vnfs = [ "empty", "filter", "ids", "mirror", "nat", "firewall-2", "firewall-10000" ]
+    vnfs = [ "empty", "filter", "ids", "mirror", "nat", "firewall-2", "firewall-1000" ]
     repetitions = 3
     iterations = 10 # some benchmarks need to be told how often to run before returning
     G.DURATION_S = 0
     if G.BRIEF:
         # systems = [ "linux", "uk", "ukebpfjit" ]
         # systems = [ "uk", "ukebpfjit" ]
-        # systems = [ "uk" ]
+        # systems = [ "ukebpfjit" ]
         # systems = [ "uk", "uktrace", "linux" ]
         # systems = [ "xdp" ]
-        systems = [ "linux" ]
-        # vnfs = [ "empty" ]
-        vnfs = [ "firewall-10000" ]
+        systems = [ "uktrace" ]
+        # systems = [ "linux" ]
+        vnfs = [ "empty" ]
+        # vnfs = [ "nat" ]
+        # vnfs = [ "firewall-10000" ]
         # vnfs = [ "empty", "filter", "ids", "mirror", "nat", "firewall-2" ]
-        repetitions = 3
+        repetitions = 1
         iterations = 1
 
     def exclude(test):
