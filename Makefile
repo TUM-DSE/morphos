@@ -1,4 +1,13 @@
 build:
+	# Check which unikraft is checked out
+	# @if [[ $$(git submodule status -- libs/unikraft) = *"$$(jq -r '.nodes.unikraft.locked.rev' flake.lock)"* ]]; then \
+	# Check which version of the unikraft submodule is committed to git
+	@if [[ $$(git ls-tree HEAD libs/unikraft) = *"$$(jq -r '.nodes.unikraft.locked.rev' flake.lock)"* ]]; then \
+		echo "lib/unikraft in sync"; \
+	else \
+		echo "ERROR: git specifies lib/unikraft to be at another commit than expected by flake.nix/.lock"; \
+		exit 1; \
+	fi
 	# Hack to fix missing invalidation of copied Click elements
 	rm -rf .unikraft/build/libclick/origin/click-a5384835a6cac10f8d44da4eeea8eaa8f8e6a0c2/elements/unikraft || true
 	mkdir -p .unikraft/build/libclick/origin/click-a5384835a6cac10f8d44da4eeea8eaa8f8e6a0c2/elements/unikraft || true
