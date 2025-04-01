@@ -23,6 +23,8 @@ unikraft:
     CONFIG_LIBUKCPIO: 'y'
     CONFIG_LIBRAMFS: 'y'
     CONFIG_LIBUK9P: 'y'
+    CONFIG_LIBPKU: 'y'
+    CONFIG_PAGING: 'y'
 targets:
   - architecture: x86_64
     platform: kvm
