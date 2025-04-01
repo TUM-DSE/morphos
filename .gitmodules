@@ -6,4 +6,4 @@
 	url = git@github.com:kohler/click.git
 [submodule "libs/unikraft"]
 	path = libs/unikraft
-	url = https://github.com/unikraft/unikraft.git
+	url = https://github.com/TUM-DSE/unibpf-unikraft.git
