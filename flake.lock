@@ -682,17 +682,17 @@
     "unikraft": {
       "flake": false,
       "locked": {
-        "lastModified": 1710966246,
-        "narHash": "sha256-prYb7vjps7cQA5Cfaf9tofBqk8xOMhFJjGpZ3I369iQ=",
-        "owner": "unikraft",
-        "repo": "unikraft",
-        "rev": "e453b74a2e78a0de98563d75d8e0a97e668088e6",
+        "lastModified": 1743521180,
+        "narHash": "sha256-jguGThJ++y+/73OjsnuUdgeoMemnC0Fi6RtQiBcsz30=",
+        "owner": "TUM-DSE",
+        "repo": "unibpf-unikraft",
+        "rev": "2b265c47053fc8483a9c59ca61e55d1718870680",
         "type": "github"
       },
       "original": {
-        "owner": "unikraft",
-        "ref": "RELEASE-0.16.3",
-        "repo": "unikraft",
+        "owner": "TUM-DSE",
+        "ref": "release-0.16.3-mpk",
+        "repo": "unibpf-unikraft",
         "type": "github"
       }
     },

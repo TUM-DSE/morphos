@@ -19,7 +19,7 @@
 
     unikraft = {
       flake = false;
-      url = "github:unikraft/unikraft/RELEASE-0.16.3";
+      url = "github:TUM-DSE/unibpf-unikraft/release-0.16.3-mpk";
     };
 
     lib-musl = {
