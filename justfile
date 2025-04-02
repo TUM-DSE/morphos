@@ -111,7 +111,7 @@ build-click-og:
 
 
 downloadLibs:
-    @nix develop .#unikraft --command bash -c 'sourceRoot=$(pwd); eval "$postUnpack"'
+    @nix develop .#unikraft --command bash -c 'sourceRoot=$(pwd); export SKIP_UNPACK_UNIKRAFT=1; eval "$postUnpack"'
 
 kill:
         sudo pkill -f "clicknet"

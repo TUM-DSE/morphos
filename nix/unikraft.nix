@@ -30,7 +30,7 @@ in pkgs.stdenv.mkDerivation {
             chmod -R u+w $sourceRoot/$2
         }
 
-        srcsUnpack ${inputs.unikraft} libs/unikraft
+        [[ $SKIP_UNPACK_UNIKRAFT == "1" ]] || srcsUnpack ${inputs.unikraft} libs/unikraft
         # pushd $sourceRoot/libs/unikraft
         # echo Patching $(pwd)
         # patch -p1 < ../../nix/unikraft.disable-assert.patch
