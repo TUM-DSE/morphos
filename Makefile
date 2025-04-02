@@ -14,3 +14,9 @@ build:
 	cp -r libs/click/unikraft .unikraft/build/libclick/origin/click-a5384835a6cac10f8d44da4eeea8eaa8f8e6a0c2/elements
 
 	kraft build --log-type basic $(EXTRA_KRAFT_ARGS)
+
+cleanbuild:
+	sudo rm -rf .unikraft || true
+	sudo rm .config.click_qemu-x86_64 || true
+	just downloadLibs
+	nix develop .#fhsMake

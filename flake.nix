@@ -350,6 +350,26 @@
               # KRAFTKIT_NO_WARN_SUDO = "1";
               # KRAFTKIT_NO_CHECK_UPDATES = "true";
             }).env;
+          fhsMake =
+            (pkgs.buildFHSEnv {
+              name = "devShell";
+              targetPkgs =
+                pkgs:
+                (
+                  (buildDeps pkgs)
+                  ++ (prevailDeps pkgs)
+                  ++ [
+                    unstable.kraft
+                    unstable.rustup
+                    unstable.bmon
+                    unstable.gh
+                    unstable.just
+                  ]
+                );
+              runScript = "bash -c \"KRAFTKIT_NO_CHECK_UPDATES=true make\"";
+              # runScript = "bash -c \"NIX_LDFLAGS=' --trace-symbol=pkey_mprotect ' KRAFTKIT_NO_CHECK_UPDATES=true make\"";
+              # runScript = "bash -c \"NIX_LDFLAGS=' --trace-symbol=pkey_mprotect --verbose=1 ' KRAFTKIT_NO_CHECK_UPDATES=true make\"";
+            }).env;
         };
 
       }
