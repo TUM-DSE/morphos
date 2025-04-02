@@ -515,7 +515,7 @@ int CLICK_MAIN(int argc, char **argv)
 	outb(0xf4, 0xFE);
 	printf("Startup trace (nsec): click main(): %lu\n", ukplat_monotonic_clock());
 
-	test_mpk();
+	// test_mpk();
 
 	struct uk_thread *router;
 
