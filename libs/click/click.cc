@@ -109,8 +109,9 @@ void test_mpk() {
 		uk_pr_err("Could not allocate pkey %d\n", key);
 		return;
 	}
+	uk_pr_err("Allocated pkey %d\n", key);
 
-	uint pages = 1;
+	uint pages = 2;
 
 	// struct uk_pagetable *pt = ukplat_pt_get_active();
 	// UK_ASSERT(pt != 0);
@@ -119,19 +120,38 @@ void test_mpk() {
 	// UK_ASSERT(rc == 0);
 	// ukplat_page_unmap(...);
 
-	void* page = uk_memalign(uk_alloc_get_default(), __PAGE_SIZE, pages*__PAGE_SIZE);
+	char* page = (char*)uk_memalign(uk_alloc_get_default(), __PAGE_SIZE, pages*__PAGE_SIZE);
 	if (!page) {
 		uk_pr_err("Could not allocate page\n");
 		return;
 	}
 
+	// protect first page with pkey
 	rc = pkey_mprotect(page, __PAGE_SIZE, PROT_READ | PROT_WRITE, key);
 	if (rc < 0) {
 		uk_pr_err("Could not set pkey for thread stack %d\n", errno);
 		return;
 	}
 
+	*page = 7; // first page should work
+	uk_pr_err("write ok\n");
+
+	// prohibit access to pkey
+	pkey_set_perm(0, key);
+	uk_pr_err("set perm 0\n");
+
+	// pkey_set_perm(PROT_READ | PROT_WRITE, key);
+	// uk_pr_err("set perm read+write\n");
+
+  // now we don't have access to the page anymore
+	*page = 7;
+	uk_pr_err("write ok\n"); // never reached, because previous line faults
+
+	// *(page + __PAGE_SIZE) = 7; // second page should fail
+
 	uk_free(uk_alloc_get_default(), page);
+
+	uk_pr_err("MPK test done\n");
 
 }
 
