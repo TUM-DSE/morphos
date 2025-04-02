@@ -29,6 +29,8 @@
 #include <sys/mman.h>
 #include <errno.h>
 #include "ubpf_int.h"
+#include <uk/pku.h>
+#include <uk/plat/paging.h>
 
 int
 ubpf_translate_ex(struct ubpf_vm* vm, uint8_t* buffer, size_t* size, char** errmsg, enum JitMode jit_mode)
@@ -137,7 +139,18 @@ ubpf_compile_ex(struct ubpf_vm* vm, char** errmsg, enum JitMode mode)
         goto out;
     }
 
-    jitted = mmap(0, jitted_size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+    /* jitted = mmap(0, jitted_size, PROT_READ | PROT_WRITE | PROT_EXEC, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0); */
+    int pages = (jitted_size / __PAGE_SIZE) + 1;
+    struct uk_pagetable *pt = ukplat_pt_get_active();
+    jitted = (void*)0x80000000;
+    int rc = ukplat_page_map(pt, jitted,
+		     __PADDR_ANY, pages,
+		     PAGE_ATTR_PROT_READ | PAGE_ATTR_PROT_WRITE | PAGE_ATTR_PROT_EXEC, 0);
+	if (rc) {
+        *errmsg = ubpf_error("can't allocate memory for JIT code: %s\n", strerror(errno));
+        return NULL;
+	}
+
     if (jitted == MAP_FAILED) {
         *errmsg = ubpf_error("internal uBPF error: mmap failed: %s\n", strerror(errno));
         goto out;
@@ -145,10 +158,15 @@ ubpf_compile_ex(struct ubpf_vm* vm, char** errmsg, enum JitMode mode)
 
     memcpy(jitted, buffer, jitted_size);
 
-    if (mprotect(jitted, jitted_size, PROT_READ | PROT_EXEC) < 0) {
-        *errmsg = ubpf_error("internal uBPF error: mprotect failed: %s\n", strerror(errno));
-        goto out;
-    }
+    /* printf("calling mprotect\n"); */
+    /* rc = ukplat_page_set_attr(pt, jitted, */
+			 /* pages, unsigned long new_attr, */
+			 /* unsigned long flags); */
+    /* if (mprotect(jitted, jitted_size, PROT_READ | PROT_EXEC) < 0) { */
+    /*     *errmsg = ubpf_error("internal uBPF error: mprotect failed: %s\n", strerror(errno)); */
+    /*     printf("internal uBPF error: mprotect failed: %s\n", strerror(errno)); */
+    /*     goto out; */
+    /* } */
 
     vm->jitted = jitted;
     vm->jitted_size = jitted_size;
