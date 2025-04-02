@@ -39,6 +39,7 @@ extern "C"{
 #include <string.h>
 #include <poll.h>
 #include <dirent.h>
+#include <uk/pku.h>
 }
 
 #include <click/config.h>
@@ -57,6 +58,8 @@ extern "C"{
 #include <uk/thread.h>
 #include <uk/netdev.h>
 #include <uk/plat/memory.h>
+// #include <uk/plat/paging.h>
+#include <sys/mman.h>
 
 int click_nthreads = 1;
 void *__dso_handle = NULL;
@@ -96,6 +99,40 @@ read_rid(char *path)
 	char *id_end = strchr(id, '/');
 	*id_end = '\0';
 	return id;
+}
+
+void test_mpk() {
+	int rc;
+
+	int key = pkey_alloc(0, 0);
+	if (key < 0) {
+		uk_pr_err("Could not allocate pkey %d\n", key);
+		return;
+	}
+
+	uint pages = 1;
+
+	// struct uk_pagetable *pt = ukplat_pt_get_active();
+	// UK_ASSERT(pt != 0);
+	// static void *vaddr = (void*) 0x80000000;
+	// rc = ukplat_page_map(pt, (long long) vaddr, __PADDR_ANY, pages, attr, 0);
+	// UK_ASSERT(rc == 0);
+	// ukplat_page_unmap(...);
+
+	void* page = uk_memalign(uk_alloc_get_default(), __PAGE_SIZE, pages*__PAGE_SIZE);
+	if (!page) {
+		uk_pr_err("Could not allocate page\n");
+		return;
+	}
+
+	rc = pkey_mprotect(page, __PAGE_SIZE, PROT_READ | PROT_WRITE, key);
+	if (rc < 0) {
+		uk_pr_err("Could not set pkey for thread stack %d\n", errno);
+		return;
+	}
+
+	uk_free(uk_alloc_get_default(), page);
+
 }
 
 #if CLICK_CONSOLE_SUPPORT_IMPLEMENTED
@@ -457,6 +494,9 @@ int CLICK_MAIN(int argc, char **argv)
 {
 	outb(0xf4, 0xFE);
 	printf("Startup trace (nsec): click main(): %lu\n", ukplat_monotonic_clock());
+
+	test_mpk();
+
 	struct uk_thread *router;
 
 	click_static_initialize();
