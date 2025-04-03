@@ -13,9 +13,11 @@
 #include <vector>
 #include <string>
 
+extern "C" {
 #include <sys/mman.h>
 #include <uk/pku.h>
 #include <uk/plat/paging.h>
+}
 
 #include "bpfelement.hh"
 
@@ -180,11 +182,7 @@ int BPFElement::check_bpf_verification_signature(ErrorHandler *errh) {
 int BPFElement::allocte_jit_stack() {
     UK_ASSERT(UBPF_EBPF_STACK_SIZE < __PAGE_SIZE);
     int pages = 1;
-    struct uk_pagetable *pt = ukplat_pt_get_active();
-    void* ebpf_stack = (void*)0x80000000 + __PAGE_SIZE; // the fist page at 0x80... is already used by ubpf_jit.c:ubpf_compile_ex()
-    int rc = ukplat_page_mapx(pt, (__vaddr_t)ebpf_stack,
-		     __PADDR_ANY, pages,
-		     PAGE_ATTR_PROT_READ | PAGE_ATTR_PROT_WRITE, 0, NULL);
+	void* ebpf_stack = (char*)uk_memalign(uk_alloc_get_default(), __PAGE_SIZE, pages*__PAGE_SIZE);
     _ubpf_jit_stack = ebpf_stack;
     _ubpf_jit_stack_len = UBPF_EBPF_STACK_SIZE;
     if (_ubpf_jit_stack == NULL) {
