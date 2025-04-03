@@ -49,8 +49,10 @@ private:
     int check_bpf_verification_signature(ErrorHandler *errh);
     int allocte_jit_stack();
 
-    void ebpf_enter_mpk();
-    void ebpf_exit_mpk();
+    // void ebpf_enter_mpk();
+    // void ebpf_exit_mpk();
+
+    uint32_t bpf_get_prandom_u32(void);
 
     CLICK_COLD;
 };
