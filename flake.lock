@@ -724,11 +724,11 @@
         "xdp-reflector-src": "xdp-reflector-src"
       },
       "locked": {
-        "lastModified": 1734603389,
-        "narHash": "sha256-dzO9uzWR5u+NS/YDBYIW4rP+N38uhJ/pk+y2wVWNT6o=",
+        "lastModified": 1743678804,
+        "narHash": "sha256-eGqW/ZAfUtlZPpOuJGECfSHUROJPsxx9+f4R20yrHd4=",
         "owner": "vmuxIO",
         "repo": "vmuxIO",
-        "rev": "f83c843cc0d291837c79a6f077633e9abfa01566",
+        "rev": "7550a8ec50d821b0075e353f757aa80914c28722",
         "type": "github"
       },
       "original": {
