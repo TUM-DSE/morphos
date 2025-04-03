@@ -39,10 +39,13 @@ private:
     String _signature_file;
 
     struct bpf_map_ctx *_bpf_map_ctx;
-    ubpf_jit_fn _ubpf_jit_fn;
+    ubpf_jit_ex_fn _ubpf_jit_ex_fn;
+    void* _ubpf_jit_stack;
+    size_t _ubpf_jit_stack_len;
 
     void init_ubpf_vm();
     int check_bpf_verification_signature(ErrorHandler *errh);
+    int allocte_jit_stack();
 
     CLICK_COLD;
 };

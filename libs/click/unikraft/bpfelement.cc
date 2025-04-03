@@ -13,6 +13,10 @@
 #include <vector>
 #include <string>
 
+#include <sys/mman.h>
+#include <uk/pku.h>
+#include <uk/plat/paging.h>
+
 #include "bpfelement.hh"
 
 CLICK_DECLS
@@ -173,6 +177,23 @@ int BPFElement::check_bpf_verification_signature(ErrorHandler *errh) {
     return 0;
 }
 
+int BPFElement::allocte_jit_stack() {
+    UK_ASSERT(UBPF_EBPF_STACK_SIZE < __PAGE_SIZE);
+    int pages = 1;
+    struct uk_pagetable *pt = ukplat_pt_get_active();
+    void* ebpf_stack = (void*)0x80000000 + __PAGE_SIZE; // the fist page at 0x80... is already used by ubpf_jit.c:ubpf_compile_ex()
+    int rc = ukplat_page_mapx(pt, (__vaddr_t)ebpf_stack,
+		     __PADDR_ANY, pages,
+		     PAGE_ATTR_PROT_READ | PAGE_ATTR_PROT_WRITE, 0, NULL);
+    _ubpf_jit_stack = ebpf_stack;
+    _ubpf_jit_stack_len = UBPF_EBPF_STACK_SIZE;
+    if (_ubpf_jit_stack == NULL) {
+        return -1;
+    }
+
+    return 0;
+}
+
 int BPFElement::configure(Vector <String> &conf, ErrorHandler *errh) {
     if (conf.empty()) {
         return -1;
@@ -213,6 +234,12 @@ int BPFElement::configure(Vector <String> &conf, ErrorHandler *errh) {
         if (_ubpf_vm == NULL) {
             return errh->error("Error initializing ubpf vm\n");
         }
+        if (_jit) {
+            if (this->allocte_jit_stack()) {
+                return errh->error("Error allocating JIT stack\n");
+            }
+
+        }
     }
 
     uk_rwlock_wlock(&_lock);
@@ -240,8 +267,8 @@ int BPFElement::configure(Vector <String> &conf, ErrorHandler *errh) {
 	uint64_t ts_validate = ukplat_monotonic_clock();
 
     if (_jit) {
-        _ubpf_jit_fn = ubpf_compile(_ubpf_vm, &error_msg);
-        if (_ubpf_jit_fn == NULL) {
+        _ubpf_jit_ex_fn = ubpf_compile_ex(_ubpf_vm, &error_msg, ExtendedJitMode);
+        if (_ubpf_jit_ex_fn == NULL) {
             return errh->error("Error compiling ubpf program: %s\n", error_msg);
         }
     }
@@ -274,7 +301,17 @@ int BPFElement::configure(Vector <String> &conf, ErrorHandler *errh) {
     return 0;
 }
 
+inline void ebpf_enter_mpk() {
+    // TODO
+}
+
+inline void ebpf_exit_mpk() {
+    // TODO
+}
+
 uint32_t BPFElement::exec(int port, Packet *p) {
+    uint64_t ret = 0;
+
     auto ctx = (bpfelement_md) {
             .data = (void *) p->data(),
             .data_end = (void *) p->end_data(),
@@ -282,16 +319,21 @@ uint32_t BPFElement::exec(int port, Packet *p) {
     };
 
     if (_jit) {
-        return (uint32_t) _ubpf_jit_fn(&ctx, sizeof(ctx));
+        ebpf_enter_mpk();
+        // ret = (uint32_t) _ubpf_jit_fn(&ctx, sizeof(ctx));
+        ret = (uint64_t) _ubpf_jit_ex_fn(&ctx, sizeof(ctx), (uint8_t*)this->_ubpf_jit_stack, this->_ubpf_jit_stack_len);
+        ebpf_exit_mpk();
     } else {
-        uint64_t ret;
+        ebpf_enter_mpk();
         if (ubpf_exec(_ubpf_vm, &ctx, sizeof(ctx), &ret) != 0) {
+            ebpf_exit_mpk();
             uk_pr_err("Error executing bpf program\n");
-            return -1;
+            ret = -1;
+        } else {
+            ebpf_exit_mpk();
         }
-
-        return (uint32_t) ret;
     }
+    return ret;
 }
 
 CLICK_ENDDECLS
