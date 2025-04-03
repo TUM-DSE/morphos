@@ -111,7 +111,7 @@ build-click-og:
 
 
 downloadLibs:
-    @nix develop .#unikraft --command bash -c 'sourceRoot=$(pwd); eval "$postUnpack"'
+    @nix develop .#unikraft --command bash -c 'sourceRoot=$(pwd); export SKIP_UNPACK_UNIKRAFT=1; eval "$postUnpack"'
 
 kill:
         sudo pkill -f "clicknet"
@@ -157,7 +157,7 @@ natebpf-cpio:
 vm: natebpf-cpio
     sudo taskset -c 3,4 qemu-system-x86_64 \
         -accel kvm -cpu max \
-        -m 4G -object memory-backend-file,id=mem,size=4G,mem-path=/dev/hugepages,share=on \
+        -m 12G -object memory-backend-file,id=mem,size=12G,mem-path=/dev/hugepages,share=on \
         -mem-prealloc -numa node,memdev=mem \
         -netdev bridge,id=en0,br=clicknet \
         -device virtio-net-pci,netdev=en0 \

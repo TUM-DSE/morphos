@@ -19,7 +19,7 @@
 
     unikraft = {
       flake = false;
-      url = "github:unikraft/unikraft/RELEASE-0.16.3";
+      url = "github:TUM-DSE/unibpf-unikraft/release-0.16.3-mpk";
     };
 
     lib-musl = {
@@ -92,7 +92,7 @@
       flake = false;
     };
 
-    vmux.url = "github:vmuxIO/vmuxIO";
+    vmux.url = "github:vmuxIO/vmuxIO/dev/update-moongen";
   };
 
   outputs =
@@ -349,6 +349,26 @@
               runScript = "bash";
               # KRAFTKIT_NO_WARN_SUDO = "1";
               # KRAFTKIT_NO_CHECK_UPDATES = "true";
+            }).env;
+          fhsMake =
+            (pkgs.buildFHSEnv {
+              name = "devShell";
+              targetPkgs =
+                pkgs:
+                (
+                  (buildDeps pkgs)
+                  ++ (prevailDeps pkgs)
+                  ++ [
+                    unstable.kraft
+                    unstable.rustup
+                    unstable.bmon
+                    unstable.gh
+                    unstable.just
+                  ]
+                );
+              runScript = "bash -c \"KRAFTKIT_NO_CHECK_UPDATES=true make\"";
+              # runScript = "bash -c \"NIX_LDFLAGS=' --trace-symbol=pkey_mprotect ' KRAFTKIT_NO_CHECK_UPDATES=true make\"";
+              # runScript = "bash -c \"NIX_LDFLAGS=' --trace-symbol=pkey_mprotect --verbose=1 ' KRAFTKIT_NO_CHECK_UPDATES=true make\"";
             }).env;
         };
 

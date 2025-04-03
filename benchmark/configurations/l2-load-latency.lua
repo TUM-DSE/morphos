@@ -82,7 +82,16 @@ function master(args)
 	      args.ethertypes
 	    )
   end
-	mg.startTask("txTimestampThread", dev:getTxQueue(args.threads), args.size, args.mac)
+	mg.startTask("txTimestampThread",
+			dev:getTxQueue(args.threads),
+	    dev:getMac(true),
+	    args.mac,
+	    args.srcIp,
+	    args.dstIp,
+	    args.srcPort,
+	    args.dstPort,
+	    args.size
+	)
 	mg.startTask("rxTimestamps", dev:getRxQueue(0), args.mac, args.file)
 	-- start measuring
 	stats.startStatsTask{dev}
@@ -176,21 +185,28 @@ function loadSlave(queue, srcMac, dstMac, srcIp, dstIp, srcPort, dstPort, pktSiz
 	end
 end
 
-function txTimestampThread(txQueue, pktSize, dstMac)
+function txTimestampThread(txQueue, srcMac, dstMac, srcIp, dstIp, srcPort, dstPort, pktSize)
+	local pktSize = 84
+	print(pktSize)
 	local mem = memory.createMemPool(function(buf)
-		local pkt = buf:getPtpPacket()
-		pkt.eth:fill{
+		buf:getUdpPtpPacket():fill{
 			ethSrc = txQueue,
 			ethDst = dstMac,
-			ethType = eth.TYPE_PTP,
+			ethType = 0x0800,
+			ip4Src = srcIp,
+			ip4Dst = dstIp,
+			udpSrc = srcPort,
+			udpDst = 0x10,
+			pktLength = pktSize,
 		}
-		pkt.eth:setType(eth.TYPE_PTP)
+		buf:getIP4Packet().ip4:calculateChecksum()
 	end)
 	-- mg.sleepMillis(1000) -- ensure that the load task is running
 	local rateLimit = timer:new(0.001) -- 1000 latency samples per second
 	local bufs = mem:bufArray(1)
 	while mg.running() do
     bufs:alloc(pktSize)
+    -- bufs[1]:dump()
     txQueue:sendWithTimestamp(bufs) -- see for a full software example: https://github.com/emmericp/MoonGen/blob/master/examples/timestamping-tests/timestamps-software.lua
     rateLimit:wait()
   	rateLimit:reset()
@@ -208,7 +224,7 @@ function rxTimestamps(rxQueue, dstMac, histfile)
 	while mg.running() do
 		local numPkts = rxQueue:recvWithTimestamps(bufs)
 		for i = 1, numPkts do
-			if bufs[i]:getEthernetPacket().eth:getType() == eth.TYPE_PTP then
+			if bufs[i]:getUdpPacket().udp:getDstPort() == 0x10 then
 				local rxTs = dpdkc.get_timestamp_dynfield(bufs[i])
 				local txTs = bufs[i]:getSoftwareTxTimestamp()
 				local latency = tonumber(rxTs - txTs) / tscFreq * 10^9 -- to nanoseconds

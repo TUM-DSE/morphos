@@ -43,7 +43,7 @@ def mirror(interface: str, ip: str, mac: str, extra_element: str = "") -> str:
     """
 
 
-def nat(interface: str, guest_ip: str, guest_mac: str, gw_ip: str, gw_mac: str, src_ip: str, dst_ip: str, src_mac: str, dst_mac: str, size: int, direction: str,rewriter: str = "") -> str:
+def nat(interface: str, guest_ip: str, guest_mac: str, gw_ip: str, gw_mac: str, src_ip: str, dst_ip: str, src_mac: str, dst_mac: str, size: int, direction: str, rewriter: str = "", is_tx: bool = False) -> str:
 
     pkt_gen_elements = f"""
     InfiniteSource(DATA \<0800>, LENGTH {size - 4}, LIMIT 50, BURST 100000)
@@ -95,7 +95,7 @@ def nat(interface: str, guest_ip: str, guest_mac: str, gw_ip: str, gw_mac: str, 
     from_device :: FromDevice({interface})
         {";" if direction == "rx" else "-> Print('rx') -> Discard;"}
     to_device :: Queue(1024)
-        {f"-> Print('tx*') -> to :: ToDevice({interface});" if direction == "tx" else "-> Discard;"}
+        {f"-> to :: ToDevice({interface});" if direction == "tx" or is_tx else "-> Discard;"}
 
 
     // device :: SniffGatewayDevice({interface});

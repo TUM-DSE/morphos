@@ -295,6 +295,7 @@ class LatencyTest(AbstractBenchTest):
 
     def run_linux_rx(self, repetition: int, guest, loadgen, host):
         loadgen.exec(f"sudo modprobe pktgen")
+        # guest.exec(f"sudo ip addr add {GUEST_IP}/24 dev  {guest.test_iface}")
 
         remote_histfile = "/tmp/histogram.csv"
         remote_statsfile = "/tmp/throughput.csv"
@@ -326,7 +327,8 @@ class LatencyTest(AbstractBenchTest):
                 dst_mac=measurement.guest.test_iface_mac,
                 size=self.size,
                 direction=self.direction,
-                rewriter=element
+                rewriter=element,
+                is_tx=True,
             )
         elif self.vnf == "mirror":
             config = click_configs.mirror(
@@ -345,6 +347,7 @@ class LatencyTest(AbstractBenchTest):
         LoadGen.stop_l2_load_latency(loadgen)
         LoadGen.run_l2_load_latency(server=loadgen,
                             mac=guest.test_iface_mac,
+                            srcIp=TEST_CLIENT_IP,
                             dstIp=strip_subnet_mask(guest.test_iface_ip_net),
                             rate=self.rate,
                             runtime=G.DURATION_S,
@@ -464,7 +467,7 @@ def main(measurement: Measurement, plan_only: bool = False) -> None:
     sizes = [ 64 ]
     vnfs = [
         "mirror",
-        # "nat", # doesn't work because NAT doen't actually send packets
+        "nat", # doesn't work because NAT doen't actually send packets
     ]
     rates = [ 100 ]
     repetitions = 3
@@ -479,9 +482,9 @@ def main(measurement: Measurement, plan_only: bool = False) -> None:
         # directions = [ "rx", "tx" ]
         # systems = [ "linux", "uk", "ukebpfjit" ]
         # systems = [ "uk", "ukebpfjit" ]
-        systems = [ "uk" ]
+        # systems = [ "uk" ]
         # systems = [ "ukebpfjit" ]
-        # systems = [ "linux" ]
+        systems = [ "linux" ]
         vm_nums = [ 1 ]
         # vm_nums = [ 128, 160 ]
         # vnfs = [ "empty" ]
@@ -552,7 +555,8 @@ def main(measurement: Measurement, plan_only: bool = False) -> None:
                         dst_mac=measurement.guest.test_iface_mac,
                         size=test.size,
                         direction=test.direction,
-                        rewriter=element
+                        rewriter=element,
+                        is_tx=True,
                     )
                 elif test.vnf == "mirror":
                     click_config = click_configs.mirror(

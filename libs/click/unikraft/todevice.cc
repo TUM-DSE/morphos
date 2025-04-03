@@ -82,8 +82,13 @@ ToDevice::configure(Vector<String> &conf, ErrorHandler *errh)
 }
 
 int
-ToDevice::initialize(ErrorHandler *errh __unused)
+ToDevice::initialize(ErrorHandler *errh)
 {
+	if (this->input_is_pull(0)) {
+		ScheduleInfo::initialize_task(this, &_task, errh);
+		_task.reschedule();
+	}
+
 	/* uk netdev is initialized in the corresponding FromDevice */
 	return 0;
 }
@@ -121,8 +126,20 @@ ToDevice::push(int port, Packet *p)
 bool
 ToDevice::run_task(Task *)
 {
-	/* no regular task scheduling needed, all work is done in push () */
-	return false;
+	Packet* p;
+	int i = 0;
+	p = input(0).pull();
+	for (int i = 0; p && i < 128; i++) { // burstsize 128
+		push(0, p);
+		p = input(0).pull();
+	}
+
+	// uk_sched_yield();
+
+	/* TODO: should only fast_reschedule when there is more work to do? */
+	_task.fast_reschedule();
+
+	return i > 0; // return true if we did useful work
 }
 
 CLICK_ENDDECLS
