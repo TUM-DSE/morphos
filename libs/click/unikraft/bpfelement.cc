@@ -66,13 +66,16 @@ inline void ebpf_exit_mpk(int stack_key) {
 	pkey_set_perm(0, stack_key); // prohibit all
 }
 
-uint32_t pkey1_bpf_get_prandom_u32(void) {
-    int ret;
-    ebpf_exit_mpk(1);
-    ret = bpf_get_prandom_u32();
-    ebpf_enter_mpk(1);
-    return ret;
+#define WITH_PKEYS(name, function, stack_key) \
+uint32_t name(void) { \
+    int ret; \
+    ebpf_exit_mpk(stack_key); \
+    ret = function(); \
+    ebpf_enter_mpk(stack_key); \
+    return ret; \
 }
+WITH_PKEYS(pkey1_bpf_get_prandom_u32, bpf_get_prandom_u32, 1)
+WITH_PKEYS(pkey2_bpf_get_prandom_u32, bpf_get_prandom_u32, 2)
 
 void BPFElement::init_ubpf_vm() {
     ubpf_vm *vm = ubpf_create();
