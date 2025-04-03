@@ -180,6 +180,12 @@ int BPFElement::check_bpf_verification_signature(ErrorHandler *errh) {
 }
 
 int BPFElement::allocte_jit_stack() {
+	_pkey_stack = pkey_alloc(0, 0);
+	if (_pkey_stack < 0) {
+		uk_pr_err("Could not allocate pkey %d\n", _pkey_stack);
+		return -1;
+	}
+
     UK_ASSERT(UBPF_EBPF_STACK_SIZE < __PAGE_SIZE);
     int pages = 1;
 	void* ebpf_stack = (char*)uk_memalign(uk_alloc_get_default(), __PAGE_SIZE, pages*__PAGE_SIZE);
@@ -188,6 +194,12 @@ int BPFElement::allocte_jit_stack() {
     if (_ubpf_jit_stack == NULL) {
         return -1;
     }
+
+	int rc = pkey_mprotect(ebpf_stack, __PAGE_SIZE, PROT_READ | PROT_WRITE, _pkey_stack);
+	if (rc < 0) {
+		uk_pr_err("Could not set pkey for thread stack %d\n", errno);
+		return -1;
+	}
 
     return 0;
 }
@@ -299,12 +311,12 @@ int BPFElement::configure(Vector <String> &conf, ErrorHandler *errh) {
     return 0;
 }
 
-inline void ebpf_enter_mpk() {
-    // TODO
+inline void BPFElement::ebpf_enter_mpk() {
+	pkey_set_perm(PROT_READ | PROT_WRITE, _pkey_stack); // allow all
 }
 
-inline void ebpf_exit_mpk() {
-    // TODO
+inline void BPFElement::ebpf_exit_mpk() {
+	pkey_set_perm(0, _pkey_stack); // prohibit all
 }
 
 uint32_t BPFElement::exec(int port, Packet *p) {

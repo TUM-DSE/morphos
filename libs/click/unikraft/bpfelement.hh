@@ -43,9 +43,14 @@ private:
     void* _ubpf_jit_stack;
     size_t _ubpf_jit_stack_len;
 
+    int _pkey_stack;
+
     void init_ubpf_vm();
     int check_bpf_verification_signature(ErrorHandler *errh);
     int allocte_jit_stack();
+
+    void ebpf_enter_mpk();
+    void ebpf_exit_mpk();
 
     CLICK_COLD;
 };
