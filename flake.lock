@@ -15,17 +15,17 @@
     "dpdk-lachnit-src": {
       "flake": false,
       "locked": {
-        "lastModified": 1736515195,
-        "narHash": "sha256-xXDw0sqLYhWhpsHs8CknXtUm6e0KX8SlepNzHZV21DU=",
-        "ref": "v22.11-libmoon-vdpdk",
-        "rev": "1dddffa5bc41f8c795a9a5d3deb59f750429c815",
-        "revCount": 34498,
+        "lastModified": 1685445053,
+        "narHash": "sha256-XXrvwLJWAMezo5gdXOrnj6CuC+mRZwHiJ7QoE1tOm5w=",
+        "ref": "v22.11-libmoon",
+        "rev": "870b450187058b6a55a46ac52026d02fa84a64e6",
+        "revCount": 34483,
         "submodules": true,
         "type": "git",
         "url": "https://vmux-public-01:glpat-A1uoQxy-BNP6yYvohL4b@gitlab.lrz.de/okelmann/dpdk-lachnit.git"
       },
       "original": {
-        "ref": "v22.11-libmoon-vdpdk",
+        "ref": "v22.11-libmoon",
         "submodules": true,
         "type": "git",
         "url": "https://vmux-public-01:glpat-A1uoQxy-BNP6yYvohL4b@gitlab.lrz.de/okelmann/dpdk-lachnit.git"
@@ -45,25 +45,6 @@
       },
       "original": {
         "ref": "21.11-moon-vmux",
-        "submodules": true,
-        "type": "git",
-        "url": "https://github.com/vmuxIO/dpdk"
-      }
-    },
-    "dpdk-vdpdk-src": {
-      "flake": false,
-      "locked": {
-        "lastModified": 1736439683,
-        "narHash": "sha256-rIdYriaFJBSqOw7G55RtpwMjd1LUktmvAQXArk7016M=",
-        "ref": "kreutzer-dev-22.11",
-        "rev": "507e967f4f357755ab662afc3ec6d1f0c262128a",
-        "revCount": 34489,
-        "submodules": true,
-        "type": "git",
-        "url": "https://github.com/vmuxIO/dpdk"
-      },
-      "original": {
-        "ref": "kreutzer-dev-22.11",
         "submodules": true,
         "type": "git",
         "url": "https://github.com/vmuxIO/dpdk"
@@ -728,7 +709,6 @@
       "inputs": {
         "dpdk-lachnit-src": "dpdk-lachnit-src",
         "dpdk-src": "dpdk-src",
-        "dpdk-vdpdk-src": "dpdk-vdpdk-src",
         "fastclick-src": "fastclick-src",
         "flake-utils": "flake-utils_2",
         "libmoon-lachnit-src": "libmoon-lachnit-src",
@@ -744,15 +724,16 @@
         "xdp-reflector-src": "xdp-reflector-src"
       },
       "locked": {
-        "lastModified": 1740042757,
-        "narHash": "sha256-8j82hdNa+5ZV0r/sOYEWCpHbKjRO68bG2Ae4mZBRbB0=",
+        "lastModified": 1734603389,
+        "narHash": "sha256-dzO9uzWR5u+NS/YDBYIW4rP+N38uhJ/pk+y2wVWNT6o=",
         "owner": "vmuxIO",
         "repo": "vmuxIO",
-        "rev": "0b51f48bbe59f461f0521cd2b70ab25ba02a0404",
+        "rev": "f83c843cc0d291837c79a6f077633e9abfa01566",
         "type": "github"
       },
       "original": {
         "owner": "vmuxIO",
+        "ref": "dev/update-moongen",
         "repo": "vmuxIO",
         "type": "github"
       }

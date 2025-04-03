@@ -92,7 +92,7 @@
       flake = false;
     };
 
-    vmux.url = "github:vmuxIO/vmuxIO";
+    vmux.url = "github:vmuxIO/vmuxIO/dev/update-moongen";
   };
 
   outputs =
