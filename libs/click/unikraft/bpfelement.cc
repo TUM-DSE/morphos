@@ -20,6 +20,7 @@ extern "C" {
 }
 
 #include "bpfelement.hh"
+#include "mpkey_allocation.hh"
 
 CLICK_DECLS
 
@@ -74,8 +75,9 @@ uint32_t name(void) { \
     ebpf_enter_mpk(stack_key); \
     return ret; \
 }
-WITH_PKEYS(pkey1_bpf_get_prandom_u32, bpf_get_prandom_u32, 1)
+WITH_PKEYS(pkey1_bpf_get_prandom_u32, bpf_get_prandom_u32, 1) // automate this 1..6 with a macro?
 WITH_PKEYS(pkey2_bpf_get_prandom_u32, bpf_get_prandom_u32, 2)
+
 
 void BPFElement::init_ubpf_vm() {
     ubpf_vm *vm = ubpf_create();
@@ -199,11 +201,18 @@ int BPFElement::check_bpf_verification_signature(ErrorHandler *errh) {
 }
 
 int BPFElement::allocte_jit_stack() {
-	_pkey_stack = pkey_alloc(0, 0);
-	if (_pkey_stack < 0) {
-		uk_pr_err("Could not allocate pkey %d\n", _pkey_stack);
+	int rc = mpkey_allocation_alloc();
+	if (rc < 0) {
+		uk_pr_err("Failed to allocate MPKEYs");
 		return -1;
 	}
+
+    _pkey_stack = MPKEY_STACK;
+	// _pkey_stack = pkey_alloc(0, 0);
+	// if (_pkey_stack < 0) {
+	// 	uk_pr_err("Could not allocate pkey %d\n", _pkey_stack);
+	// 	return -1;
+	// }
 
     UK_ASSERT(UBPF_EBPF_STACK_SIZE < __PAGE_SIZE);
     int pages = 1;
@@ -214,7 +223,7 @@ int BPFElement::allocte_jit_stack() {
         return -1;
     }
 
-	int rc = pkey_mprotect(ebpf_stack, __PAGE_SIZE, PROT_READ | PROT_WRITE, _pkey_stack);
+	rc = pkey_mprotect(ebpf_stack, __PAGE_SIZE, PROT_READ | PROT_WRITE, _pkey_stack);
 	if (rc < 0) {
 		uk_pr_err("Could not set pkey for thread stack %d\n", errno);
 		return -1;

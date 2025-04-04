@@ -129,7 +129,7 @@ void test_mpk() {
 	// protect first page with pkey
 	rc = pkey_mprotect(page, __PAGE_SIZE, PROT_READ | PROT_WRITE, key);
 	if (rc < 0) {
-		uk_pr_err("Could not set pkey for thread stack %d\n", errno);
+		uk_pr_err("Could not set pkey %d\n", errno);
 		return;
 	}
 
