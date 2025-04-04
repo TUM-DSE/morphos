@@ -391,6 +391,11 @@ translate(struct ubpf_vm* vm, struct jit_state* state, char** errmsg)
             emit1(state, 0x24); // Scale: 00b Index: 100b Base: 100b
             emit4(state, stack_usage);
 
+            /*
+             * WRPKRU (enter ebpf context)
+             */
+            emit_wrpkru(state, 3);
+
             // Record the size of the prolog so that we can calculate offset when doing a local call.
             if (state->bpf_function_prolog_size == 0) {
                 state->bpf_function_prolog_size = state->offset - prolog_start;
@@ -765,6 +770,19 @@ translate(struct ubpf_vm* vm, struct jit_state* state, char** errmsg)
             }
             break;
         case EBPF_OP_EXIT:
+            /*
+            * WRPKRU (exit ebpf context)
+            *
+            * Must happen before we restore the stack to the one on a normal non-ebpf page.
+            *
+            * For wrpkru, we need eax, ecx, and edx.
+            * Stash rax into another ebpf register that is not used anymore (ebpf is done)
+            * ASSERT(map_register(BPF_REG_1) == RDI)
+            */
+            emit_mov(state, map_register(BPF_REG_0), map_register(BPF_REG_1));
+            emit_wrpkru(state, 0);
+            emit_mov(state, map_register(BPF_REG_1), map_register(BPF_REG_0));
+
             /* There is an invariant that the top of the host stack contains
              * the amout of space used by the currently-executing eBPF function.
              * 8 bytes are required for the storage. So, anytime that we leave an

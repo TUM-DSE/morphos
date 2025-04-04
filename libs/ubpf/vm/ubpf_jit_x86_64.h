@@ -460,6 +460,31 @@ emit_pause(struct jit_state* state)
 }
 
 static inline void
+emit_wrpkru(struct jit_state* state, int permissions)
+{
+    // mov $3,%rax
+    emit1(state, 0x48); // REX prefix field (see Table 2-4)
+    emit1(state, 0xC7); // mov immediate to [rax]
+    emit1(state, 0xC0); // Mod: 11b Reg: 000b RM: 000b
+    emit4(state, permissions);    // immediate
+    // mov $0,%rcx
+    emit1(state, 0x48); // REX prefix field (see Table 2-4)
+    emit1(state, 0xC7); // mov immediate to [rcx]
+    emit1(state, 0xC1); // Mod: 11b Reg: 000b RM: 001b
+    emit4(state, 0);    // immediate
+    // mov $0,%rdx
+    emit1(state, 0x48); // REX prefix field (see Table 2-4)
+    emit1(state, 0xC7); // mov immediate to [rdx]
+    emit1(state, 0xC2); // Mod: 00b Reg: 000b RM: 010b
+    emit4(state, 0);    // immediate
+
+    // wrpkru
+    emit1(state, 0x0f);
+    emit1(state, 0x01);
+    emit1(state, 0xef);
+}
+
+static inline void
 emit_dispatched_external_helper_call(struct jit_state* state, unsigned int idx)
 {
     /*
