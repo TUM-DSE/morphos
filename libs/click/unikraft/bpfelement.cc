@@ -60,11 +60,17 @@ char write_file(const std::string &filename, const std::vector <uint8_t> &buffer
 }
 
 inline void ebpf_enter_mpk(int stack_key) {
-	pkey_set_perm(PROT_READ | PROT_WRITE, stack_key); // allow all
+	// pkey_set_perm(PROT_READ | PROT_WRITE, stack_key); // allow all
+	// pkey_set_perm(0, MPKEY_DEFAULT); // TODO can't do this yet as it breaks click for some reason
+	pkey_set_perm(PROT_READ | PROT_WRITE, MPKEY_STACK);
+	pkey_set_perm(PROT_READ | PROT_WRITE, MPKEY_BUFFERS);
 }
 
 inline void ebpf_exit_mpk(int stack_key) {
-	pkey_set_perm(0, stack_key); // prohibit all
+	// pkey_set_perm(0, stack_key); // prohibit all
+	pkey_set_perm(PROT_READ | PROT_WRITE, MPKEY_DEFAULT);
+	pkey_set_perm(PROT_READ | PROT_WRITE, MPKEY_STACK);
+	pkey_set_perm(PROT_READ | PROT_WRITE, MPKEY_BUFFERS);
 }
 
 #define WITH_PKEYS(name, function, stack_key) \
