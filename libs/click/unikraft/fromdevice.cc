@@ -38,6 +38,12 @@
 #include <click/task.hh>
 #include <uk/netdev.h>
 
+extern "C" {
+#include <sys/mman.h>
+#include <uk/pku.h>
+#include <uk/plat/paging.h>
+}
+
 #ifdef xmit
 #undef xmit
 #endif
@@ -107,6 +113,12 @@ FromDevice::netdev_alloc_rxpkts(void *argp, struct uk_netbuf *pkts[],
 				BUFSIZE, fd->_dev_info.ioalign, fd->_dev_info.nb_encap_rx, 0, NULL);
 		if (!pkts[i])
 			return i;
+
+		int pkey = 1; // TODO
+		int rc = pkey_mprotect(pkts[i], BUFSIZE, PROT_READ | PROT_WRITE, pkey);
+		if (rc < 0)
+			return i;
+
 		pkts[i]->len = BUFSIZE;
 	}
 	return count;
