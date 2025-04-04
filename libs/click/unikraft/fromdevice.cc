@@ -82,6 +82,11 @@ FromDevice::configure(Vector<String> &conf, ErrorHandler *errh)
 	if (_devid < 0)
 		return errh->error("Device ID must be >= 0");
 
+	_pkey_buffers = pkey_alloc(0, 0);
+	if (_pkey_buffers < 0) {
+		return errh->error("Could not allocate pkey %d\n", _pkey_buffers);
+	}
+
 	_dev = uk_netdev_get((unsigned int) _devid);
 	if (!_dev)
 		return errh->error("No such device %d", _devid);
@@ -114,7 +119,7 @@ FromDevice::netdev_alloc_rxpkts(void *argp, struct uk_netbuf *pkts[],
 		if (!pkts[i])
 			return i;
 
-		int pkey = 1; // TODO
+		int pkey = fd->_pkey_buffers;
 		int rc = pkey_mprotect(pkts[i], BUFSIZE, PROT_READ | PROT_WRITE, pkey);
 		if (rc < 0)
 			return i;
