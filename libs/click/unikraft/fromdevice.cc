@@ -115,9 +115,12 @@ FromDevice::netdev_alloc_rxpkts(void *argp, struct uk_netbuf *pkts[],
 	int i;
 
 	FromDevice *fd = static_cast<FromDevice *>(argp);
+	size_t alignment = fd->_dev_info.ioalign;
+	// size_t alignment = __PAGE_SIZE; // TODO this is more correct but then fails pkey_mprotect
+	UK_ASSERT(fd->_dev_info.ioalign <= alignment);
 	for (i = 0; i < count; ++i) {
 		pkts[i] = uk_netbuf_alloc_buf(uk_alloc_get_default(),
-				BUFSIZE, fd->_dev_info.ioalign, fd->_dev_info.nb_encap_rx, 0, NULL);
+				BUFSIZE, alignment, fd->_dev_info.nb_encap_rx, 0, NULL);
 		if (!pkts[i])
 			return i;
 

@@ -16,6 +16,7 @@
 extern "C" {
 #include <sys/mman.h>
 #include <uk/pku.h>
+#include <uk/pkru.h>
 #include <uk/plat/paging.h>
 }
 
@@ -61,14 +62,14 @@ char write_file(const std::string &filename, const std::vector <uint8_t> &buffer
 
 inline void ebpf_enter_mpk(int stack_key) {
 	// pkey_set_perm(PROT_READ | PROT_WRITE, stack_key); // allow all
-	// pkey_set_perm(0, MPKEY_DEFAULT); // TODO can't do this yet as it breaks click for some reason
 	pkey_set_perm(PROT_READ | PROT_WRITE, MPKEY_STACK);
 	pkey_set_perm(PROT_READ | PROT_WRITE, MPKEY_BUFFERS);
+	// pkey_set_perm(0, MPKEY_DEFAULT); // TODO can't do this yet as it breaks click for some reason
 }
 
 inline void ebpf_exit_mpk(int stack_key) {
 	// pkey_set_perm(0, stack_key); // prohibit all
-	pkey_set_perm(PROT_READ | PROT_WRITE, MPKEY_DEFAULT);
+	// pkey_set_perm(PROT_READ | PROT_WRITE, MPKEY_DEFAULT);
 	pkey_set_perm(PROT_READ | PROT_WRITE, MPKEY_STACK);
 	pkey_set_perm(PROT_READ | PROT_WRITE, MPKEY_BUFFERS);
 }
@@ -83,6 +84,8 @@ uint32_t name(void) { \
 }
 WITH_PKEYS(pkey1_bpf_get_prandom_u32, bpf_get_prandom_u32, 1) // automate this 1..6 with a macro?
 WITH_PKEYS(pkey2_bpf_get_prandom_u32, bpf_get_prandom_u32, 2)
+
+WITH_PKEYS(pkey1_bpf_ktime_get_ns, bpf_ktime_get_ns, 1)
 
 
 void BPFElement::init_ubpf_vm() {
@@ -102,7 +105,7 @@ void BPFElement::init_ubpf_vm() {
     ubpf_register(vm, 1, "bpf_map_lookup_elem", as_external_function_t((void *) bpf_map_lookup_elem));
     ubpf_register(vm, 2, "bpf_map_update_elem", as_external_function_t((void *) bpf_map_update_elem));
     ubpf_register(vm, 3, "bpf_map_delete_elem", as_external_function_t((void *) bpf_map_delete_elem));
-    ubpf_register(vm, 5, "bpf_ktime_get_ns", as_external_function_t((void *) bpf_ktime_get_ns));
+    ubpf_register(vm, 5, "bpf_ktime_get_ns", as_external_function_t((void *) pkey1_bpf_ktime_get_ns));
     ubpf_register(vm, 6, "bpf_trace_printk", as_external_function_t((void *) bpf_trace_printk));
     ubpf_register(vm, 7, "bpf_get_prandom_u32", as_external_function_t((void *) pkey1_bpf_get_prandom_u32));
     ubpf_register(vm, 20, "unwind", as_external_function_t((void *) unwind));
