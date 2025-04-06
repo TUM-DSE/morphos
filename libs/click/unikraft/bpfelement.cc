@@ -426,16 +426,20 @@ int BPFElement::configure(Vector <String> &conf, ErrorHandler *errh) {
 uint32_t BPFElement::exec(int port, Packet *p) {
     uint64_t ret = 0;
 
-    auto ctx = (bpfelement_md) {
+    auto ctx_ = (bpfelement_md) {
             .data = (void *) p->data(),
             .data_end = (void *) p->end_data(),
             .port = port,
     };
+    UK_ASSERT(sizeof(bpfelement_md) == 24); // assumption made in ubpf_jit_x86_64.c
+    // move ebpf input context to JIT stack which is readable from ebpf context
+    auto ctx = (bpfelement_md*)(this->_ubpf_jit_stack + __PAGE_SIZE - sizeof(bpfelement_md));
+    *ctx = ctx_;
 
     if (_jit) {
         mpk_ebpf_enter(_pkey_stack);
         // ret = (uint32_t) _ubpf_jit_fn(&ctx, sizeof(ctx));
-        ret = (uint64_t) _ubpf_jit_ex_fn(&ctx, sizeof(ctx), (uint8_t*)this->_ubpf_ebpf_stack, this->_ubpf_ebpf_stack_len);
+        ret = (uint64_t) _ubpf_jit_ex_fn(ctx, sizeof(bpfelement_md), (uint8_t*)this->_ubpf_ebpf_stack, this->_ubpf_ebpf_stack_len);
         mpk_ebpf_exit(_pkey_stack);
     } else {
         if (ubpf_exec(_ubpf_vm, &ctx, sizeof(ctx), &ret) != 0) {
