@@ -467,16 +467,14 @@ emit_wrpkru(struct jit_state* state, int permissions)
     emit1(state, 0xC7); // mov immediate to [rax]
     emit1(state, 0xC0); // Mod: 11b Reg: 000b RM: 000b
     emit4(state, permissions);    // immediate
-    // mov $0,%rcx
+    // xor %rcx,%rcx (clear %rcx)
     emit1(state, 0x48); // REX prefix field (see Table 2-4)
-    emit1(state, 0xC7); // mov immediate to [rcx]
-    emit1(state, 0xC1); // Mod: 11b Reg: 000b RM: 001b
-    emit4(state, 0);    // immediate
-    // mov $0,%rdx
+    emit1(state, 0x31); // xor two 64bit registers
+    emit1(state, 0xC9); // Mod: 11b Reg: 001b RM: 001b
+    // xor %rdx,%rdx (clear %rdx)
     emit1(state, 0x48); // REX prefix field (see Table 2-4)
-    emit1(state, 0xC7); // mov immediate to [rdx]
-    emit1(state, 0xC2); // Mod: 00b Reg: 000b RM: 010b
-    emit4(state, 0);    // immediate
+    emit1(state, 0x31); // xor two 64bit registers
+    emit1(state, 0xD2); // Mod: 11b Reg: 010b RM: 010b
 
     // wrpkru
     emit1(state, 0x0f);
