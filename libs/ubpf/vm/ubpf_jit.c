@@ -31,6 +31,7 @@
 #include "ubpf_int.h"
 #include <uk/pku.h>
 #include <uk/plat/paging.h>
+#include "../../click/unikraft/mpkey_allocation.hh"
 
 int
 ubpf_translate_ex(struct ubpf_vm* vm, uint8_t* buffer, size_t* size, char** errmsg, enum JitMode jit_mode)
@@ -160,6 +161,7 @@ ubpf_compile_ex(struct ubpf_vm* vm, char** errmsg, enum JitMode mode)
 
     memcpy(jitted, buffer, jitted_size);
 
+    // revoke write permissions (current pkey_mprotect impl does the same again)
     rc = ukplat_page_set_attr(pt, jitted,
 			 pages, PAGE_ATTR_PROT_READ | PAGE_ATTR_PROT_EXEC, 0);
     if (rc) {
@@ -167,6 +169,15 @@ ubpf_compile_ex(struct ubpf_vm* vm, char** errmsg, enum JitMode mode)
         jitted = NULL;
         goto out;
     }
+    /* ubpf JIT VM not only executes, but also reads JITed code (to find a
+     * potential TARGET_PC_EXTERNAL_DISPATCHER for ebpf helper functions).
+     * Add MPKEY_STACK to allow reads also in eBPF context with MPK.
+     */
+	rc = pkey_mprotect(jitted, pages*__PAGE_SIZE, PAGE_ATTR_PROT_READ | PAGE_ATTR_PROT_EXEC, MPKEY_STACK);
+	if (rc < 0) {
+		uk_pr_err("Could not set pkey for ebpf stack %d\n", errno);
+		return -1;
+	}
 
     vm->jitted = jitted;
     vm->jitted_size = jitted_size;

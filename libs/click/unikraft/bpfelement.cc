@@ -237,18 +237,71 @@ int BPFElement::allocte_jit_stack() {
 	// 	return -1;
 	// }
 
+    /*
+     * ebpf stack
+     */
     UK_ASSERT(UBPF_EBPF_STACK_SIZE < __PAGE_SIZE);
     int pages = 1;
 	void* ebpf_stack = (char*)uk_memalign(uk_alloc_get_default(), __PAGE_SIZE, pages*__PAGE_SIZE);
-    _ubpf_jit_stack = ebpf_stack;
-    _ubpf_jit_stack_len = UBPF_EBPF_STACK_SIZE;
-    if (_ubpf_jit_stack == NULL) {
+    _ubpf_ebpf_stack = ebpf_stack;
+    _ubpf_ebpf_stack_len = UBPF_EBPF_STACK_SIZE;
+    if (_ubpf_ebpf_stack == NULL) {
         return -1;
     }
 
-	rc = pkey_mprotect(ebpf_stack, __PAGE_SIZE, PROT_READ | PROT_WRITE, _pkey_stack);
+	rc = pkey_mprotect(ebpf_stack, pages*__PAGE_SIZE, PROT_READ | PROT_WRITE, _pkey_stack);
 	if (rc < 0) {
-		uk_pr_err("Could not set pkey for thread stack %d\n", errno);
+		uk_pr_err("Could not set pkey for ebpf stack %d\n", errno);
+		return -1;
+	}
+
+
+    /* jit stack protector:
+     *
+     * Should the JIT stack grow up beyond the allocated size,
+     * it will hit this page and cause a fault.
+     */
+    struct uk_pagetable *pt = ukplat_pt_get_active();
+    pages = 1;
+    // TODO needs dynamic allocator, so that we can have multiple bpfelements
+    void* jit_stack_protector = (void*)0x80000000 + 1*__PAGE_SIZE; // the fist page at 0x80... is already used by ubpf_jit.c:ubpf_compile_ex()
+    rc = ukplat_page_mapx(pt, (__vaddr_t)jit_stack_protector,
+        __PADDR_ANY, pages,
+        0, // neither read, write, or execute permissions
+        0, NULL);
+	if (rc) {
+		uk_pr_err("Could not allocate page for jit stack protector %d\n", errno);
+		return -1;
+	}
+    _ubpf_jit_stack_protector_len = pages*__PAGE_SIZE;
+    _ubpf_jit_stack_protector = jit_stack_protector;
+
+	rc = pkey_mprotect(jit_stack_protector, pages*__PAGE_SIZE, PROT_READ | PROT_WRITE, _pkey_stack);
+	if (rc < 0) {
+		uk_pr_err("Could not set pkey for jit stack protector %d\n", errno);
+		return -1;
+	}
+
+    /*
+     * JIT stack
+     */
+    pages = 1;
+    // TODO needs dynamic allocator, so that we can have multiple bpfelements
+    void* jit_stack = (void*)0x80000000 + 2*__PAGE_SIZE; // the second page is used for _ubpf_jit_stack_protector
+    rc = ukplat_page_mapx(pt, (__vaddr_t)jit_stack,
+        __PADDR_ANY, pages,
+        PAGE_ATTR_PROT_READ | PAGE_ATTR_PROT_WRITE, 0, NULL);
+	if (rc) {
+		uk_pr_err("Could not allocate page for jit stack %d\n", errno);
+        return -1;
+    }
+    _ubpf_jit_stack = jit_stack;
+    _ubpf_jit_stack_len = pages*__PAGE_SIZE;
+    UK_ASSERT(_ubpf_jit_stack_protector + _ubpf_jit_stack_protector_len == _ubpf_jit_stack);
+
+	rc = pkey_mprotect(jit_stack, pages*__PAGE_SIZE, PROT_READ | PROT_WRITE, _pkey_stack);
+	if (rc < 0) {
+		uk_pr_err("Could not set pkey for jit stack %d\n", errno);
 		return -1;
 	}
 
@@ -382,7 +435,7 @@ uint32_t BPFElement::exec(int port, Packet *p) {
     if (_jit) {
         mpk_ebpf_enter(_pkey_stack);
         // ret = (uint32_t) _ubpf_jit_fn(&ctx, sizeof(ctx));
-        ret = (uint64_t) _ubpf_jit_ex_fn(&ctx, sizeof(ctx), (uint8_t*)this->_ubpf_jit_stack, this->_ubpf_jit_stack_len);
+        ret = (uint64_t) _ubpf_jit_ex_fn(&ctx, sizeof(ctx), (uint8_t*)this->_ubpf_ebpf_stack, this->_ubpf_ebpf_stack_len);
         mpk_ebpf_exit(_pkey_stack);
     } else {
         if (ubpf_exec(_ubpf_vm, &ctx, sizeof(ctx), &ret) != 0) {

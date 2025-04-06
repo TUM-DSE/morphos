@@ -303,8 +303,13 @@ translate(struct ubpf_vm* vm, struct jit_state* state, char** errmsg)
 
     /*
      * Let's set RBP to RSP so that we can restore RSP later!
+     * Also, move from C stack to JIT stack.
      */
     emit_mov(state, RSP, RBP);
+    // mov $jit_stack+PAGE-1, %rsp
+    emit1(state, 0x48); // REX prefix field (see Table 2-4)
+    emit1(state, 0xBC); // movabs immediate to [rsp]
+    emit8(state, 0x80002000 + 0x1000 - 1);    // immediate
 
     /* Configure eBPF program stack space */
     if (state->jit_mode == BasicJitMode) {
@@ -897,7 +902,10 @@ translate(struct ubpf_vm* vm, struct jit_state* state, char** errmsg)
         emit_mov(state, map_register(BPF_REG_0), RAX);
     }
 
-    /* Deallocate stack space by restoring RSP from RBP. */
+    /*
+     * Deallocate stack space by restoring RSP from RBP.
+     * Also moves back to the original C stack.
+     */
     emit_mov(state, RBP, RSP);
 
     if (!(_countof(platform_nonvolatile_registers) % 2)) {
