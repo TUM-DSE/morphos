@@ -663,11 +663,11 @@
     "unikraft": {
       "flake": false,
       "locked": {
-        "lastModified": 1743521180,
-        "narHash": "sha256-jguGThJ++y+/73OjsnuUdgeoMemnC0Fi6RtQiBcsz30=",
+        "lastModified": 1743959205,
+        "narHash": "sha256-9VO5njHq4X8UaUAZwNgRHtWbqtphGFqpX14vMESUymY=",
         "owner": "TUM-DSE",
         "repo": "unibpf-unikraft",
-        "rev": "2b265c47053fc8483a9c59ca61e55d1718870680",
+        "rev": "4de0e34b1bb1c9a3802b73831348eb51633ec1b3",
         "type": "github"
       },
       "original": {
