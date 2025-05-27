@@ -184,6 +184,9 @@ class ThroughputTest(AbstractBenchTest):
             case ("ukebpfjit", "filter", _):
                 files = [ "benchmark/bpfilters/target-port", "benchmark/bpfilters/target-port.sig" ]
                 processing += "-> BPFilter(ID 1, FILE target-port, SIGNATURE target-port.sig, JIT true)"
+            case ("ukebpfjit_nompk", "filter", _):
+                files = [ "benchmark/bpfilters/target-port", "benchmark/bpfilters/target-port.sig" ]
+                processing += "-> BPFilter(ID 1, FILE target-port, SIGNATURE target-port.sig, JIT true)"
 
             case ("ukebpf", "nat", "rx"):
                 files = [ "benchmark/bpfilters/nat", "benchmark/bpfilters/nat.sig" ]
@@ -461,7 +464,9 @@ def main(measurement: Measurement, plan_only: bool = False) -> None:
     )
     tests: List[ThroughputTest] = []
     tests = ThroughputTest.list_tests(test_matrix, exclude_test=exclude)
-
+    for s in sizes:
+        tests.append(ThroughputTest(repetitions, 1, "rx", interfaces[0].value, s, "filter", "ukebpfjit")) 
+        tests.append(ThroughputTest(repetitions, 1, "rx", interfaces[0].value, s, "filter", "ukebpfjit_nompk")) 
 
     args_reboot = ["interface", "num_vms", "direction", "system", "vnf", "size"]
     info(f"ThroughputTest execution plan:")
@@ -541,6 +546,22 @@ def main(measurement: Measurement, plan_only: bool = False) -> None:
                             test.run_unikraft_tx(repetition, guest, loadgen, host, remote_unikraft_log_raw)
                         elif test.direction == "rx":
                             test.run_unikraft_rx(repetition, guest, loadgen, host, remote_unikraft_log_raw)
+                    # end VM
+
+            elif system == "ukebpfjit_nompk":
+                files, element = test.click_config()
+                click_config = click_rx_config(unikraft_interface, extra_processing=element)
+
+                remote_unikraft_log_raw  = "/tmp/unikraft_nompk.log" # will be cleared sometimes
+                remote_unikraft_init_log  = f"{remote_unikraft_log_raw}.init" # contains the startup log
+                host.exec(f"sudo rm {remote_unikraft_log_raw} || true")
+                host.exec(f"sudo rm {remote_unikraft_init_log} || true")
+
+                for repetition in range(repetitions): # restarting click for each repetition means restarting unikraft
+                    with measurement.unikraft_vm(interface, click_config, vm_log=remote_unikraft_log_raw, cpio_files=files, with_mpk=False) as guest:
+                        host.exec(f"sudo cp {remote_unikraft_log_raw} {remote_unikraft_init_log}")
+
+                        test.run_unikraft_rx(repetition, guest, loadgen, host, remote_unikraft_log_raw)
                     # end VM
 
             elif system == "linux":

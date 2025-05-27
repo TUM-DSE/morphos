@@ -136,7 +136,7 @@ class Measurement:
         return vm_boot
 
     @contextmanager
-    def unikraft_vm(self, interface: Interface, click_config: str, vm_log: str = "", run_guest_args = dict(), cpio_files: List[str] = []) -> Iterator[Guest]:
+    def unikraft_vm(self, interface: Interface, click_config: str, vm_log: str = "", run_guest_args = dict(), cpio_files: List[str] = [], with_mpk: bool = True) -> Iterator[Guest]:
         """
         Creates a unikraft-click virtual machine
         """
@@ -188,6 +188,7 @@ class Measurement:
                 net_type=interface,
                 vm_log_path=vm_log,
                 qemu_build_dir=self.config.get('host', 'qemu_path', fallback=None),
+                with_mpk=with_mpk,
                 **run_guest_args
                 )
 

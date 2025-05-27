@@ -58,6 +58,15 @@ vm-image-init:
     nix build .#guest-image --out-link {{proot}}/VMs/ro
     overwrite guest-image
 
+build-vm-images: vm-image-init
+  #!/usr/bin/env bash
+  rm .config.click_qemu-x86_64
+  kraft build -K Kraftfile
+  cp .unikraft/build/click_qemu-x86_64 VMs/unikraft
+  rm .config.click_qemu-x86_64
+  kraft build -K Kraftfile_nompk
+  cp .unikraft/build/click_qemu-x86_64 VMs/unikraft_nompk
+
 # use autotest tmux sessions: `just autotest-tmux ls`
 autotest-tmux *ARGS:
   #!/usr/bin/env python3
@@ -140,7 +149,7 @@ stringmatcher-cpio:
 natebpf-cpio:
     rm -r /tmp/ukcpio-{{user}} || true
     mkdir -p /tmp/ukcpio-{{user}}
-    cp ./benchmark/configurations/firewall-10000.click /tmp/ukcpio-{{user}}/config.click
+    cp ./benchmark/configurations/firewall-bpf.click /tmp/ukcpio-{{user}}/config.click
     # cp ./benchmark/configurations/thomer-nat-ebpf.click /tmp/ukcpio-{{user}}/config.click
     # cp ./benchmark/configurations/thomer-nat.click /tmp/ukcpio-{{user}}/config.click
     # cp ./benchmark/configurations/test.click /tmp/ukcpio-{{user}}/config.click
@@ -150,6 +159,8 @@ natebpf-cpio:
     cp ./benchmark/bpfilters/round-robin.sig /tmp/ukcpio-{{user}}/round-robin.sig
     cp ./benchmark/bpfilters/nat /tmp/ukcpio-{{user}}/nat
     cp ./benchmark/bpfilters/nat.sig /tmp/ukcpio-{{user}}/nat.sig
+    cp ./benchmark/bpfilters/firewall-2 /tmp/ukcpio-{{user}}/firewall-2
+    cp ./benchmark/bpfilters/firewall-2.sig /tmp/ukcpio-{{user}}/firewall-2.sig
     cp ./benchmark/bpfilters/firewall-10000 /tmp/ukcpio-{{user}}/firewall-10000
     cp ./benchmark/bpfilters/firewall-10000.sig /tmp/ukcpio-{{user}}/firewall-10000.sig
     ./libs/unikraft/support/scripts/mkcpio ./throughput.cpio /tmp/ukcpio-{{user}}

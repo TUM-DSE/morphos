@@ -1895,6 +1895,7 @@ class Host(Server):
                      net_type: Interface,
                      vm_log_path: str = '',
                      qemu_build_dir: str = None,
+                     with_mpk: bool = True
                     ) -> None:
         vm_number = 0
         project_root = str(Path(self.project_root)) # nix wants nicely formatted paths
@@ -1906,7 +1907,11 @@ class Host(Server):
         qemu_bin_path = 'qemu-system-x86_64'
         if qemu_build_dir:
             qemu_bin_path = path_join(qemu_build_dir, qemu_bin_path)
-        unikraft_bin = f'{project_root}/.unikraft/build/click_qemu-x86_64'
+        unikraft_bin = ''
+        if with_mpk:
+            unikraft_bin = f'{project_root}/VMs/unikraft'
+        else:
+            unikraft_bin = f'{project_root}/VMs/unikraft_nompk'
 
         nix_shell = f"nix shell --inputs-from {project_root} nixpkgs#numactl --command"
         numactl = f"numactl -C {self.cpupinner.qemu(vm_number)}"
