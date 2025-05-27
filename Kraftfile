@@ -45,13 +45,13 @@ libraries:
     source: libs/libcxx
     # version: stable
     # https://github.com/llvm/llvm-project/releases/download/llvmorg-14.0.6/libcxx-14.0.6.src.tar.xz
-  openssl:
-    source: libs/openssl
-    # https://www.openssl.org/source/old/1.1.1/openssl-1.1.1c.tar.gz
-    # version: stable
-    kconfig:
-     - CONFIG_OPENSSL=y
-     - CONFIG_LIBCRYPTO=y
+#  openssl:
+#    source: libs/openssl
+#    # https://www.openssl.org/source/old/1.1.1/openssl-1.1.1c.tar.gz
+#    # version: stable
+#    kconfig:
+#     - CONFIG_OPENSSL=y
+#     - CONFIG_LIBCRYPTO=y
   compiler-rt:
     source: libs/compiler-rt
     # https://github.com/llvm/llvm-project/releases/download/llvmorg-14.0.6/compiler-rt-14.0.6.src.tar.xz
