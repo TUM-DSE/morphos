@@ -30,7 +30,6 @@
  */
 
 #include "fromdevice.hh"
-#include "mpkey_allocation.hh"
 
 #include <click/args.hh>
 #include <click/deque.hh>
@@ -83,7 +82,6 @@ FromDevice::configure(Vector<String> &conf, ErrorHandler *errh)
 	if (_devid < 0)
 		return errh->error("Device ID must be >= 0");
 
-	_pkey_buffers = MPKEY_BUFFERS;
 	// _pkey_buffers = pkey_alloc(0, 0);
 	// if (_pkey_buffers < 0) {
 	// 	return errh->error("Could not allocate pkey %d\n", _pkey_buffers);
@@ -143,9 +141,6 @@ FromDevice::initialize(ErrorHandler *errh)
 	struct uk_netdev_txqueue_conf tx_conf;
 	int rc;
 
-	rc = mpkey_allocation_alloc();
-	if (rc < 0)
-		return errh->error("Failed to allocate MPKEYs");
 
 	uk_pr_info("FromDevice::initialize %p device %p state %d\n",
 			this, _dev, _dev->_data->state);

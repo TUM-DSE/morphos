@@ -9,7 +9,7 @@
                     unstable.gh
                     ]
                     );
-            runScript = "bash -c \"KRAFTKIT_NO_CHECK_UPDATES=true make\"";
+            runScript = "bash -c \"KRAFTKIT_NO_CHECK_UPDATES=true kraft build --log-type basic\"";
             });
 in pkgs.stdenv.mkDerivation {
     name = "unikraft";

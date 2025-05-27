@@ -62,10 +62,10 @@ libraries:
     source: libs/click
     kconfig:
       - CONFIG_LIBCLICK_MAIN=y
-      - CONFIG_LIBCLICK_UBPF_VERIFY_SIGNATURE=y
-  ubpf:
-    source: libs/ubpf
-    version: '0.1'
-    kconfig:
-      CONFIG_LIBUBPF: 'y'
+      - CONFIG_LIBCLICK_UBPF_VERIFY_SIGNATURE=n
+#  ubpf:
+#    source: libs/ubpf
+#    version: '0.1'
+#    kconfig:
+#      CONFIG_LIBUBPF: 'y'
 
