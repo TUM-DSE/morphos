@@ -397,10 +397,12 @@ translate(struct ubpf_vm* vm, struct jit_state* state, char** errmsg)
             emit1(state, 0x24); // Scale: 00b Index: 100b Base: 100b
             emit4(state, stack_usage);
 
+#ifdef CONFIG_LIBUBPF_ENABLE_MPK
             /*
              * WRPKRU (enter ebpf context)
              */
             emit_wrpkru(state, 3);
+#endif
 
             // Record the size of the prolog so that we can calculate offset when doing a local call.
             if (state->bpf_function_prolog_size == 0) {
@@ -776,6 +778,7 @@ translate(struct ubpf_vm* vm, struct jit_state* state, char** errmsg)
             }
             break;
         case EBPF_OP_EXIT:
+#ifdef CONFIG_LIBUBPF_ENABLE_MPK
             /*
             * WRPKRU (exit ebpf context)
             *
@@ -788,6 +791,7 @@ translate(struct ubpf_vm* vm, struct jit_state* state, char** errmsg)
             emit_mov(state, map_register(BPF_REG_0), map_register(BPF_REG_1));
             emit_wrpkru(state, 0);
             emit_mov(state, map_register(BPF_REG_1), map_register(BPF_REG_0));
+#endif
 
             /* There is an invariant that the top of the host stack contains
              * the amout of space used by the currently-executing eBPF function.

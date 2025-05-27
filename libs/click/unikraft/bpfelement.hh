@@ -51,7 +51,7 @@ private:
 
     void init_ubpf_vm();
     int check_bpf_verification_signature(ErrorHandler *errh);
-    int allocte_jit_stack();
+    int allocate_jit_stack();
 
     CLICK_COLD;
 };

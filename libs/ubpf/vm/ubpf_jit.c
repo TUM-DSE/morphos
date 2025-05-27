@@ -173,11 +173,13 @@ ubpf_compile_ex(struct ubpf_vm* vm, char** errmsg, enum JitMode mode)
      * potential TARGET_PC_EXTERNAL_DISPATCHER for ebpf helper functions).
      * Add MPKEY_STACK to allow reads also in eBPF context with MPK.
      */
-	rc = pkey_mprotect(jitted, pages*__PAGE_SIZE, PAGE_ATTR_PROT_READ | PAGE_ATTR_PROT_EXEC, MPKEY_STACK);
-	if (rc < 0) {
-		uk_pr_err("Could not set pkey for ebpf stack %d\n", errno);
-		return -1;
-	}
+#ifdef CONFIG_LIBUBPF_ENABLE_MPK
+	  rc = pkey_mprotect(jitted, pages*__PAGE_SIZE, PAGE_ATTR_PROT_READ | PAGE_ATTR_PROT_EXEC, MPKEY_STACK);
+	  if (rc < 0) {
+		    uk_pr_err("Could not set pkey for ebpf stack %d\n", errno);
+		    return -1;
+	  }
+#endif
 
     vm->jitted = jitted;
     vm->jitted_size = jitted_size;

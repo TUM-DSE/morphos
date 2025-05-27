@@ -124,11 +124,13 @@ FromDevice::netdev_alloc_rxpkts(void *argp, struct uk_netbuf *pkts[],
 		if (!pkts[i])
 			return i;
 
+#ifdef CONFIG_LIBCLICK_ENABLE_MPK
 		// TODO wrong alignment (BUFSIZE instead of __PAGE_SIZE), wrong vaddr (pkt instead of aligned pages), not necessary anyways (click/ebpf only handles buffers allocated by class Packet)
 		int pkey = fd->_pkey_buffers;
 		int rc = pkey_mprotect(pkts[i], BUFSIZE, PROT_READ | PROT_WRITE, pkey);
 		if (rc < 0)
 			return i;
+#endif
 
 		pkts[i]->len = BUFSIZE;
 	}
@@ -201,6 +203,7 @@ FromDevice::take_packets()
 
 		++i;
 		p = Packet::make(0, buf->data, buf->len, 0); // memcpy! And may allocate a new packet if mempool is empty
+#ifdef CONFIG_LIBCLICK_ENABLE_MPK
 		int pkey = this->_pkey_buffers;
 		uint64_t page = ((uint64_t)(p->buffer())) & (~(__PAGE_SIZE-1));
 		int rc = pkey_mprotect((void*) page, __PAGE_SIZE, PROT_READ | PROT_WRITE, pkey);
@@ -210,6 +213,7 @@ FromDevice::take_packets()
 			uk_netbuf_free(buf);
 			return;
 		}
+#endif
 		p->set_timestamp_anno(Timestamp::now());
 		output(0).push(p); /* memcpy's pkt */
 		uk_netbuf_free(buf);

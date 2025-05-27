@@ -61,7 +61,7 @@ char write_file(const std::string &filename, const std::vector <uint8_t> &buffer
 }
 
 inline void mpk_ebpf_enter(int stack_key) {
-	// pkey_set_perm(PROT_READ | PROT_WRITE, stack_key); // allow all
+    // pkey_set_perm(PROT_READ | PROT_WRITE, stack_key); // allow all
 	pkey_set_perm(PROT_READ | PROT_WRITE, MPKEY_STACK);
 	pkey_set_perm(PROT_READ | PROT_WRITE, MPKEY_BUFFERS);
 	// pkey_set_perm(0, MPKEY_DEFAULT); // TODO can't do this yet as it breaks click for some reason
@@ -119,9 +119,15 @@ void BPFElement::init_ubpf_vm() {
     ubpf_register(vm, 1, "bpf_map_lookup_elem", as_external_function_t((void *) bpf_map_lookup_elem));
     ubpf_register(vm, 2, "bpf_map_update_elem", as_external_function_t((void *) bpf_map_update_elem));
     ubpf_register(vm, 3, "bpf_map_delete_elem", as_external_function_t((void *) bpf_map_delete_elem));
+    #ifdef CONFIG_LIBCLICK_ENABLE_MPK
     ubpf_register(vm, 5, "bpf_ktime_get_ns", as_external_function_t(_jit ? (void*)pkey1_bpf_ktime_get_ns : (void*)bpf_ktime_get_ns));
     ubpf_register(vm, 6, "bpf_trace_printk", as_external_function_t((void *) bpf_trace_printk));
     ubpf_register(vm, 7, "bpf_get_prandom_u32", as_external_function_t(_jit ? (void*)pkey1_bpf_get_prandom_u32 : (void*)bpf_get_prandom_u32));
+    #else
+    ubpf_register(vm, 5, "bpf_ktime_get_ns", as_external_function_t((void*)bpf_ktime_get_ns));
+    ubpf_register(vm, 6, "bpf_trace_printk", as_external_function_t((void *) bpf_trace_printk));
+    ubpf_register(vm, 7, "bpf_get_prandom_u32", as_external_function_t((void*)bpf_get_prandom_u32));
+    #endif
     ubpf_register(vm, 20, "unwind", as_external_function_t((void *) unwind));
     ubpf_set_unwind_function_index(vm, 20);
 
@@ -223,8 +229,8 @@ int BPFElement::check_bpf_verification_signature(ErrorHandler *errh) {
     return 0;
 }
 
-int BPFElement::allocte_jit_stack() {
-	int rc = mpkey_allocation_alloc();
+int BPFElement::allocate_jit_stack() {
+    int rc = mpkey_allocation_alloc();
 	if (rc < 0) {
 		uk_pr_err("Failed to allocate MPKEYs");
 		return -1;
@@ -249,12 +255,13 @@ int BPFElement::allocte_jit_stack() {
         return -1;
     }
 
+#ifdef CONFIG_LIBCLICK_ENABLE_MPK
 	rc = pkey_mprotect(ebpf_stack, pages*__PAGE_SIZE, PROT_READ | PROT_WRITE, _pkey_stack);
 	if (rc < 0) {
 		uk_pr_err("Could not set pkey for ebpf stack %d\n", errno);
 		return -1;
 	}
-
+#endif
 
     /* jit stack protector:
      *
@@ -276,11 +283,13 @@ int BPFElement::allocte_jit_stack() {
     _ubpf_jit_stack_protector_len = pages*__PAGE_SIZE;
     _ubpf_jit_stack_protector = jit_stack_protector;
 
+#ifdef CONFIG_LIBCLICK_ENABLE_MPK
 	rc = pkey_mprotect(jit_stack_protector, pages*__PAGE_SIZE, PROT_READ | PROT_WRITE, _pkey_stack);
 	if (rc < 0) {
 		uk_pr_err("Could not set pkey for jit stack protector %d\n", errno);
 		return -1;
 	}
+#endif
 
     /*
      * JIT stack
@@ -299,11 +308,13 @@ int BPFElement::allocte_jit_stack() {
     _ubpf_jit_stack_len = pages*__PAGE_SIZE;
     UK_ASSERT(_ubpf_jit_stack_protector + _ubpf_jit_stack_protector_len == _ubpf_jit_stack);
 
+#ifdef CONFIG_LIBCLICK_ENABLE_MPK
 	rc = pkey_mprotect(jit_stack, pages*__PAGE_SIZE, PROT_READ | PROT_WRITE, _pkey_stack);
 	if (rc < 0) {
 		uk_pr_err("Could not set pkey for jit stack %d\n", errno);
 		return -1;
 	}
+#endif
 
     return 0;
 }
@@ -349,7 +360,7 @@ int BPFElement::configure(Vector <String> &conf, ErrorHandler *errh) {
             return errh->error("Error initializing ubpf vm\n");
         }
         if (_jit) {
-            if (this->allocte_jit_stack()) {
+            if (this->allocate_jit_stack()) {
                 return errh->error("Error allocating JIT stack\n");
             }
 
@@ -434,13 +445,22 @@ uint32_t BPFElement::exec(int port, Packet *p) {
     UK_ASSERT(sizeof(bpfelement_md) == 24); // assumption made in ubpf_jit_x86_64.c
     // move ebpf input context to JIT stack which is readable from ebpf context
     auto ctx = (bpfelement_md*)(this->_ubpf_jit_stack + __PAGE_SIZE - sizeof(bpfelement_md));
-    *ctx = ctx_;
+    //*ctx = ctx_;
+    ctx->data = ctx_.data;
+    ctx->data_end = ctx_.data_end;
+    ctx->port = ctx_.port;
 
     if (_jit) {
+#ifdef CONFIG_LIBCLICK_ENABLE_MPK
         mpk_ebpf_enter(_pkey_stack);
+#endif
         // ret = (uint32_t) _ubpf_jit_fn(&ctx, sizeof(ctx));
+        asm volatile("" ::: "memory");
         ret = (uint64_t) _ubpf_jit_ex_fn(ctx, sizeof(bpfelement_md), (uint8_t*)this->_ubpf_ebpf_stack, this->_ubpf_ebpf_stack_len);
+        asm volatile("" ::: "memory");
+#ifdef CONFIG_LIBCLICK_ENABLE_MPK
         mpk_ebpf_exit(_pkey_stack);
+#endif
     } else {
         if (ubpf_exec(_ubpf_vm, &ctx, sizeof(ctx), &ret) != 0) {
             uk_pr_err("Error executing bpf program\n");

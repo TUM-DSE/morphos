@@ -97,4 +97,10 @@ config LIBCLICK_UBPF_VERIFY_SIGNATURE
     help
       Build with Click ubpf elements.
 
+config LIBCLICK_ENABLE_MPK
+    bool "Enable mpk usage"
+    default y
+    help
+        Build with MPK support
+
 endif

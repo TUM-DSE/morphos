@@ -8,4 +8,7 @@ config LIBUBPF_MAIN_FUNCTION
 	bool "Provide main function"
 	default n
 
+config LIBUBPF_ENABLE_MPK
+    bool "Enable mpk"
+    default y
 endif
