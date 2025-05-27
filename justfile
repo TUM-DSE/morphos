@@ -149,20 +149,20 @@ stringmatcher-cpio:
 natebpf-cpio:
     rm -r /tmp/ukcpio-{{user}} || true
     mkdir -p /tmp/ukcpio-{{user}}
-    cp ./benchmark/configurations/firewall-bpf.click /tmp/ukcpio-{{user}}/config.click
-    # cp ./benchmark/configurations/thomer-nat-ebpf.click /tmp/ukcpio-{{user}}/config.click
+    #cp ./benchmark/configurations/firewall-bpf.click /tmp/ukcpio-{{user}}/config.click
+    cp ./benchmark/configurations/thomer-nat-ebpf.click /tmp/ukcpio-{{user}}/config.click
     # cp ./benchmark/configurations/thomer-nat.click /tmp/ukcpio-{{user}}/config.click
     # cp ./benchmark/configurations/test.click /tmp/ukcpio-{{user}}/config.click
     # cp ./benchmark/configurations/test2.click /tmp/ukcpio-{{user}}/config.click
     # cp ./benchmark/configurations/stringmatcher.click /tmp/ukcpio-{{user}}/config.click
-    cp ./benchmark/bpfilters/round-robin /tmp/ukcpio-{{user}}/round-robin
-    cp ./benchmark/bpfilters/round-robin.sig /tmp/ukcpio-{{user}}/round-robin.sig
+    #cp ./benchmark/bpfilters/round-robin /tmp/ukcpio-{{user}}/round-robin
+    #cp ./benchmark/bpfilters/round-robin.sig /tmp/ukcpio-{{user}}/round-robin.sig
     cp ./benchmark/bpfilters/nat /tmp/ukcpio-{{user}}/nat
     cp ./benchmark/bpfilters/nat.sig /tmp/ukcpio-{{user}}/nat.sig
-    cp ./benchmark/bpfilters/firewall-2 /tmp/ukcpio-{{user}}/firewall-2
-    cp ./benchmark/bpfilters/firewall-2.sig /tmp/ukcpio-{{user}}/firewall-2.sig
-    cp ./benchmark/bpfilters/firewall-10000 /tmp/ukcpio-{{user}}/firewall-10000
-    cp ./benchmark/bpfilters/firewall-10000.sig /tmp/ukcpio-{{user}}/firewall-10000.sig
+    #cp ./benchmark/bpfilters/firewall-2 /tmp/ukcpio-{{user}}/firewall-2
+    #cp ./benchmark/bpfilters/firewall-2.sig /tmp/ukcpio-{{user}}/firewall-2.sig
+    #cp ./benchmark/bpfilters/firewall-10000 /tmp/ukcpio-{{user}}/firewall-10000
+    #cp ./benchmark/bpfilters/firewall-10000.sig /tmp/ukcpio-{{user}}/firewall-10000.sig
     ./libs/unikraft/support/scripts/mkcpio ./throughput.cpio /tmp/ukcpio-{{user}}
 
 vm: natebpf-cpio
@@ -235,6 +235,11 @@ imagesizes: natebpf-cpio
     [ -e {{UBUNTU_PATH}} ] || nix run --inputs-from ./ nixpkgs#vagrant -- box add ubuntu/jammy64 --provider virtualbox --box-version 20241002.0.0
     # click unikraft nat ebpf
     ls -l ./.unikraft/build/click_qemu-x86_64
+    ls -l ./throughput.cpio
+    # click unikraft nat
+    just -f {{justfile()}} nat-cpio
+    nix build github:TUM-DSE/appclick-ubpf/unikraft-small-size#unikraft
+    ls -l result/click_qemu-x86_64
     ls -l ./throughput.cpio
     # click linux nat ebpf
     # we should also count non-trivial click dependencies: dpdk, libjannson

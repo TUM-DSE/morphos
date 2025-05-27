@@ -1,22 +1,5 @@
 {
   "nodes": {
-    "base_unikraft": {
-      "flake": false,
-      "locked": {
-        "lastModified": 1747059580,
-        "narHash": "sha256-GCcD98xVOYaKKV49sD4JiwWiL8NApZeKVUU3XDktZPg=",
-        "owner": "unikraft",
-        "repo": "unikraft",
-        "rev": "03f108fbf4b836083c8cfe84334b7f5d6fb34f1d",
-        "type": "github"
-      },
-      "original": {
-        "owner": "unikraft",
-        "ref": "stable",
-        "repo": "unikraft",
-        "type": "github"
-      }
-    },
     "compiler-rt": {
       "flake": false,
       "locked": {
@@ -585,7 +568,6 @@
     },
     "root": {
       "inputs": {
-        "base_unikraft": "base_unikraft",
         "compiler-rt": "compiler-rt",
         "fastclick": "fastclick",
         "fenix": "fenix",
