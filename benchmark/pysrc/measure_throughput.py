@@ -18,7 +18,7 @@ from root import *
 from dataclasses import dataclass, field, asdict
 import subprocess
 import os
-from pandas import DataFrame
+from pandas import DataFrame, read_csv, concat
 import pandas as pd
 import traceback
 import click_configs
@@ -131,10 +131,9 @@ class ThroughputTest(AbstractBenchTest):
         elif self.direction == "tx":
             # parse click log
             with open(self.output_filepath(repetition), 'r') as f:
-                lines = f.readlines()
-            # pps values
-            values = [ float(line.split("\t")[0].strip()) for line in lines ]
-            values = values[warmup:]
+                moongen = read_csv(f)
+            # parse moongen (cut last value which is only a split-second)
+            values = moongen[moongen.Direction=='RX']['PacketRate'][:-1]*1_000_000
 
         else:
             raise ValueError(f"Unknown direction: {self.direction}")
@@ -280,6 +279,7 @@ class ThroughputTest(AbstractBenchTest):
         guest.copy_to("/tmp/linux.click", "/tmp/linux.click")
         guest.start_click("/tmp/linux.click", remote_click_output, script_args=click_args, dpdk=False)
 
+        # TODO -> moongen
         info("Start measuring with bmon")
         # count packets that actually arrive, but cut first line because it is always zero
         monitor_cmd = f"bmon -p {loadgen.test_iface} -o '{bmon_format}' | tee {remote_monitor_file}"
@@ -353,31 +353,47 @@ class ThroughputTest(AbstractBenchTest):
 
 
     def run_unikraft_tx(self, repetition: int, guest, loadgen, host, remote_unikraft_log_raw):
-        remote_monitor_file = "/tmp/throughput.tsv"
         remote_unikraft_log = f"{remote_unikraft_log_raw}.{repetition}"
-        local_monitor_file = self.output_filepath(repetition)
+        remote_statsfile = "/tmp/throughput.csv"
+        remote_moongen_log = "/tmp/moongen.log"
         local_unikraft_log = self.output_filepath(repetition, "unikraft.log")
+        local_statsfile = self.output_filepath(repetition)
+        local_moongen_log = self.output_filepath(repetition, "moongen.log")
 
-        loadgen.exec(f"sudo rm {remote_monitor_file} || true")
         host.exec(f"sudo rm {remote_unikraft_log} || true")
+        loadgen.exec(f"sudo rm {remote_statsfile} || true")
+        loadgen.exec(f"sudo rm {remote_moongen_log} || true")
+
+        # bind loadgen drivers here until rx has also moved to moongen
+        loadgen.delete_nic_ip_addresses(loadgen.test_iface)
+        loadgen.bind_test_iface() # bind DPDK driver
 
         # reset unikraft log
         host.exec(f"sudo truncate -s 0 {remote_unikraft_log_raw}")
 
-        info("Start measuring with bmon")
-        # measure on loadgen, because unikraft statistics only get printed very rately when busy sending
-        monitor_cmd = f"bmon -p {loadgen.test_iface} -o '{bmon_format}' | tee {remote_monitor_file}"
-        loadgen.tmux_kill("monitor")
-        loadgen.tmux_new("monitor", monitor_cmd)
+
+        LoadGen.stop_receiver(loadgen)
+        LoadGen.run_receiver(server=loadgen,
+                            runtime=G.DURATION_S,
+                            statsfile=remote_statsfile,
+                            outfile=remote_moongen_log,
+                            )
 
         time.sleep(G.DURATION_S)
 
-        loadgen.tmux_kill("monitor")
+        # stop network load
+        try:
+            loadgen.wait_for_success(f'[[ $(tail -n 5 {remote_moongen_log}) = *"TEST_DONE"* ]]', timeout=60)
+        except TimeoutError:
+            error('Waiting for moongen to finish timed out')
+        LoadGen.stop_receiver(loadgen)
+
 
         # copy raw to log, but only printable characters (cut leading null bytes)
         host.exec(f"strings {remote_unikraft_log_raw} | sudo tee {remote_unikraft_log}")
         host.copy_from(remote_unikraft_log, local_unikraft_log)
-        loadgen.copy_from(remote_monitor_file, local_monitor_file)
+        loadgen.copy_from(remote_statsfile, local_statsfile)
+        loadgen.copy_from(remote_moongen_log, local_moongen_log)
         pass
 
     def run_unikraft_rx(self, repetition: int, guest, loadgen, host, remote_unikraft_log_raw):
