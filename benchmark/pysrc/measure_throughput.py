@@ -503,7 +503,7 @@ def main(measurement: Measurement, plan_only: bool = False) -> None:
             loadgen.setup_test_iface_ip_net()
 
 
-            if system in [ "uk", "ukebpf", "ukebpfjit" ]:
+            if system in [ "uk", "ukebpf", "ukebpfjit", "ukebpfjit_nompk" ]:
                 files, element = test.click_config()
                 click_config = ""
                 if test.vnf == "nat":
@@ -539,29 +539,13 @@ def main(measurement: Measurement, plan_only: bool = False) -> None:
                 host.exec(f"sudo rm {remote_unikraft_init_log} || true")
 
                 for repetition in range(repetitions): # restarting click for each repetition means restarting unikraft
-                    with measurement.unikraft_vm(interface, click_config, vm_log=remote_unikraft_log_raw, cpio_files=files) as guest:
+                    with measurement.unikraft_vm(interface, click_config, vm_log=remote_unikraft_log_raw, cpio_files=files, with_mpk=(test.system != "ukebpfjit_nompk")) as guest:
                         host.exec(f"sudo cp {remote_unikraft_log_raw} {remote_unikraft_init_log}")
 
                         if test.direction == "tx":
                             test.run_unikraft_tx(repetition, guest, loadgen, host, remote_unikraft_log_raw)
                         elif test.direction == "rx":
                             test.run_unikraft_rx(repetition, guest, loadgen, host, remote_unikraft_log_raw)
-                    # end VM
-
-            elif system == "ukebpfjit_nompk":
-                files, element = test.click_config()
-                click_config = click_rx_config(unikraft_interface, extra_processing=element)
-
-                remote_unikraft_log_raw  = "/tmp/unikraft_nompk.log" # will be cleared sometimes
-                remote_unikraft_init_log  = f"{remote_unikraft_log_raw}.init" # contains the startup log
-                host.exec(f"sudo rm {remote_unikraft_log_raw} || true")
-                host.exec(f"sudo rm {remote_unikraft_init_log} || true")
-
-                for repetition in range(repetitions): # restarting click for each repetition means restarting unikraft
-                    with measurement.unikraft_vm(interface, click_config, vm_log=remote_unikraft_log_raw, cpio_files=files, with_mpk=False) as guest:
-                        host.exec(f"sudo cp {remote_unikraft_log_raw} {remote_unikraft_init_log}")
-
-                        test.run_unikraft_rx(repetition, guest, loadgen, host, remote_unikraft_log_raw)
                     # end VM
 
             elif system == "linux":
