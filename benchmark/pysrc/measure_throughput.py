@@ -181,17 +181,14 @@ class ThroughputTest(AbstractBenchTest):
             case ("ukebpf", "filter", _):
                 files = [ "benchmark/bpfilters/target-port", "benchmark/bpfilters/target-port.sig" ]
                 processing += "-> BPFilter(ID 1, FILE target-port, SIGNATURE target-port.sig, JIT false)"
-            case ("ukebpfjit", "filter", _):
-                files = [ "benchmark/bpfilters/target-port", "benchmark/bpfilters/target-port.sig" ]
-                processing += "-> BPFilter(ID 1, FILE target-port, SIGNATURE target-port.sig, JIT true)"
-            case ("ukebpfjit_nompk", "filter", _):
+            case ("ukebpfjit" | "ukebpfjit_nompk", "filter", _):
                 files = [ "benchmark/bpfilters/target-port", "benchmark/bpfilters/target-port.sig" ]
                 processing += "-> BPFilter(ID 1, FILE target-port, SIGNATURE target-port.sig, JIT true)"
 
             case ("ukebpf", "nat", "rx"):
                 files = [ "benchmark/bpfilters/nat", "benchmark/bpfilters/nat.sig" ]
                 processing += "rw :: BPFClassifier(ID 1, FILE nat, SIGNATURE nat.sig, JIT false)"
-            case ("ukebpfjit", "nat", "rx"):
+            case ("ukebpfjit" | "ukebpfjit_nompk", "nat", "rx"):
                 files = [ "benchmark/bpfilters/nat", "benchmark/bpfilters/nat.sig" ]
                 processing += "rw :: BPFClassifier(ID 1, FILE nat, SIGNATURE nat.sig, JIT true)"
             case (_, "nat", _):
@@ -201,7 +198,7 @@ class ThroughputTest(AbstractBenchTest):
             case ("ukebpf", "mirror", "rx"):
                 files = [ "benchmark/bpfilters/ether-mirror", "benchmark/bpfilters/ether-mirror.sig" ]
                 processing += "-> BPFRewriter(ID 1, FILE ether-mirror, SIGNATURE ether-mirror.sig, JIT false)"
-            case ("ukebpfjit", "mirror", "rx"):
+            case ("ukebpfjit" | "ukebpfjit_nompk", "mirror", "rx"):
                 files = [ "benchmark/bpfilters/ether-mirror", "benchmark/bpfilters/ether-mirror.sig" ]
                 processing += "-> BPFRewriter(ID 1, FILE ether-mirror, SIGNATURE ether-mirror.sig, JIT true)"
             case ("uk", "mirror", "rx"):
@@ -214,7 +211,7 @@ class ThroughputTest(AbstractBenchTest):
             case ("ukebpf", "ids", _):
                 files = [ "benchmark/bpfilters/stringmatcher", "benchmark/bpfilters/stringmatcher.sig" ]
                 processing += "-> BPFilter(ID 1, FILE stringmatcher, SIGNATURE stringmatcher.sig, JIT false)"
-            case ("ukebpfjit", "ids", _):
+            case ("ukebpfjit" | "ukebpfjit_nompk", "ids", _):
                 files = [ "benchmark/bpfilters/stringmatcher", "benchmark/bpfilters/stringmatcher.sig" ]
                 processing += "-> BPFilter(ID 1, FILE stringmatcher, SIGNATURE stringmatcher.sig, JIT true)"
             case (_, "ids", _):
