@@ -262,14 +262,22 @@ class ThroughputTest(AbstractBenchTest):
         loadgen.exec("sudo pkill -SIGINT pktgen")
 
     def run_linux_tx(self, repetition: int, guest, loadgen, host):
-        remote_monitor_file = "/tmp/throughput.tsv"
         remote_click_output = "/tmp/click.log"
-        local_monitor_file = self.output_filepath(repetition)
+        remote_statsfile = "/tmp/throughput.csv"
+        remote_moongen_log = "/tmp/moongen.log"
         local_click_output = self.output_filepath(repetition, "click.log")
+        local_statsfile = self.output_filepath(repetition)
+        local_moongen_log = self.output_filepath(repetition, "moongen.log")
 
-        loadgen.exec(f"sudo rm {remote_monitor_file} || true")
         guest.exec(f"sudo rm {remote_click_output} || true")
+        loadgen.exec(f"sudo rm {remote_statsfile} || true")
+        loadgen.exec(f"sudo rm {remote_moongen_log} || true")
 
+        # bind loadgen drivers here until rx has also moved to moongen
+        loadgen.delete_nic_ip_addresses(loadgen.test_iface)
+        loadgen.bind_test_iface() # bind DPDK driver
+
+        # prepare click config
         click_args = { "R": 0 }
         guest.kill_click()
         _, element = self.click_config()
@@ -279,21 +287,28 @@ class ThroughputTest(AbstractBenchTest):
         guest.copy_to("/tmp/linux.click", "/tmp/linux.click")
         guest.start_click("/tmp/linux.click", remote_click_output, script_args=click_args, dpdk=False)
 
-        # TODO -> moongen
-        info("Start measuring with bmon")
-        # count packets that actually arrive, but cut first line because it is always zero
-        monitor_cmd = f"bmon -p {loadgen.test_iface} -o '{bmon_format}' | tee {remote_monitor_file}"
-        loadgen.tmux_kill("monitor")
-        loadgen.tmux_new("monitor", monitor_cmd)
+        LoadGen.stop_receiver(loadgen)
+        LoadGen.run_receiver(server=loadgen,
+                            runtime=G.DURATION_S,
+                            statsfile=remote_statsfile,
+                            outfile=remote_moongen_log,
+                            )
 
         time.sleep(G.DURATION_S)
 
-        loadgen.tmux_kill("monitor")
+        # stop network monitor
+        try:
+            loadgen.wait_for_success(f'[[ $(tail -n 5 {remote_moongen_log}) = *"TEST_DONE"* ]]', timeout=60)
+        except TimeoutError:
+            error('Waiting for moongen to finish timed out')
+        LoadGen.stop_receiver(loadgen)
+
         guest.stop_click()
         guest.kill_click()
 
-        loadgen.copy_from(remote_monitor_file, local_monitor_file)
         guest.copy_from(remote_click_output, local_click_output)
+        loadgen.copy_from(remote_statsfile, local_statsfile)
+        loadgen.copy_from(remote_moongen_log, local_moongen_log)
 
     def run_linux_rx(self, repetition: int, guest, loadgen, host):
         loadgen.exec(f"sudo modprobe pktgen")
@@ -381,7 +396,7 @@ class ThroughputTest(AbstractBenchTest):
 
         time.sleep(G.DURATION_S)
 
-        # stop network load
+        # stop network monitor
         try:
             loadgen.wait_for_success(f'[[ $(tail -n 5 {remote_moongen_log}) = *"TEST_DONE"* ]]', timeout=60)
         except TimeoutError:
