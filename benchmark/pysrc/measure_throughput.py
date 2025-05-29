@@ -448,7 +448,7 @@ def main(measurement: Measurement, plan_only: bool = False) -> None:
           # Interface.BRIDGE_VHOST,
           ]
     directions = [ "rx", "tx" ]
-    systems = [ "linux", "uk", "ukebpfjit" ]
+    systems = [ "linux", "uk", "ukebpfjit_nompk" ]
     vm_nums = [ 1 ]
     sizes = [ 64, 256, 1024, 1518 ]
     vnfs = [ "empty", "filter", "nat", "ids", "mirror" ]
@@ -481,6 +481,7 @@ def main(measurement: Measurement, plan_only: bool = False) -> None:
                     (test.vnf == "mirror" and test.direction == "tx") # bidirection test
         )
 
+    # list base throughput tests
     test_matrix = dict(
         repetitions=[ repetitions ],
         direction=directions,
@@ -491,10 +492,22 @@ def main(measurement: Measurement, plan_only: bool = False) -> None:
         system=systems,
     )
     tests: List[ThroughputTest] = []
-    tests = ThroughputTest.list_tests(test_matrix, exclude_test=exclude)
-    for s in sizes:
-        tests.append(ThroughputTest(repetitions, 1, "rx", interfaces[0].value, s, "filter", "ukebpfjit")) 
-        tests.append(ThroughputTest(repetitions, 1, "rx", interfaces[0].value, s, "filter", "ukebpfjit_nompk")) 
+    tests += ThroughputTest.list_tests(test_matrix, exclude_test=exclude)
+
+    # add list of MPK tests
+    if not G.BRIEF:
+        systems = [ "ukebpfjit", "ukebpfjit_nompk" ]
+        sizes = [ 64, 128, 256, 512, 758, 1024, 1280, 1518 ]
+        test_matrix = dict(
+            repetitions=[ repetitions ],
+            direction=["rx"],
+            interface=[ interface.value for interface in interfaces],
+            num_vms=vm_nums,
+            size=sizes,
+            vnf=["filter"],
+            system=systems,
+        )
+        tests += ThroughputTest.list_tests(test_matrix, exclude_test=exclude)
 
     args_reboot = ["interface", "num_vms", "direction", "system", "vnf", "size"]
     info(f"ThroughputTest execution plan:")
