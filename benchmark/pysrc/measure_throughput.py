@@ -567,7 +567,7 @@ def main(measurement: Measurement, plan_only: bool = False) -> None:
                 host.exec(f"sudo rm {remote_unikraft_init_log} || true")
 
                 for repetition in range(repetitions): # restarting click for each repetition means restarting unikraft
-                    with measurement.unikraft_vm(interface, click_config, vm_log=remote_unikraft_log_raw, cpio_files=files, with_mpk=(test.system != "ukebpfjit_nompk")) as guest:
+                    with measurement.unikraft_vm(interface, click_config, vm_log=remote_unikraft_log_raw, cpio_files=files, with_mpk=(test.system == "ukebpfjit")) as guest:
                         host.exec(f"sudo cp {remote_unikraft_log_raw} {remote_unikraft_init_log}")
 
                         if test.direction == "tx":
