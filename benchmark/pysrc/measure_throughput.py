@@ -235,9 +235,13 @@ class ThroughputTest(AbstractBenchTest):
             batch = 1
             threads = 1
 
+        delay = 0 # no limit in the normal case
+        if self.vnf == "mirror" or self.vnf == "nat":
+            delay = 25000
+            threads = 1
         size = self.size - 4 # subtract 4 bytes for the CRC
         pktgen_cmd = f"{loadgen.project_root}/nix/builds/linux-pktgen/bin/pktgen_sample03_burst_single_flow" + \
-            f" -i {loadgen.test_iface} -s {self.size - 4} -d {strip_subnet_mask(guest.test_iface_ip_net)} -m {guest.test_iface_mac} -b {batch} -t {threads} | tee {remote_pktgen_log}";
+            f" -i {loadgen.test_iface} -s {self.size - 4} -d {strip_subnet_mask(guest.test_iface_ip_net)} -m {guest.test_iface_mac} -b {batch} -t {threads} -w {delay} | tee {remote_pktgen_log}";
         self.start_pktgen_helper(guest, loadgen, host, pktgen_cmd)
 
     def start_pktgen_helper(self, guest, loadgen, host, pktgen_cmd):
@@ -465,14 +469,14 @@ def main(measurement: Measurement, plan_only: bool = False) -> None:
         directions = [ "rx" ]
         # systems = [ "linux", "uk", "ukebpfjit" ]
         # systems = [ "uk", "ukebpfjit" ]
-        # systems = [ "uk" ]
-        # systems = [ "ukebpfjit" ]
-        systems = [ "linux" ]
+        systems = [ "uk" ]
+        # systems = [ "linux", "uk", "ukebpfjit_nompk" ]
         vm_nums = [ 1 ]
         # vm_nums = [ 128, 160 ]
         # vnfs = [ "empty" ]
-        sizes = [ 64 ]
+        sizes = [ 64 ] #, 1518 ]
         vnfs = [ "mirror" ]
+        rates=[0]
         repetitions = 1
 
     def exclude(test):
