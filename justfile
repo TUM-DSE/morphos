@@ -60,6 +60,13 @@ vm-image-init:
 
 build-vm-images: vm-image-init
   #!/usr/bin/env bash
+  rm -rf {{proot}}/.unikraft/build/libclick/origin/click-a5384835a6cac10f8d44da4eeea8eaa8f8e6a0c2/elements/unikraft || true
+  mkdir -p {{proot}}/.unikraft/build/libclick/origin/click-a5384835a6cac10f8d44da4eeea8eaa8f8e6a0c2/elements/unikraft || true
+  cp -r {{proot}}/libs/click/unikraft {{proot}}/.unikraft/build/libclick/origin/click-a5384835a6cac10f8d44da4eeea8eaa8f8e6a0c2/elements
+  rm -f {{proot}}/.unikraft/build/libclick/origin/click-a5384835a6cac10f8d44da4eeea8eaa8f8e6a0c2/include/click/packet.hh || true
+  rm -f {{proot}}/.unikraft/build/libclick/origin/click-a5384835a6cac10f8d44da4eeea8eaa8f8e6a0c2/lib/packet.cc || true
+  cp {{proot}}/libs/click/packet.hh {{proot}}/.unikraft/build/libclick/origin/click-a5384835a6cac10f8d44da4eeea8eaa8f8e6a0c2/include/click/packet.hh
+  cp {{proot}}/libs/click/packet.cc {{proot}}/.unikraft/build/libclick/origin/click-a5384835a6cac10f8d44da4eeea8eaa8f8e6a0c2/lib/packet.cc
   rm .config.click_qemu-x86_64
   kraft build -K Kraftfile
   cp .unikraft/build/click_qemu-x86_64 VMs/unikraft

@@ -170,6 +170,7 @@ class Measurement:
         initrd = f"{tmpdir}.cpio"
         self.host.exec(f"sudo rm -r {tmpdir} || true")
         self.host.exec(f"sudo rm {initrd} || true")
+        self.host.exec(f"sudo rm /tmp/config.click || true")
         self.host.exec(f"mkdir -p {tmpdir}")
         with open("/tmp/config.click", "w") as text_file:
             text_file.write(click_config)

@@ -465,8 +465,7 @@ def main(measurement: Measurement, plan_only: bool = False) -> None:
     tests: List[ThroughputTest] = []
     tests = ThroughputTest.list_tests(test_matrix, exclude_test=exclude)
     for s in sizes:
-        tests.append(ThroughputTest(repetitions, 1, "rx", interfaces[0].value, s, "filter", "ukebpfjit")) 
-        tests.append(ThroughputTest(repetitions, 1, "rx", interfaces[0].value, s, "filter", "ukebpfjit_nompk")) 
+        tests.append(ThroughputTest(repetitions, 1, "rx", interfaces[0].value, s, "filter", "ukebpfjit_nompk"))
 
     args_reboot = ["interface", "num_vms", "direction", "system", "vnf", "size"]
     info(f"ThroughputTest execution plan:")

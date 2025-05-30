@@ -78,7 +78,7 @@ inline void ebpf_helper_enter(int stack_key) {
 	// pkey_set_perm(PROT_READ | PROT_WRITE, stack_key); // allow all
 	pkey_set_perm(PROT_READ | PROT_WRITE, MPKEY_STACK);
 	pkey_set_perm(PROT_READ | PROT_WRITE, MPKEY_BUFFERS);
-	pkey_set_perm(PROT_READ | PROT_WRITE, MPKEY_DEFAULT); // TODO can't do this yet as it breaks click for some reason
+	//pkey_set_perm(PROT_READ | PROT_WRITE, MPKEY_DEFAULT); // TODO can't do this yet as it breaks click for some reason
 }
 
 inline void ebpf_helper_exit(int stack_key) {
@@ -451,16 +451,16 @@ uint32_t BPFElement::exec(int port, Packet *p) {
     ctx->port = ctx_.port;
 
     if (_jit) {
-#ifdef CONFIG_LIBCLICK_ENABLE_MPK
+/*#ifdef CONFIG_LIBCLICK_ENABLE_MPK
         mpk_ebpf_enter(_pkey_stack);
-#endif
+#endif*/
         // ret = (uint32_t) _ubpf_jit_fn(&ctx, sizeof(ctx));
         asm volatile("" ::: "memory");
         ret = (uint64_t) _ubpf_jit_ex_fn(ctx, sizeof(bpfelement_md), (uint8_t*)this->_ubpf_ebpf_stack, this->_ubpf_ebpf_stack_len);
         asm volatile("" ::: "memory");
-#ifdef CONFIG_LIBCLICK_ENABLE_MPK
+/*#ifdef CONFIG_LIBCLICK_ENABLE_MPK
         mpk_ebpf_exit(_pkey_stack);
-#endif
+#endif*/
     } else {
         if (ubpf_exec(_ubpf_vm, &ctx, sizeof(ctx), &ret) != 0) {
             uk_pr_err("Error executing bpf program\n");

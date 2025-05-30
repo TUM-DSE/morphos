@@ -1756,6 +1756,7 @@ class Host(Server):
         numactl = f"numactl -C {self.cpupinner.qemu(vm_number)}"
         # numactl = ""
 
+        self.exec("sudo rm /tmp/trace-vm{vm_number}.log || true")
         self.tmux_new(
             MultiHost.enumerate('qemu', vm_number),
             ('gdbserver 0.0.0.0:1234 ' if debug_qemu else '') +
@@ -1930,7 +1931,6 @@ class Host(Server):
                 f' -chardev stdio,id=char0,mux=on,logfile={vm_log_path},signal=off' + \
                 ' -serial chardev:char0' + \
                 ' -mon chardev=char0'
-
 
         self.tmux_new(
             MultiHost.enumerate('qemu', vm_number),
