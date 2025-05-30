@@ -2325,6 +2325,7 @@ class LoadGen(Server):
                       f' -c {statsfile} -m {nr_macs} -e {nr_ethertypes} ' +
                       f'--srcIp {srcIp} --dstIp {dstIp} ' +
                       f'--srcPort {srcPort} --dstPort {dstPort} ' +
+                      f'--threads 0 ' +
                       f'{server._test_iface_id} {mac} ' +
                       f'2>&1 | tee {outfile}; echo TEST_DONE >> {outfile}; sleep 999')
 
@@ -2339,6 +2340,23 @@ class LoadGen(Server):
         Returns
         -------
         """
+        server.tmux_kill('loadlatency')
+
+    @staticmethod
+    def run_receiver(server: Server,
+                            runtime: int = 60,
+                            statsfile: str = '/tmp/throughput.csv',
+                            outfile: str = '/tmp/output.log'
+                            ):
+        server.tmux_new('loadlatency', f'cd {server.moongen_dir}; ' +
+                      'sudo bin/MoonGen '
+                      f'{server.project_root}/benchmark/configurations/receiver.lua ' +
+                      f'-c {statsfile} -T {runtime} '
+                      f'{server._test_iface_id} ' +
+                      f'2>&1 | tee {outfile}; echo TEST_DONE >> {outfile}; sleep 999')
+
+    @staticmethod
+    def stop_receiver(server: 'Server'):
         server.tmux_kill('loadlatency')
 
     @staticmethod

@@ -136,7 +136,7 @@ class Measurement:
         return vm_boot
 
     @contextmanager
-    def unikraft_vm(self, interface: Interface, click_config: str, vm_log: str = "", run_guest_args = dict(), cpio_files: List[str] = [], with_mpk: bool = True) -> Iterator[Guest]:
+    def unikraft_vm(self, interface: Interface, click_config: str, vm_log: str = "", run_guest_args = dict(), cpio_files: List[str] = [], with_mpk: bool = False) -> Iterator[Guest]:
         """
         Creates a unikraft-click virtual machine
         """
