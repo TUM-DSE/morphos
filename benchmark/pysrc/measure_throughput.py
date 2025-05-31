@@ -454,9 +454,9 @@ def main(measurement: Measurement, plan_only: bool = False) -> None:
     directions = [ "rx", "tx" ]
     systems = [ "linux", "uk", "ukebpfjit_nompk" ]
     vm_nums = [ 1 ]
-    sizes = [ 64, 256, 1024, 1518 ]
     vnfs = [ "empty", "filter", "nat", "ids", "mirror" ]
     repetitions = 3
+    sizes = [ 64, 256, 1024, 1508 ]
     G.DURATION_S = 71 if not G.BRIEF else 15
     if safe_vpp_warmup:
         G.DURATION_S = max(30, G.DURATION_S)
@@ -531,6 +531,9 @@ def main(measurement: Measurement, plan_only: bool = False) -> None:
             info("Booting VM for this test matrix:")
             info(ThroughputTest.test_matrix_string(a_tests))
 
+            assert len(a_tests) >= 1
+            assert all([a_tests[0] == test for test in a_tests]) # deduplicate tests
+            a_tests = [ a_tests[0] ] # only keep the first
             assert len(a_tests) == 1 # we have looped through all variables now, right?
             test = a_tests[0]
             info(f"Running {test}")
