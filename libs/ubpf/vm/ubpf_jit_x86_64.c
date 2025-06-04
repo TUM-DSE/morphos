@@ -309,7 +309,7 @@ translate(struct ubpf_vm* vm, struct jit_state* state, char** errmsg)
     // mov $jit_stack+PAGE-1, %rsp
     emit1(state, 0x48); // REX prefix field (see Table 2-4)
     emit1(state, 0xBC); // movabs immediate to [rsp]
-    emit8(state, 0x80002000 + 0x1000 - 24 - 1);    // immediate
+    emit8(state, 0x80000000 + (1 * 0x1000) + 0x1000 - 24 - 1);    // immediate
     //_ubpf_jit_stack + __PAGE_SIZE - sizeof(struct bpfelement_md) - 1
 
     /* Configure eBPF program stack space */

@@ -271,7 +271,7 @@ int BPFElement::allocate_jit_stack() {
     struct uk_pagetable *pt = ukplat_pt_get_active();
     pages = 1;
     // TODO needs dynamic allocator, so that we can have multiple bpfelements
-    void* jit_stack_protector = (void*)0x80000000 + 1*__PAGE_SIZE; // the fist page at 0x80... is already used by ubpf_jit.c:ubpf_compile_ex()
+    void* jit_stack_protector = (void*)0x80000000 + 0*__PAGE_SIZE; // the fist page at 0x80... is already used by ubpf_jit.c:ubpf_compile_ex()
     rc = ukplat_page_mapx(pt, (__vaddr_t)jit_stack_protector,
         __PADDR_ANY, pages,
         0, // neither read, write, or execute permissions
@@ -296,7 +296,7 @@ int BPFElement::allocate_jit_stack() {
      */
     pages = 1;
     // TODO needs dynamic allocator, so that we can have multiple bpfelements
-    void* jit_stack = (void*)0x80000000 + 2*__PAGE_SIZE; // the second page is used for _ubpf_jit_stack_protector
+    void* jit_stack = (void*)0x80000000 + 1*__PAGE_SIZE; // the second page is used for _ubpf_jit_stack_protector
     rc = ukplat_page_mapx(pt, (__vaddr_t)jit_stack,
         __PADDR_ANY, pages,
         PAGE_ATTR_PROT_READ | PAGE_ATTR_PROT_WRITE, 0, NULL);

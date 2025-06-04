@@ -143,7 +143,7 @@ ubpf_compile_ex(struct ubpf_vm* vm, char** errmsg, enum JitMode mode)
     /* jitted = mmap(0, jitted_size, PROT_READ | PROT_WRITE | PROT_EXEC, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0); */
     int pages = (jitted_size / __PAGE_SIZE) + 1;
     struct uk_pagetable *pt = ukplat_pt_get_active();
-    jitted = (void*)0x80000000;
+    jitted = (void*)0x80000000 + 2*__PAGE_SIZE; // the second page is used for _ubpf_jit_stack_protector
     int rc = ukplat_page_map(pt, jitted,
 		     __PADDR_ANY, pages,
 		     PAGE_ATTR_PROT_READ | PAGE_ATTR_PROT_WRITE, 0);
