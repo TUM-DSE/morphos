@@ -442,15 +442,15 @@ uint32_t BPFElement::exec(int port, Packet *p) {
             .data_end = (void *) p->end_data(),
             .port = port,
     };
-    UK_ASSERT(sizeof(bpfelement_md) == 24); // assumption made in ubpf_jit_x86_64.c
-    // move ebpf input context to JIT stack which is readable from ebpf context
-    auto ctx = (bpfelement_md*)(this->_ubpf_jit_stack + __PAGE_SIZE - sizeof(bpfelement_md));
-    //*ctx = ctx_;
-    ctx->data = ctx_.data;
-    ctx->data_end = ctx_.data_end;
-    ctx->port = ctx_.port;
 
     if (_jit) {
+        UK_ASSERT(sizeof(bpfelement_md) == 24); // assumption made in ubpf_jit_x86_64.c
+        // move ebpf input context to JIT stack which is readable from ebpf context
+        auto ctx = (bpfelement_md*)(this->_ubpf_jit_stack + __PAGE_SIZE - sizeof(bpfelement_md));
+        //*ctx = ctx_;
+        ctx->data = ctx_.data;
+        ctx->data_end = ctx_.data_end;
+        ctx->port = ctx_.port;
 /*#ifdef CONFIG_LIBCLICK_ENABLE_MPK
         mpk_ebpf_enter(_pkey_stack);
 #endif*/
@@ -462,7 +462,7 @@ uint32_t BPFElement::exec(int port, Packet *p) {
         mpk_ebpf_exit(_pkey_stack);
 #endif*/
     } else {
-        if (ubpf_exec(_ubpf_vm, &ctx, sizeof(ctx), &ret) != 0) {
+        if (ubpf_exec(_ubpf_vm, &ctx_, sizeof(ctx_), &ret) != 0) {
             uk_pr_err("Error executing bpf program\n");
             ret = -1;
         }
