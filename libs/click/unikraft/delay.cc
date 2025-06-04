@@ -73,96 +73,30 @@ Delay::configure(Vector<String> &conf, ErrorHandler* errh)
 Packet *
 Delay::simple_action(Packet *p)
 {
-    if (!_active)
-	return p;
-
-    int bytes = (_contents ? _bytes : 0);
-    if (bytes < 0 || (int) p->length() < bytes)
-	bytes = p->length();
-    StringAccum sa(_label.length() + 2 // label:
-		   + 6		// (processor)
-		   + 28		// timestamp:
-		   + 9		// length |
-		   + (_headroom ? 17 : 0) // (h[headroom] t[tailroom])
-		   + Packet::anno_size*2 + 3 // annotations |
-		   + 3 * bytes);
-    if (sa.out_of_memory()) {
-	click_chatter("no memory for Print2");
-	return p;
+  auto start = ukplat_monotonic_clock();
+  while (true) {
+    // 16 nops for good measure
+    __asm__("nop\n\t");
+    __asm__("nop\n\t");
+    __asm__("nop\n\t");
+    __asm__("nop\n\t");
+    __asm__("nop\n\t");
+    __asm__("nop\n\t");
+    __asm__("nop\n\t");
+    __asm__("nop\n\t");
+    __asm__("nop\n\t");
+    __asm__("nop\n\t");
+    __asm__("nop\n\t");
+    __asm__("nop\n\t");
+    __asm__("nop\n\t");
+    __asm__("nop\n\t");
+    __asm__("nop\n\t");
+    __asm__("nop\n\t");
+    // we use _bytes as delay in nsec
+    if ((ukplat_monotonic_clock() - start) >= _bytes) {
+      break;
     }
-
-    const char *sep = "";
-    if (_label) {
-	sa << _label;
-	sep = ": ";
-    }
-#ifdef CLICK_LINUXMODULE
-    if (_cpu) {
-	click_processor_t my_cpu = click_get_processor();
-	sa << '(' << my_cpu << ')';
-	click_put_processor();
-	sep = ": ";
-    }
-#endif
-    if (_timestamp) {
-	sa << sep << p->timestamp_anno();
-	sep = ": ";
-    }
-#ifdef CONFIG_LIBCLICK
-  sa << sep << ukplat_monotonic_clock() << " ns";
-#else
-  struct timespec ts;
-  clock_gettime(CLOCK_MONOTONIC, &ts);
-  uint64_t time_ns = (uint64_t)ts.tv_sec * 1000000000ULL + (uint64_t)ts.tv_nsec;
-  sa << sep << time_ns << " ns";
-#endif
-
-    // sa.reserve() must return non-null; we checked capacity above
-    int len;
-    len = sprintf(sa.reserve(11), "%s%4d", sep, p->length());
-    sa.adjust_length(len);
-
-    // headroom and tailroom
-    if (_headroom) {
-	len = sprintf(sa.reserve(16), " (h%d t%d)", p->headroom(), p->tailroom());
-	sa.adjust_length(len);
-    }
-
-    if (_print_anno) {
-	sa << " | ";
-	char *buf = sa.reserve(Packet::anno_size * 2);
-	int pos = 0;
-	for (unsigned j = 0; j < Packet::anno_size; j++, pos += 2)
-	    sprintf(buf + pos, "%02x", p->anno_u8(j));
-	sa.adjust_length(pos);
-    }
-
-    if (bytes) {
-	sa << " | ";
-	char *buf = sa.data() + sa.length();
-	const unsigned char *data = p->data();
-	if (_contents == 1) {
-	    for (int i = 0; i < bytes; i++, data++) {
-		if (i && (i % 4) == 0)
-		    *buf++ = ' ';
-		sprintf(buf, "%02x", *data & 0xff);
-		buf += 2;
-	    }
-	} else if (_contents == 2) {
-	    for (int i = 0; i < bytes; i++, data++) {
-		if ((i % 8) == 0)
-		    *buf++ = ' ';
-		if (*data < 32 || *data > 126)
-		    *buf++ = '.';
-		else
-		    *buf++ = *data;
-	    }
-	}
-	sa.adjust_length(buf - (sa.data() + sa.length()));
-    }
-
-  printf("%s\n", sa.c_str());
-  fflush(stdout);
+  }
 
   return p;
 }
