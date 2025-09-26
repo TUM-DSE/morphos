@@ -12,7 +12,7 @@ VERIFY ?= 0
 define BUILD_TARGET
 $(1):
 	@echo -e "${GRAY_BOLD}Building ${RESET}$(1)..."
-	@cd $(DIR) && cargo build --bin $(1) --target bpfel-unknown-none --release -Z build-std=core
+	@cd $(DIR) && PATH=${PATH}:${HOME}/.cargo/bin cargo build --bin $(1) --target bpfel-unknown-none --release -Z build-std=core
 	@echo ""
 	@if [ "$(VERIFY)" = "1" ]; then \
 		echo -e "${GRAY_BOLD}Verification Results:${RESET}"; \

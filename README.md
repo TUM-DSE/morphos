@@ -10,6 +10,8 @@ system, and a set of eBPF programs to be used with the system.
 
 This work is based on [app-click](https://github.com/unikraft/app-click).
 
+Find instructions on how to reproduce our measurements in [REPRODUCE.md](REPRODUCE.md).
+
 ## Project Structure
 
 The project is structured as follows:
@@ -61,7 +63,7 @@ This will automatically build all the eBPF programs in the `ebpf` directory. If 
 make all VERIFY=1
 ```
 
-If you make any changes to the eBPF programs, you can synchronize them with the vendored binaries inside the benchmarks and examples directories by running:
+If you make any changes to the eBPF programs, you synchronize them with the vendored binaries inside the benchmarks and examples directories by running:
 
 ```bash
 make sync
@@ -71,7 +73,7 @@ Further information about our ebpf build system: https://aya-rs.dev/book/start/d
 
 ## Running the Benchmarks
 
-You can run the benchmarks:
+After completing all of the above, you can run the benchmarks:
 
 ```
 # localhost doesn't support Interface.VPP (vhost-user):
