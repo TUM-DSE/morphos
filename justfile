@@ -140,10 +140,11 @@ throughput-cpio:
     ./libs/unikraft/support/scripts/mkcpio ./throughput.cpio /tmp/ukcpio-$(USER)
 
 nat-cpio:
+    #!/usr/bin/env bash
     rm -r /tmp/ukcpio-{{user}} || true
     mkdir -p /tmp/ukcpio-{{user}}
     cp ./benchmark/configurations/thomer-nat.click /tmp/ukcpio-{{user}}/config.click
-    ./libs/unikraft/support/scripts/mkcpio ./throughput.cpio /tmp/ukcpio-{{user}}
+    ./libs/unikraft/support/scripts/mkcpio ./nat.cpio /tmp/ukcpio-{{user}} > /dev/null 2> /dev/null
 
 stringmatcher-cpio:
     rm -r /tmp/ukcpio-{{user}} || true
@@ -154,9 +155,9 @@ stringmatcher-cpio:
     ./libs/unikraft/support/scripts/mkcpio ./throughput.cpio /tmp/ukcpio-{{user}}
 
 natebpf-cpio:
+    #!/usr/bin/env bash
     rm -r /tmp/ukcpio-{{user}} || true
     mkdir -p /tmp/ukcpio-{{user}}
-    #cp ./benchmark/configurations/firewall-bpf.click /tmp/ukcpio-{{user}}/config.click
     cp ./benchmark/configurations/thomer-nat-ebpf.click /tmp/ukcpio-{{user}}/config.click
     # cp ./benchmark/configurations/thomer-nat.click /tmp/ukcpio-{{user}}/config.click
     # cp ./benchmark/configurations/test.click /tmp/ukcpio-{{user}}/config.click
@@ -170,7 +171,7 @@ natebpf-cpio:
     #cp ./benchmark/bpfilters/firewall-2.sig /tmp/ukcpio-{{user}}/firewall-2.sig
     #cp ./benchmark/bpfilters/firewall-10000 /tmp/ukcpio-{{user}}/firewall-10000
     #cp ./benchmark/bpfilters/firewall-10000.sig /tmp/ukcpio-{{user}}/firewall-10000.sig
-    ./libs/unikraft/support/scripts/mkcpio ./throughput.cpio /tmp/ukcpio-{{user}}
+    ./libs/unikraft/support/scripts/mkcpio ./natebpf.cpio /tmp/ukcpio-{{user}} > /dev/null 2> /dev/null
 
 vm: natebpf-cpio
     sudo taskset -c 3,4 qemu-system-x86_64 \
@@ -181,7 +182,7 @@ vm: natebpf-cpio
         -device virtio-net-pci,netdev=en0 \
         -append " vfs.fstab=[\"initrd0:/:extract::ramfs=1:\"] --" \
         -kernel ./.unikraft/build/click_qemu-x86_64 \
-        -initrd ./throughput.cpio \
+        -initrd ./natebpf.cpio \
         -nographic
 
 
@@ -236,25 +237,23 @@ qemu-startup:
 UBUNTU_PATH := "~/.vagrant.d/boxes/ubuntu-VAGRANTSLASH-jammy64/20241002.0.0/virtualbox/ubuntu-jammy-22.04-cloudimg.vmdk"
 ALPINE_PATH := "~/.vagrant.d/boxes/generic-VAGRANTSLASH-alpine319/4.3.12/virtualbox/generic-alpine319-virtualbox-x64-disk001.vmdk"
 
-imagesizes: natebpf-cpio
-    # downloading images
-    [ -e {{ALPINE_PATH}} ] || nix run --inputs-from ./ nixpkgs#vagrant -- box add generic/alpine319 --provider virtualbox --box-version 4.3.12
+imagesizes: nat-cpio natebpf-cpio
+    #!/usr/bin/env bash
+    [ -e {{ALPINE_PATH}} ] || nix run --inputs-from ./ nixpkgs#vagrant -- box add generic/alpine319 --provider virtualbox --box-version 4.3.12 > /dev/null 2> /dev/null
     [ -e {{UBUNTU_PATH}} ] || nix run --inputs-from ./ nixpkgs#vagrant -- box add ubuntu/jammy64 --provider virtualbox --box-version 20241002.0.0
-    # click unikraft nat ebpf
-    ls -l ./.unikraft/build/click_qemu-x86_64
-    ls -l ./throughput.cpio
-    # click unikraft nat
-    just -f {{justfile()}} nat-cpio
-    nix build github:TUM-DSE/appclick-ubpf/unikraft-small-size#unikraft
-    ls -l result/click_qemu-x86_64
-    ls -l ./throughput.cpio
-    # click linux nat ebpf
+    uk_click=$(ls -l .unikraft/build/click_qemu-x86_64 | awk '{print $5;}')
+    uk_vanilla=$(ls -l .unikraft/build/vanilla_qemu-x86_64 | awk '{print $5;}')
+    uk_cpio=$(ls -l ./nat.cpio | awk '{print $5;}')
+    uk_ebpfcpio=$(ls -l ./natebpf.cpio | awk '{print $5;}')
     # we should also count non-trivial click dependencies: dpdk, libjannson
-    ls -l ./nix/builds/click/bin/click
-    ls -l ./benchmark/configurations/thomer-nat-ebpf.click
-    ls -l ./benchmark/bpfilters/nat
-    ls -l ./benchmark/bpfilters/nat.sig
-    ls -l {{ALPINE_PATH}}
-    ls -l {{UBUNTU_PATH}}
-
-
+    click=$(ls -l ./nix/builds/click/bin/click | awk '{print $5;}')
+    conf_natbpf=$(ls -l ./benchmark/configurations/thomer-nat-ebpf.click | awk '{print $5;}')
+    natbpf=$(ls -l ./benchmark/bpfilters/nat | awk '{print $5;}')
+    sig=$(ls -l ./benchmark/bpfilters/nat.sig | awk '{print $5;}')
+    alpine=$(ls -l {{ALPINE_PATH}} | awk '{print $5;}')
+    ubuntu=$(ls -l {{UBUNTU_PATH}} | awk '{print $5;}')
+    echo "system,size"
+    echo "Unikraft,"$(expr $uk_vanilla \+ $uk_cpio )
+    echo "MorphOS,"$(expr $uk_click \+ $uk_ebpfcpio )
+    echo "Alpine,"$(expr $alpine \+ $click \+ $conf_natbpf \+ $natbpf \+ $sig )
+    echo "Ubuntu,"$(expr $ubuntu \+ $click \+ $conf_natbpf \+ $natbpf \+ $sig )

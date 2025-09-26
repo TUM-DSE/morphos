@@ -164,7 +164,8 @@ def main(measurement: Measurement, plan_only: bool = False) -> None:
         "linux",
         "uk",
         "uktrace",
-        "ukebpfjit"
+        "ukebpfjit",
+        "xdp"
     ]
     vm_nums = [ 1 ]
     vnfs = [ "empty", "filter", "ids", "mirror", "nat", "firewall-2", "firewall-1000" ]
