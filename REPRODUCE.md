@@ -23,3 +23,10 @@ The project is structured as follows:
 3. Run `just downloadLibs` to download unikraft libraries as pinned by `flake.*`
 4. Run `just build-dependencies` to build benchmarking runtime dependencies
 5. Run `cargo install bpf-linker --version 0.9.14` to build `~/.cargo/bin/bpf-linker` required to compile ebpf programs
+6. Run `just vm-image-init` to build Linux VM images
+7. Run `just TODO` to build unikraft variants
+
+
+## Debugging
+
+See also [README.md](README.md) for instructions on how to create unikraft debug builds.
