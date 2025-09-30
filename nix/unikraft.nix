@@ -1,4 +1,4 @@
-{ inputs, pkgs, unstable, unikraftDeps, ... }: let
+{ inputs, pkgs, unstable, unikraftDeps, kraftfile ? "Kraftfile", ... }: let
     runMake = (pkgs.buildFHSEnv {
             name = "runMake";
             targetPkgs = pkgs: (
@@ -58,6 +58,7 @@ in pkgs.stdenv.mkDerivation {
         srcsUnpack ${inputs.unikraft_click} .unikraft/build/libclick/click-a5384835a6cac10f8d44da4eeea8eaa8f8e6a0c2.zip
         '';
     buildPhase = ''
+        mv ${kraftfile} Kraftfile || true
         touch .unikraft/build/libclick/.origin
         ${runMake}/bin/runMake
         '';

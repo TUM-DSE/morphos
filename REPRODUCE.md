@@ -30,7 +30,6 @@ git clone https://github.com/TUM-DSE/morphos.git --recursive /scratch/$USER/morp
 
 2. Run `nix develop` to enter the development environment with all system dependencies (the `nix` package manager is installed on the server)
 3. Run `just build-dependencies` to build benchmarking runtime dependencies
-4. Run `just downloadLibs` to pull required unikraft libraries
 5. Run `cargo install bpf-linker --version 0.9.14` to build `~/.cargo/bin/bpf-linker` required to compile ebpf programs
 6. Run `just vm-image-init` to build Linux VM images
 7. Run `make -C verifier build -j` to build the verifier
@@ -44,7 +43,7 @@ git clone https://github.com/TUM-DSE/morphos.git --recursive /scratch/$USER/morp
 
 ## Build
 
-1. Run `just build-vm-images` to build unikraft variants (calls `nix/unikraft.nix`)
+1. Run `just build-morphos` to build unikraft variants (calls `nix/unikraft.nix`)
 2. Run `just TODO` to build and verify eBPF programs
 
 

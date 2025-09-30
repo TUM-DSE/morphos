@@ -24,11 +24,6 @@ build:
 	else \
 		kraft build --log-type basic $(EXTRA_KRAFT_ARGS); \
 	fi
-	@if [[ -f .config.vanilla_qemu-x86_64 ]]; then \
-		kraft build -K Kraftfile_vanilla --log-type basic $(EXTRA_KRAFT_ARGS) --no-configure; \
-	else \
-		kraft build -K Kraftfile_vanilla --log-type basic $(EXTRA_KRAFT_ARGS); \
-	fi
 
 cleanbuild:
 	sudo rm -rf .unikraft || true

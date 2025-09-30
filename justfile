@@ -58,6 +58,7 @@ vm-image-init:
     nix build .#guest-image --out-link {{proot}}/VMs/ro
     overwrite guest-image
 
+# build unikraft images incrementally
 build-vm-images: vm-image-init
   #!/usr/bin/env bash
   rm -rf {{proot}}/.unikraft/build/libclick/origin/click-a5384835a6cac10f8d44da4eeea8eaa8f8e6a0c2/elements/unikraft || true
@@ -73,6 +74,20 @@ build-vm-images: vm-image-init
   rm .config.click_qemu-x86_64
   kraft build -K Kraftfile_nompk
   cp .unikraft/build/click_qemu-x86_64 VMs/unikraft_nompk
+  rm .config.vanilla_qemu-x86_64
+  kraft build -K Kraftfile_vanilla
+  cp .unikraft/build/click_qemu-x86_64 VMs/unikraft_vanilla
+
+# build unikraft images reproducably
+build-morphos:
+  mkdir -p {{proot}}/nix/builds
+  mkdir -p {{proot}}/VMs
+  nix build .#morphos -o {{proot}}/nix/builds/morphos
+  cp {{proot}}/nix/builds/morphos/click_qemu-x86_64 VMs/unikraft_nompk
+  nix build .#morphos-mpk -o {{proot}}/nix/builds/morphos-mpk
+  cp {{proot}}/nix/builds/morphos-mpk/click_qemu-x86_64 VMs/unikraft
+  nix build .#unikraft-vanilla -o {{proot}}/nix/builds/unikraft-vanilla
+  cp {{proot}}/nix/builds/morphos-mpk/vanilla_qemu-x86_64 VMs/unikraft_vanilla
 
 # use autotest tmux sessions: `just autotest-tmux ls`
 autotest-tmux *ARGS:
