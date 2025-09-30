@@ -22,17 +22,18 @@ The project is structured as follows:
 Git-clone this repository on both hotsts (adelaide, wilfred) **into the same absolute path** with the `--recursive` flag to also clone the submodules.
 
 ```bash
-git clone https://github.com/TUM-DSE/morphos.git --recursive /scratch/$USER/morphos`
+git clone https://github.com/TUM-DSE/morphos.git --recursive /scratch/$USER/morphos
 ```
 
 
 ## Setup: Adelaide, Device under Test
 
 2. Run `nix develop` to enter the development environment with all system dependencies (the `nix` package manager is installed on the server)
-4. Run `just build-dependencies` to build benchmarking runtime dependencies
+3. Run `just build-dependencies` to build benchmarking runtime dependencies
+4. Run `just downloadLibs` to pull required unikraft libraries
 5. Run `cargo install bpf-linker --version 0.9.14` to build `~/.cargo/bin/bpf-linker` required to compile ebpf programs
 6. Run `just vm-image-init` to build Linux VM images
-7. Run `TODO` to build the verifier
+7. Run `make -C verifier build -j` to build the verifier
 
 
 ## Setup: Wilfred, Load Generator
@@ -43,7 +44,7 @@ git clone https://github.com/TUM-DSE/morphos.git --recursive /scratch/$USER/morp
 
 ## Build
 
-1. Run `just TODO` to build unikraft variants (calls `nix/unikraft.nix`)
+1. Run `just build-vm-images` to build unikraft variants (calls `nix/unikraft.nix`)
 2. Run `just TODO` to build and verify eBPF programs
 
 
