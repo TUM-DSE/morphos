@@ -1,7 +1,7 @@
 spec: 'v0.6'
 name: vanilla
 unikraft:
-  version: '0.16.3'
+  source: libs/unikraft
   kconfig:
     # CONFIG_LIBUKDEBUG: 'y'
     # CONFIG_LIBUKDEBUG_PRINTD: 'y'
@@ -27,12 +27,12 @@ targets:
     platform: kvm
 libraries:
   musl:
-    version: stable
+    source: libs/musl
   libunwind:
-    version: stable
+    source: libs/libunwind
   libcxxabi:
-    version: stable
+    source: libs/libcxxabi
   libcxx:
-    version: stable
+    source: libs/libcxx
   compiler-rt:
-    version: stable
+    source: libs/compiler-rt

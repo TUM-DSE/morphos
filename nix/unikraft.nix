@@ -65,7 +65,7 @@ in pkgs.stdenv.mkDerivation {
 
     installPhase = ''
         mkdir -p $out
-        cp .unikraft/build/click_* $out/
+        cp .unikraft/build/*qemu* $out/
         cp .unikraft/build/config $out/
         touch $out/foobar
         '';

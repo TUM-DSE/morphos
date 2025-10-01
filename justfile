@@ -87,7 +87,7 @@ build-morphos:
   nix build .#morphos-mpk -o {{proot}}/nix/builds/morphos-mpk
   cp {{proot}}/nix/builds/morphos-mpk/click_qemu-x86_64 VMs/unikraft
   nix build .#unikraft-vanilla -o {{proot}}/nix/builds/unikraft-vanilla
-  cp {{proot}}/nix/builds/morphos-mpk/vanilla_qemu-x86_64 VMs/unikraft_vanilla
+  cp {{proot}}/nix/builds/unikraft-vanilla/vanilla_qemu-x86_64 VMs/unikraft_vanilla
 
 # use autotest tmux sessions: `just autotest-tmux ls`
 autotest-tmux *ARGS:
@@ -252,12 +252,12 @@ qemu-startup:
 UBUNTU_PATH := "~/.vagrant.d/boxes/ubuntu-VAGRANTSLASH-jammy64/20241002.0.0/virtualbox/ubuntu-jammy-22.04-cloudimg.vmdk"
 ALPINE_PATH := "~/.vagrant.d/boxes/generic-VAGRANTSLASH-alpine319/4.3.12/virtualbox/generic-alpine319-virtualbox-x64-disk001.vmdk"
 
-imagesizes: nat-cpio natebpf-cpio
+imagesizes: nat-cpio natebpf-cpio build-morphos
     #!/usr/bin/env bash
     [ -e {{ALPINE_PATH}} ] || nix run --inputs-from ./ nixpkgs#vagrant -- box add generic/alpine319 --provider virtualbox --box-version 4.3.12 > /dev/null 2> /dev/null
     [ -e {{UBUNTU_PATH}} ] || nix run --inputs-from ./ nixpkgs#vagrant -- box add ubuntu/jammy64 --provider virtualbox --box-version 20241002.0.0
-    uk_click=$(ls -l .unikraft/build/click_qemu-x86_64 | awk '{print $5;}')
-    uk_vanilla=$(ls -l .unikraft/build/vanilla_qemu-x86_64 | awk '{print $5;}')
+    uk_click=$(ls -l VMs/unikraft | awk '{print $5;}')
+    uk_vanilla=$(ls -l VMs/unikraft_vanilla | awk '{print $5;}')
     uk_cpio=$(ls -l ./nat.cpio | awk '{print $5;}')
     uk_ebpfcpio=$(ls -l ./natebpf.cpio | awk '{print $5;}')
     # we should also count non-trivial click dependencies: dpdk, libjannson
