@@ -82,6 +82,7 @@ build-vm-images: vm-image-init
 build-morphos:
   mkdir -p {{proot}}/nix/builds
   mkdir -p {{proot}}/VMs
+  rm -f VMs/unikraft_nompk VMs/unikraft VMs/unikraft_vanilla
   nix build .#morphos -o {{proot}}/nix/builds/morphos
   cp {{proot}}/nix/builds/morphos/click_qemu-x86_64 VMs/unikraft_nompk
   nix build .#morphos-mpk -o {{proot}}/nix/builds/morphos-mpk
@@ -196,10 +197,23 @@ vm: natebpf-cpio
         -netdev bridge,id=en0,br=clicknet \
         -device virtio-net-pci,netdev=en0 \
         -append " vfs.fstab=[\"initrd0:/:extract::ramfs=1:\"] --" \
-        -kernel ./.unikraft/build/click_qemu-x86_64 \
-        -initrd ./natebpf.cpio \
+        -initrd natebpf.cpio \
+        -kernel VMs/unikraft \
         -nographic
 
+vm_nompk: natebpf-cpio
+    sudo taskset -c 3,4 qemu-system-x86_64 \
+        -accel kvm -cpu max \
+        -m 12G -object memory-backend-file,id=mem,size=12G,mem-path=/dev/hugepages,share=on \
+        -mem-prealloc -numa node,memdev=mem \
+        -netdev bridge,id=en0,br=clicknet \
+        -device virtio-net-pci,netdev=en0 \
+        -append " vfs.fstab=[\"initrd0:/:extract::ramfs=1:\"] --" \
+        -initrd natebpf.cpio \
+        -kernel VMs/unikraft_nompk \
+        -nographic
+
+#-kernel ./.unikraft/build/click_qemu-x86_64 \
 
 vm-vhost: throughput-cpio
     sudo taskset -c 3,4 qemu-system-x86_64 \

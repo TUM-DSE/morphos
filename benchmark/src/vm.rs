@@ -75,7 +75,12 @@ pub fn start_click(fs: FileSystem, extra_args: &[String]) -> anyhow::Result<Clic
         "-cpu",
         "max",
         "-m",
-        "3G",
+        "12G",
+        "-object",
+        "memory-backend-file,id=mem,size=12G,mem-path=/dev/hugepages,share=on",
+        "-mem-prealloc",
+        "-numa",
+        "node,memdev=mem",
         "-netdev",
         "bridge,id=en0,br=clicknet",
         "-device",
@@ -83,10 +88,10 @@ pub fn start_click(fs: FileSystem, extra_args: &[String]) -> anyhow::Result<Clic
         "-append",
         &format!(r#"{vfs_fstab} --"#),
         "-kernel",
-        "../.unikraft/build/click_qemu-x86_64",
+        "../VMs/unikraft_nompk",
         "-initrd",
         initrd,
-        "-nographic",
+        "-nographic"
     ]
     .map(|s| s.to_string())
     .to_vec();
