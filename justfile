@@ -289,6 +289,7 @@ imagesizes: nat-cpio natebpf-cpio build-morphos
 
 nat_buildtime:
     #!/usr/bin/env bash
+    set -x
     tmp=$(mktemp)
     cd ebpf; cargo clean; cd ..
     make -C ebpf dns-filter VERIFY=1 RECORD=1 > /dev/null 2> /dev/null

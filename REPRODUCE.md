@@ -56,7 +56,7 @@ Overview:
 - `measure_reconfiguration.py`: TODO hours for Fig. 2, 7, 9
 - `measure_throughput.py`: TODO hours for Fig. 1, 10, 11
 - `just imagesize`: TODO hours for Fig. 8
-- `just TODO-verification-etc`: TODO hours for Fig. 9
+- `just nat_buildtime`: TODO hours for Fig. 9
 
 
 ### Python benchmarks
@@ -69,7 +69,7 @@ python3 benchmark/pysrc/measure.py -c benchmark/conf/uk_adelaide_wilfred.cfg -vv
 ```
 
 Unless other flags are specified, a measurement is skipped when it's output `*.log` file already exists.
-Use other measurement scripts to run only a subset of tests:
+Use other measurement scripts to run only a subset of tests.
 
 
 
@@ -97,10 +97,14 @@ Some benchmarks are implemented as ordinary rust binaries: `cargo run --bin benc
 
 ## TODO Misc Benchmarks
 
+Run on device under test:
+
 ```
 just imagesizes
-just TODO-verification-etc
+just nat_buildtime
 ```
+
+and copy output files into place TODO
 
 ## Debugging
 
