@@ -70,10 +70,10 @@ build-vm-images: vm-image-init
   cp {{proot}}/libs/click/packet.cc {{proot}}/.unikraft/build/libclick/origin/click-a5384835a6cac10f8d44da4eeea8eaa8f8e6a0c2/lib/packet.cc
   rm .config.click_qemu-x86_64
   kraft build -K Kraftfile
-  cp .unikraft/build/click_qemu-x86_64 VMs/unikraft
+  cp .unikraft/build/click_qemu-x86_64 VMs/unikraft_mpk
   rm .config.click_qemu-x86_64
   kraft build -K Kraftfile_nompk
-  cp .unikraft/build/click_qemu-x86_64 VMs/unikraft_nompk
+  cp .unikraft/build/click_qemu-x86_64 VMs/unikraft
   rm .config.vanilla_qemu-x86_64
   kraft build -K Kraftfile_vanilla
   cp .unikraft/build/click_qemu-x86_64 VMs/unikraft_vanilla
@@ -82,11 +82,11 @@ build-vm-images: vm-image-init
 build-morphos:
   mkdir -p {{proot}}/nix/builds
   mkdir -p {{proot}}/VMs
-  rm -f VMs/unikraft_nompk VMs/unikraft VMs/unikraft_vanilla
+  rm -f VMs/unikraft_mpk VMs/unikraft VMs/unikraft_vanilla
   nix build .#morphos -o {{proot}}/nix/builds/morphos
-  cp {{proot}}/nix/builds/morphos/click_qemu-x86_64 VMs/unikraft_nompk
+  cp {{proot}}/nix/builds/morphos/click_qemu-x86_64 VMs/unikraft
   nix build .#morphos-mpk -o {{proot}}/nix/builds/morphos-mpk
-  cp {{proot}}/nix/builds/morphos-mpk/click_qemu-x86_64 VMs/unikraft
+  cp {{proot}}/nix/builds/morphos-mpk/click_qemu-x86_64 VMs/unikraft_mpk
   nix build .#unikraft-vanilla -o {{proot}}/nix/builds/unikraft-vanilla
   cp {{proot}}/nix/builds/unikraft-vanilla/vanilla_qemu-x86_64 VMs/unikraft_vanilla
 
@@ -286,3 +286,12 @@ imagesizes: nat-cpio natebpf-cpio build-morphos
     echo "MorphOS,"$(expr $uk_click \+ $uk_ebpfcpio )
     echo "Alpine,"$(expr $alpine \+ $click \+ $conf_natbpf \+ $natbpf \+ $sig )
     echo "Ubuntu,"$(expr $ubuntu \+ $click \+ $conf_natbpf \+ $natbpf \+ $sig )
+
+nat_buildtime:
+    #!/usr/bin/env bash
+    tmp=$(mktemp)
+    cd ebpf; cargo clean; cd ..
+    make -C ebpf all VERIFY=1 RECORD=1 > $tmp 2> $tmp 
+    echo "element,buildtime,veriftime" > bpfbuild.csv
+    cat $tmp | grep -E "Verification took|real|Building" | sed -e 's/\x1b\[[0-9;]*m//g' | awk '/Building/{gsub(/\.\.\./,"",$2);n=$2} /^real/{split($2,t,/[ms]/);r=t[2]*1000} /^Verification/{printf "%s,%d,%.1f\n",n,r,$3/1e6}' | grep 'nat' >> bpfbuild.csv
+

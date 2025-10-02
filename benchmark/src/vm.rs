@@ -88,7 +88,7 @@ pub fn start_click(fs: FileSystem, extra_args: &[String]) -> anyhow::Result<Clic
         "-append",
         &format!(r#"{vfs_fstab} --"#),
         "-kernel",
-        "../VMs/unikraft_nompk",
+        "../VMs/unikraft",
         "-initrd",
         initrd,
         "-nographic"

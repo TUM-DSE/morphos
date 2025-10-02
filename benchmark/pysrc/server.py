@@ -1910,9 +1910,9 @@ class Host(Server):
             qemu_bin_path = path_join(qemu_build_dir, qemu_bin_path)
         unikraft_bin = ''
         if with_mpk:
-            unikraft_bin = f'{project_root}/VMs/unikraft'
+            unikraft_bin = f'{project_root}/VMs/unikraft_mpk'
         else:
-            unikraft_bin = f'{project_root}/VMs/unikraft_nompk'
+            unikraft_bin = f'{project_root}/VMs/unikraft'
 
         nix_shell = f"nix shell --inputs-from {project_root} nixpkgs#numactl --command"
         numactl = f"numactl -C {self.cpupinner.qemu(vm_number)}"
