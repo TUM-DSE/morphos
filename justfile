@@ -291,7 +291,9 @@ nat_buildtime:
     #!/usr/bin/env bash
     tmp=$(mktemp)
     cd ebpf; cargo clean; cd ..
-    make -C ebpf all VERIFY=1 RECORD=1 > $tmp 2> $tmp 
-    echo "element,buildtime,veriftime" > bpfbuild.csv
-    cat $tmp | grep -E "Verification took|real|Building" | sed -e 's/\x1b\[[0-9;]*m//g' | awk '/Building/{gsub(/\.\.\./,"",$2);n=$2} /^real/{split($2,t,/[ms]/);r=t[2]*1000} /^Verification/{printf "%s,%d,%.1f\n",n,r,$3/1e6}' | grep 'nat' >> bpfbuild.csv
-
+    make -C ebpf dns-filter VERIFY=1 RECORD=1 > /dev/null 2> /dev/null
+    echo "system,contributor,restart_s" > bpfbuild.csv
+    sudo bpftrace -q -e 'tracepoint:syscalls:sys_enter_execve /str(args->filename) == "'$HOME'/.cargo/bin/bpf-linker"/ { @start = nsecs; @p = pid; } tracepoint:syscalls:sys_enter_exit* / pid == @p / { printf("Out-of-band,Link,%d\n", (nsecs - @start) / 1000000); }' >> bpfbuild.csv &
+    make -C ebpf nat VERIFY=1 RECORD=1 > $tmp 2> $tmp
+    cat $tmp | grep -E "Verification took|real|Building" | sed -e 's/\x1b\[[0-9;]*m//g' | awk '/^real/{split($2,t,/[ms]/); printf "Out-of-band,Compile,%d\n", t[2]*1000} /^Verification/{printf "Out-of-band,Verify,%.1f\n", $3/1e6}' >> bpfbuild.csv
+    sudo kill -9 $(pidof bpftrace)
