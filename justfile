@@ -287,14 +287,14 @@ imagesizes: nat-cpio natebpf-cpio build-morphos
     echo "Alpine,"$(expr $alpine \+ $click \+ $conf_natbpf \+ $natbpf \+ $sig )
     echo "Ubuntu,"$(expr $ubuntu \+ $click \+ $conf_natbpf \+ $natbpf \+ $sig )
 
-nat_buildtime:
+nat_buildtime OUTFILE="bpfbuild.csv":
     #!/usr/bin/env bash
     set -x
     tmp=$(mktemp)
     cd ebpf; cargo clean; cd ..
     make -C ebpf dns-filter VERIFY=1 RECORD=1 > /dev/null 2> /dev/null
-    echo "system,contributor,restart_s" > bpfbuild.csv
-    sudo bpftrace -q -e 'tracepoint:syscalls:sys_enter_execve /str(args->filename) == "'$HOME'/.cargo/bin/bpf-linker"/ { @start = nsecs; @p = pid; } tracepoint:syscalls:sys_enter_exit* / pid == @p / { printf("Out-of-band,Link,%d\n", (nsecs - @start) / 1000000); }' >> bpfbuild.csv &
+    echo "system,contributor,restart_s" > {{OUTFILE}}
+    sudo bpftrace -q -e 'tracepoint:syscalls:sys_enter_execve /str(args->filename) == "'$HOME'/.cargo/bin/bpf-linker"/ { @start = nsecs; @p = pid; } tracepoint:syscalls:sys_enter_exit* / pid == @p / { printf("Out-of-band,Link,%d\n", (nsecs - @start) / 1000000); }' >> {{OUTFILE}} &
     make -C ebpf nat VERIFY=1 RECORD=1 > $tmp 2> $tmp
-    cat $tmp | grep -E "Verification took|real|Building" | sed -e 's/\x1b\[[0-9;]*m//g' | awk '/^real/{split($2,t,/[ms]/); printf "Out-of-band,Compile,%d\n", t[2]*1000} /^Verification/{printf "Out-of-band,Verify,%.1f\n", $3/1e6}' >> bpfbuild.csv
+    cat $tmp | grep -E "Verification took|real|Building" | sed -e 's/\x1b\[[0-9;]*m//g' | awk '/^real/{split($2,t,/[ms]/); printf "Out-of-band,Compile,%d\n", t[2]*1000} /^Verification/{printf "Out-of-band,Verify,%.1f\n", $3/1e6}' >> {{OUTFILE}}
     sudo kill -9 $(pidof bpftrace)
