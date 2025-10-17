@@ -15,13 +15,17 @@
 
 extern "C" {
 #include <sys/mman.h>
+#ifdef CONFIG_LIBPKU
 #include <uk/pku.h>
 #include <uk/pkru.h>
 #include <uk/plat/paging.h>
+#endif
 }
 
 #include "bpfelement.hh"
+#ifdef CONFIG_LIBPKU
 #include "mpkey_allocation.hh"
+#endif
 
 CLICK_DECLS
 
@@ -60,6 +64,7 @@ char write_file(const std::string &filename, const std::vector <uint8_t> &buffer
     return 0;
 }
 
+#ifdef CONFIG_LIBPKU
 inline void mpk_ebpf_enter(int stack_key) {
     // pkey_set_perm(PROT_READ | PROT_WRITE, stack_key); // allow all
 	pkey_set_perm(PROT_READ | PROT_WRITE, MPKEY_STACK);
@@ -100,7 +105,7 @@ WITH_PKEYS(pkey1_bpf_get_prandom_u32, bpf_get_prandom_u32, 1) // automate this 1
 WITH_PKEYS(pkey2_bpf_get_prandom_u32, bpf_get_prandom_u32, 2)
 
 WITH_PKEYS(pkey1_bpf_ktime_get_ns, bpf_ktime_get_ns, 1)
-
+#endif
 
 void BPFElement::init_ubpf_vm() {
     ubpf_vm *vm = ubpf_create();
@@ -230,6 +235,7 @@ int BPFElement::check_bpf_verification_signature(ErrorHandler *errh) {
 }
 
 int BPFElement::allocate_jit_stack() {
+#ifdef CONFIG_LIBPKU
     int rc = mpkey_allocation_alloc();
 	if (rc < 0) {
 		uk_pr_err("Failed to allocate MPKEYs");
@@ -315,7 +321,7 @@ int BPFElement::allocate_jit_stack() {
 		return -1;
 	}
 #endif
-
+#endif
     return 0;
 }
 

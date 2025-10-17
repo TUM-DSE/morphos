@@ -41,8 +41,10 @@
 
 extern "C" {
 #include <sys/mman.h>
+#ifdef CONFIG_LIBPKU
 #include <uk/pku.h>
 #include <uk/plat/paging.h>
+#endif
 }
 
 #ifdef xmit

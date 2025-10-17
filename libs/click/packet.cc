@@ -29,8 +29,10 @@
 #endif
 extern "C" {
 #include <sys/mman.h>
+#ifdef CONFIG_LIBPKU
 #include <uk/pku.h>
 #include <uk/plat/paging.h>
+#endif
 }
 CLICK_DECLS
 
@@ -417,6 +419,7 @@ WritablePacket::pool_allocate(uint32_t headroom, uint32_t length,
 	  p->_data = p->_head + headroom;
 	  p->_tail = p->_data + length;
 	  p->_end = p->_head + n;
+#ifdef CONFIG_LIBPKU
     if(p->pkey == -1 || p->pkey != pkey){
         uint64_t page = ((uint64_t)(p->buffer())) & (~(__PAGE_SIZE-1));
         int rc = pkey_mprotect((void*)page, __PAGE_SIZE, PROT_READ | PROT_WRITE, pkey);
@@ -424,6 +427,7 @@ WritablePacket::pool_allocate(uint32_t headroom, uint32_t length,
         UK_ASSERT(rc == 0);
         p->pkey = pkey;
     }
+#endif
     return p;
 }
 

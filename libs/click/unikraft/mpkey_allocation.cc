@@ -1,14 +1,17 @@
+#ifdef CONFIG_LIBPKU
 extern "C" {
 #include <sys/mman.h>
 #include <uk/pku.h>
 #include <uk/plat/paging.h>
 }
+#endif
 
 #include "mpkey_allocation.hh"
 
 static bool allocated = false;
 
 int mpkey_allocation_alloc() {
+#ifdef CONFIG_LIBPKU
   // uk_pr_err("Alloc mpkeys\n");
   if (allocated) {
     // uk_pr_err("MPKEYs already allocated\n");
@@ -28,5 +31,6 @@ int mpkey_allocation_alloc() {
 
   allocated = true;
 
+#endif
   return 0;
 }
