@@ -218,33 +218,21 @@ function rxTimestamps(rxQueue, dstMac, histfile)
 	local bufs = memory.bufArray(64)
 	-- use whatever filter appropriate for your packet type
 	-- rxQueue:filterL2Timestamps()
-	print("ok2")
+	print("ok")
 
 	local hist = hist:new()
 	while mg.running() do
-		local numPkts = rxQueue:tryRecv(bufs, 64)
-		-- print("ok3")
-		if numPkts > 0 then
-			print(numPkts)
-			bufs:free(numPkts)
+		local numPkts = rxQueue:recvWithTimestamps(bufs)
+		for i = 1, numPkts do
+			if bufs[i]:getUdpPacket().udp:getDstPort() == 0x10 then
+				local rxTs = dpdkc.get_timestamp_dynfield(bufs[i])
+				local txTs = bufs[i]:getSoftwareTxTimestamp()
+				local latency = tonumber(rxTs - txTs) / tscFreq * 10^9 -- to nanoseconds
+				-- print(" rxTs: ", rxTs, " txTs: ", txTs, "lat: ", latency)
+				hist:update(latency) -- to nanoseconds
+			end
 		end
-		-- local numPkts = rxQueue:recvWithTimestamps(bufs)
-		-- print("ok3: ", numPkts)
-		-- for i = 1, numPkts do
-		-- 	-- if bufs[i]:getEthernetPacket().eth:getType() == eth.TYPE_ARP then
-		-- 	-- 	print("ARP")
-		-- 	-- 	bufs[i]:dump()
-		-- 	-- end
-		-- 	bufs[i]:dump()
-		-- 	if bufs[i]:getUdpPacket().udp:getDstPort() == 0x10 then
-		-- 		local rxTs = dpdkc.get_timestamp_dynfield(bufs[i])
-		-- 		local txTs = bufs[i]:getSoftwareTxTimestamp()
-		-- 		local latency = tonumber(rxTs - txTs) / tscFreq * 10^9 -- to nanoseconds
-		-- 		-- print(" rxTs: ", rxTs, " txTs: ", txTs, "lat: ", latency)
-		-- 		hist:update(latency) -- to nanoseconds
-		-- 	end
-		-- end
-		-- bufs:free(numPkts)
+		bufs:free(numPkts)
 	end
 	hist:print()
 	if histfile ~= "" then
