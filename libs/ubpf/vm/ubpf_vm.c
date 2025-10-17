@@ -29,6 +29,7 @@
 #include <endian.h>
 #include "ubpf_int.h"
 #include <unistd.h>
+#include <uk/plat/paging.h>
 
 #define SHIFT_MASK_32_BIT(X) ((X) & 0x1f)
 #define SHIFT_MASK_64_BIT(X) ((X) & 0x3f)
@@ -295,7 +296,10 @@ void
 ubpf_unload_code(struct ubpf_vm* vm)
 {
     if (vm->jitted) {
-        munmap(vm->jitted, vm->jitted_size);
+        struct uk_pagetable *pt = ukplat_pt_get_active();
+        int pages = (vm->jitted_size / __PAGE_SIZE) + 1;
+		/* uk_pr_err("Unmap %p, %d\n", vm->jitted, pages); */
+        ukplat_page_unmap(pt, vm->jitted, pages, 0);
         vm->jitted = NULL;
         vm->jitted_size = 0;
     }

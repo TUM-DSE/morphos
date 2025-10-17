@@ -117,10 +117,13 @@ ubpf_compile_ex(struct ubpf_vm* vm, char** errmsg, enum JitMode mode)
     }
 
     if (vm->jitted) {
-        munmap(vm->jitted, vm->jitted_size);
+        struct uk_pagetable *pt = ukplat_pt_get_active();
+        int pages = (vm->jitted_size / __PAGE_SIZE) + 1;
+		/* uk_pr_err("Unmap %p, %d\n", vm->jitted, pages); */
+        ukplat_page_unmap(pt, vm->jitted, pages, 0);
         vm->jitted = NULL;
         vm->jitted_size = 0;
-    }
+   }
 
     *errmsg = NULL;
 
