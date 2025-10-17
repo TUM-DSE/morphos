@@ -650,6 +650,10 @@ class Bench(Generic[T], ContextDecorator):
 
 
 import measure_throughput
+import measure_firewall
+import measure_latency
+import measure_misc
+import measure_reconfiguration
 
 def main():
     measurement = Measurement()
@@ -660,7 +664,10 @@ def main():
 
     info("Running benchmarks ...")
     info("")
-    # measure_vnf.main(measurement)
+    measure_firewall.main(measurement)
+    measure_latency.main(measurement)
+    measure_misc.main(measurement)
+    measure_reconfiguration.main(measurement)
     measure_throughput.main(measurement)
 
 if __name__ == "__main__":
