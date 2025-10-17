@@ -330,12 +330,12 @@ def main(measurement: Measurement, plan_only: bool = False) -> None:
                     xdp_program = f"{host.project_root}/nix/builds/xdp/lib/reflector.o"
                     remote_outfile = "/tmp/xdp.log"
                     local_outfile = test.output_filepath(repetition)
-                    iterations = 30
+                    iterations_many = iterations * 3
                     host.exec(f"sudo rm {remote_outfile} || true")
                     # time must be executed in sh. Other shells use other time impls
                     xdp_add_cmd = f"ip link set {iface} xdpgeneric obj {xdp_program} sec xdp"
                     xdp_del_cmd = f"sudo ip link set {iface} xdpgeneric off || true"
-                    cmd = f"sudo /bin/sh -c \"for i in {{1..{iterations}}}; do {xdp_del_cmd}; time {xdp_add_cmd}; done\" 2>&1 | tee -a {remote_outfile}"
+                    cmd = f"sudo /bin/sh -c \"for i in {{1..{iterations_many}}}; do {xdp_del_cmd}; time {xdp_add_cmd}; done\" 2>&1 | tee -a {remote_outfile}"
                     host.exec(cmd)
                     host.copy_from(remote_outfile, local_outfile)
 
