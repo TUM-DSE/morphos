@@ -18,7 +18,7 @@ const CONFIGURATIONS: &[Configuration] = &[
         name: "uk",
         click_configuration: "/tmp/config.click",
         vm_extra_args: &[],
-        system: System::Unikraft,
+        system: System::UnikraftNoPaging, // unikraft starts faster without paging
     },
     Configuration {
         name: "linux",

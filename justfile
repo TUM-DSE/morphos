@@ -87,6 +87,8 @@ build-morphos:
   cp {{proot}}/nix/builds/morphos/click_qemu-x86_64 VMs/unikraft
   nix build .#morphos-mpk -o {{proot}}/nix/builds/morphos-mpk
   cp {{proot}}/nix/builds/morphos-mpk/click_qemu-x86_64 VMs/unikraft_mpk
+  nix build .#morphos-nopaging -o {{proot}}/nix/builds/morphos-nopaging
+  cp {{proot}}/nix/builds/morphos-nopaging/click_qemu-x86_64 VMs/unikraft_nopaging
   nix build .#unikraft-vanilla -o {{proot}}/nix/builds/unikraft-vanilla
   cp {{proot}}/nix/builds/unikraft-vanilla/vanilla_qemu-x86_64 VMs/unikraft_vanilla
 

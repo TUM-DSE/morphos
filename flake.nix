@@ -214,6 +214,7 @@
           };
           morphos = unikraft.override { kraftfile = "Kraftfile_nompk"; };
           morphos-mpk = unikraft.override { kraftfile = "Kraftfile"; };
+          morphos-nopaging = unikraft.override { kraftfile = "Kraftfile_nopaging"; };
           unikraft-vanilla = unikraft.override { kraftfile = "Kraftfile_vanilla"; };
 
           guest-image = make-disk-image {

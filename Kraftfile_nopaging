@@ -1,0 +1,73 @@
+spec: 'v0.6'
+name: click
+unikraft:
+  source: libs/unikraft
+  # version: '0.16.3'
+  kconfig:
+    # CONFIG_LIBUKDEBUG: 'y'
+    # CONFIG_LIBUKDEBUG_PRINTD: 'y'
+    # CONFIG_LIBUKDEBUG_PRINTK: 'y'
+    # CONFIG_LIBUKDEBUG_PRINTK_INFO: 'y'
+    # CONFIG_LIBUKDEBUG_ANSI_COLOR: 'y'
+    CONFIG_OPTIMIZE_SYMFILE: 'y'
+    CONFIG_LIBUKNETDEV: 'y'
+    CONFIG_LIBUKNETDEV_EINFO_LIBPARAM: 'y'
+    CONFIG_LIBUKNETDEV_DISPATCHERTHREADS: 'y'
+    CONFIG_LIBPOSIX_POLL_YIELD: 'y'
+    CONFIG_LIBPOSIX_USER: 'y'
+    CONFIG_PLAT_KVM: 'y'
+    CONFIG_LIBVFSCORE: 'y'
+    CONFIG_LIBVFSCORE_AUTOMOUNT_UP: 'y'
+    CONFIG_LIBVFSCORE_AUTOMOUNT: 'y'
+    CONFIG_LIBVFSCORE_NONLARGEFILE: 'y'
+    CONFIG_LIBUKCPIO: 'y'
+    CONFIG_LIBRAMFS: 'y'
+    CONFIG_LIBUK9P: 'y'
+    # CONFIG_LIBPKU: 'y'
+    # CONFIG_PAGING: 'y'
+targets:
+  - architecture: x86_64
+    platform: kvm
+libraries:
+  musl:
+    source: libs/musl
+    # version: stable
+    # https://github.com/unikraft/lib-musl/archive/refs/heads/stable.tar.gz
+  libunwind:
+    source: libs/libunwind
+    # https://github.com/llvm/llvm-project/releases/download/llvmorg-14.0.6/libunwind-14.0.6.src.tar.xz
+    # version: stable
+  libcxxabi:
+    source: libs/libcxxabi
+    # https://github.com/llvm/llvm-project/releases/download/llvmorg-14.0.6/libcxxabi-14.0.6.src.tar.xz
+    # version: stable
+  libcxx:
+    source: libs/libcxx
+    # version: stable
+    # https://github.com/llvm/llvm-project/releases/download/llvmorg-14.0.6/libcxx-14.0.6.src.tar.xz
+  openssl:
+    source: libs/openssl
+    # https://www.openssl.org/source/old/1.1.1/openssl-1.1.1c.tar.gz
+    # version: stable
+    kconfig:
+     - CONFIG_OPENSSL=y
+     - CONFIG_LIBCRYPTO=y
+  compiler-rt:
+    source: libs/compiler-rt
+    # https://github.com/llvm/llvm-project/releases/download/llvmorg-14.0.6/compiler-rt-14.0.6.src.tar.xz
+    # version: stable
+  click:
+    # https://codeload.github.com/kohler/click/zip/a5384835a6cac10f8d44da4eeea8eaa8f8e6a0c2
+    version: '0.5'
+    source: libs/click
+    kconfig:
+      - CONFIG_LIBCLICK_MAIN=y
+      - CONFIG_LIBCLICK_UBPF_VERIFY_SIGNATURE=y
+      - CONFIG_LIBCLICK_ENABLE_MPK=n
+  ubpf:
+    source: libs/ubpf
+    version: '0.1'
+    kconfig:
+     - CONFIG_LIBUBPF=y
+     - CONFIG_LIBUBPF_ENABLE_MPK=n
+
