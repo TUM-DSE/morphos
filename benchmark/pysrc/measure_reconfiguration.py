@@ -226,7 +226,7 @@ def main(measurement: Measurement, plan_only: bool = False) -> None:
             test = a_tests[0]
             info(f"Running {test}")
 
-            # TODO we are not setting up network yet `make -C benchmark setup`
+            host.exec(f"cd {PROJECT_ROOT}; nix develop --command make -C benchmark setup")
 
             for repetition in range(repetitions):
                 if test.system == "ukebpfjit":
