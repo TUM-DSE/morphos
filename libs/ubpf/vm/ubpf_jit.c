@@ -112,6 +112,7 @@ ubpf_compile_ex(struct ubpf_vm* vm, char** errmsg, enum JitMode mode)
     void* jitted = NULL;
     uint8_t* buffer = NULL;
     size_t jitted_size;
+    int rc;
 
     if (vm->jitted && vm->jitted_result.compile_result == UBPF_JIT_COMPILE_SUCCESS &&
         vm->jitted_result.jit_mode == mode) {
@@ -119,7 +120,7 @@ ubpf_compile_ex(struct ubpf_vm* vm, char** errmsg, enum JitMode mode)
     }
 
     if (vm->jitted) {
-#ifdef CONFIG_LIBUBPF_ENABLE_MPK
+#ifdef CONFIG_LIBPKU
         struct uk_pagetable *pt = ukplat_pt_get_active();
         int pages = (vm->jitted_size / __PAGE_SIZE) + 1;
 		/* uk_pr_err("Unmap %p, %d\n", vm->jitted, pages); */
@@ -149,12 +150,12 @@ ubpf_compile_ex(struct ubpf_vm* vm, char** errmsg, enum JitMode mode)
         goto out;
     }
 
-#ifdef CONFIG_LIBUBPF_ENABLE_MPK
+#ifdef CONFIG_LIBPKU
     int pages = (jitted_size / __PAGE_SIZE) + 1;
     struct uk_pagetable *pt = ukplat_pt_get_active();
     jitted = (void*)0x80000000 + 2*__PAGE_SIZE; // the second page is used for _ubpf_jit_stack_protector
 	/* uk_pr_err("Map %p, %d\n", jitted, pages); */
-    int rc = ukplat_page_map(pt, jitted,
+    rc = ukplat_page_map(pt, jitted,
 		     __PADDR_ANY, pages,
 		     PAGE_ATTR_PROT_READ | PAGE_ATTR_PROT_WRITE, 0);
 	if (rc) {
@@ -175,7 +176,7 @@ ubpf_compile_ex(struct ubpf_vm* vm, char** errmsg, enum JitMode mode)
     memcpy(jitted, buffer, jitted_size);
 
     // revoke write permissions (current pkey_mprotect impl does the same again)
-#ifdef CONFIG_LIBUBPF_ENABLE_MPK
+#ifdef CONFIG_LIBPKU
     rc = ukplat_page_set_attr(pt, jitted,
 			 pages, PAGE_ATTR_PROT_READ | PAGE_ATTR_PROT_EXEC, 0);
     if (rc) {
@@ -183,6 +184,7 @@ ubpf_compile_ex(struct ubpf_vm* vm, char** errmsg, enum JitMode mode)
         jitted = NULL;
         goto out;
     }
+#ifdef CONFIG_LIBUBPF_ENABLE_MPK
     /* ubpf JIT VM not only executes, but also reads JITed code (to find a
      * potential TARGET_PC_EXTERNAL_DISPATCHER for ebpf helper functions).
      * Add MPKEY_STACK to allow reads also in eBPF context with MPK.
@@ -192,8 +194,9 @@ ubpf_compile_ex(struct ubpf_vm* vm, char** errmsg, enum JitMode mode)
 		    uk_pr_err("Could not set pkey for ebpf stack %d\n", errno);
 		    return -1;
 	  }
+#endif
 #else
-    if (mprotect(jitted, jitted_size, PROT_READ | PROT_EXEC) < 0) {
+    if (mprotect(jitted, jitted_size, PROT_READ | PROT_EXEC) < 0) { // this actually doesnt enable EXEC on unikraft
         *errmsg = ubpf_error("internal uBPF error: mprotect failed: %s\n", strerror(errno));
         goto out;
     }
