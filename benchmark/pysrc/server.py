@@ -722,10 +722,21 @@ class Server(ABC):
         """
         cmd = f'sudo dpdk-devbind.py -b {driver} {dev_addr}'
 
-        if self.nixos:
-            _ = self.exec(f'{self.__cmd_with_package("dpdk")} sh -c "{cmd}"')
-        else:
-            _ = self.exec(cmd)
+        for i in range(99):
+            try:
+                if self.nixos:
+                    _ = self.exec(f'{self.__cmd_with_package("dpdk")} sh -c "{cmd}"')
+                else:
+                    _ = self.exec(cmd)
+            except CalledProcessError as e:
+                if i < 3:
+                    # retry a few times in case of failure
+                    pass
+                else:
+                    raise e
+            finally:
+                return
+
 
     def unbind_device(self: 'Server', dev_addr: str) -> None:
         """
