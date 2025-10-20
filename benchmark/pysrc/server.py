@@ -1813,6 +1813,7 @@ class Host(Server):
         -------
         """
         self.tmux_kill('qemu')
+        self.exec('sudo rm /tmp/trace-vm*.log || true')
 
     def _memory_backend(self: 'Host', mem: int, vm_number: int) -> str:
         """
