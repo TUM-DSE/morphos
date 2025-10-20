@@ -13,11 +13,16 @@ def main():
     # estimate runtimes
     info("")
     measure_throughput.main(measurement, plan_only=True)
+    info("")
     measure_firewall.main(measurement, plan_only=True)
+    info("")
     measure_latency.main(measurement, plan_only=True)
+    info("")
     measure_reconfiguration.main(measurement, plan_only=True)
+    info("")
     measure_misc.main(measurement, plan_only=True)
 
+    info("\n")
     info("Running benchmarks ...")
     info("")
     measure_throughput.main(measurement)

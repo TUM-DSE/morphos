@@ -67,7 +67,7 @@ class ReconfigurationTest(AbstractBenchTest):
         """
         estimate time needed to run this benchmark excluding boot time in seconds
         """
-        return 0
+        return 10 * self.repetitions
 
 
     def parse_results(self, repetition: int) -> DataFrame:
@@ -206,7 +206,7 @@ def main(measurement: Measurement, plan_only: bool = False) -> None:
 
 
     args_reboot = ["num_vms", "system", "vnf"]
-    info(f"ThroughputTest execution plan:")
+    info(f"ReconfigurationTest execution plan:")
     ReconfigurationTest.estimate_time2(tests, args_reboot)
 
     if plan_only:
