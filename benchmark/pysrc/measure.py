@@ -652,26 +652,3 @@ class Bench(Generic[T], ContextDecorator):
         self.tqdm.update(time_progress_s / 60)
 
 
-import measure_throughput
-import measure_firewall
-import measure_latency
-import measure_misc
-import measure_reconfiguration
-
-def main():
-    measurement = Measurement()
-
-    # estimate runtimes
-    info("")
-    measure_throughput.main(measurement, plan_only=True)
-
-    info("Running benchmarks ...")
-    info("")
-    measure_throughput.main(measurement)
-    measure_firewall.main(measurement)
-    measure_latency.main(measurement)
-    measure_reconfiguration.main(measurement)
-    measure_misc.main(measurement)
-
-if __name__ == "__main__":
-    main()
