@@ -664,11 +664,11 @@ def main():
 
     info("Running benchmarks ...")
     info("")
+    measure_throughput.main(measurement)
     measure_firewall.main(measurement)
     measure_latency.main(measurement)
-    measure_misc.main(measurement)
     measure_reconfiguration.main(measurement)
-    measure_throughput.main(measurement)
+    measure_misc.main(measurement)
 
 if __name__ == "__main__":
     main()

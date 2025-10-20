@@ -454,9 +454,10 @@ def main(measurement: Measurement, plan_only: bool = False) -> None:
     directions = [ "rx", "tx" ]
     systems = [ "linux", "uk", "ukebpfjit_nompk" ]
     vm_nums = [ 1 ]
-    vnfs = [ "empty", "filter", "nat", "ids", "mirror" ]
-    repetitions = 3
     sizes = [ 64, 256, 1024, 1508 ]
+    vnfs = [ "empty", "filter", "nat", "ids", "mirror" ]
+    # vnfs = [ "mirror", "nat" ]
+    repetitions = 3
     G.DURATION_S = 71 if not G.BRIEF else 15
     if safe_vpp_warmup:
         G.DURATION_S = max(30, G.DURATION_S)
@@ -467,16 +468,18 @@ def main(measurement: Measurement, plan_only: bool = False) -> None:
         # interfaces = [ Interface.BRIDGE_VHOST, Interface.VPP ]
         # directions = [ "rx", "tx" ]
         directions = [ "rx" ]
-        # systems = [ "linux", "uk", "ukebpfjit" ]
-        # systems = [ "uk", "ukebpfjit" ]
-        systems = [ "uk" ]
         # systems = [ "linux", "uk", "ukebpfjit_nompk" ]
+        # systems = [ "uk", "ukebpfjit" ]
+        # systems = [ "uk" ]
+        systems = [ "ukebpfjit_nompk" ]
+        # systems = [ "linux" ]
         vm_nums = [ 1 ]
         # vm_nums = [ 128, 160 ]
+        vnfs = [ "nat" ]
+        sizes = [ 64 ]
+        # vnfs = [ "filter" ]
         # vnfs = [ "empty" ]
-        sizes = [ 64 ] #, 1518 ]
-        vnfs = [ "mirror" ]
-        rates=[0]
+        # vnfs = [ "empty", "filter", "ids" ]
         repetitions = 1
 
     def exclude(test):

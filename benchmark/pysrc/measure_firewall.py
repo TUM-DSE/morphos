@@ -132,7 +132,8 @@ def main(measurement: Measurement, plan_only: bool = False) -> None:
         directions = [ "rx" ]
         # systems = [ "linux", "uk", "ukebpfjit" ]
         # systems = [ "uk", "ukebpfjit" ]
-        systems = [ "uk" ]
+        systems = [ "ukebpf" ]
+        # systems = [ "uk" ]
         # systems = [ "ukebpfjit" ]
         # systems = [ "linux" ]
         vm_nums = [ 1 ]
@@ -140,8 +141,8 @@ def main(measurement: Measurement, plan_only: bool = False) -> None:
         # vnfs = [ "empty" ]
         sizes = [ 64 ]
         vnfs = [ "firewall" ]
-        # fw_sizes [ 2 ]
-        fw_sizes = [ 10000 ]
+        fw_sizes [ 2 ]
+        # fw_sizes = [ 10000 ]
         repetitions = 1
 
     test_matrix = dict(
