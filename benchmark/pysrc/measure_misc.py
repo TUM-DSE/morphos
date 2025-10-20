@@ -35,7 +35,7 @@ def main(measurement: Measurement, plan_only: bool = False) -> None:
     tests += MiscTest.list_tests(test_matrix)
 
     args_reboot = []
-    info(f"ThroughputTest execution plan:")
+    info(f"MiscTest execution plan:")
     MiscTest.estimate_time2(tests, args_reboot)
 
     if plan_only:
