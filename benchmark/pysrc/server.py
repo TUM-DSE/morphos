@@ -1296,6 +1296,7 @@ class BatchExec:
     def __init__(self, server: Server, batchsize: int):
         self.server = server
         self.batchsize = batchsize
+        self.batch = []
 
     def exec(self, cmd: str):
         self.batch += [cmd]
