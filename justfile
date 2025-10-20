@@ -82,7 +82,7 @@ build-vm-images: vm-image-init
 build-morphos:
   mkdir -p {{proot}}/nix/builds
   mkdir -p {{proot}}/VMs
-  rm -f VMs/unikraft_mpk VMs/unikraft VMs/unikraft_vanilla
+  rm -f VMs/unikraft_mpk VMs/unikraft VMs/unikraft_nopaging VMs/unikraft_vanilla || true
   nix build .#morphos -o {{proot}}/nix/builds/morphos
   cp {{proot}}/nix/builds/morphos/click_qemu-x86_64 VMs/unikraft
   nix build .#morphos-mpk -o {{proot}}/nix/builds/morphos-mpk

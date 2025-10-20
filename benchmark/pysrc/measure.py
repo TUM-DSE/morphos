@@ -146,6 +146,7 @@ class Measurement:
         debug('Initial cleanup')
         try:
             self.host.kill_unikraft()
+            self.loadgen.exec('sudo rm /tmp/config.click || true')
         except Exception:
             pass
 
@@ -220,6 +221,7 @@ class Measurement:
         debug('Initial cleanup')
         try:
             self.host.kill_guest()
+            self.loadgen.exec('sudo rm /tmp/config.click || true')
         except Exception:
             pass
 
@@ -273,6 +275,7 @@ class Measurement:
 
         try:
             self.host.kill_guest()
+            self.loadgen.exec('sudo rm /tmp/config.click || true')
 
         except Exception as e:
             error("Could not kill guest VMs")

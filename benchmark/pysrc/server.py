@@ -1962,6 +1962,7 @@ class Host(Server):
 
     def kill_unikraft(self: 'Host') -> None:
         self.tmux_kill('qemu')
+        self.exec('sudo rm /tmp/trace-vm*.log || true')
 
 
     def start_vmux(self: 'Host', interface: Interface, num_vms: int = 0) -> None:
