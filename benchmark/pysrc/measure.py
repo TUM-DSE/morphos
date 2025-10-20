@@ -25,6 +25,7 @@ from conf import G
 from tqdm import tqdm
 from tqdm.contrib.telegram import tqdm as tqdm_telegram
 import getpass
+import socket
 
 NUM_WORKERS = 8 # with 16, it already starts failing on rose
 
@@ -86,6 +87,46 @@ def end_foreach(guests: Dict[int, Guest], func: Callable[[int, Guest], None], wo
             future.result()  # Waiting for all tasks to complete
 
 
+def create_lock_file():
+    """
+    Fail, if another process of this benchmark is already running.
+    """
+    lockfile_path = "/tmp/autotest.lock"
+    current_pid = os.getpid()
+
+    if os.path.exists(lockfile_path):
+        try:
+            with open(lockfile_path, 'r') as f:
+                pid_str = f.read().strip()
+                if not pid_str.isdigit():
+                    raise Exception(f"Invalid PID in lock file: {pid_str}")
+                old_pid = int(pid_str)
+
+            # Check if the process with that PID is still alive
+            os.kill(old_pid, 0)
+        except ProcessLookupError:
+            # Process is not alive, safe to overwrite
+            with open(lockfile_path, 'w') as f:
+                f.write(str(current_pid))
+        # except PermissionError: # dont fail! This means the process exists
+        #     # No permission to signal the process
+        #     raise LockFileError(f"No permission to check process {old_pid}")
+        else:
+            # Process is alive
+            raise Exception(f"This benchmark can not be run in parallel. However, there is currently another instance already running! Pid: {old_pid}")
+    else:
+        # Lock file doesn't exist, create it
+        with open(lockfile_path, 'w') as f:
+            f.write(str(current_pid))
+
+
+def check_orchestration_host():
+    localhostname = socket.gethostname()
+    if  localhostname != "christina":
+        error(f"This orchestration script will only works on the host called christina! Running on {localhostname}")
+        time.sleep(5)
+
+
 @dataclass
 class Measurement:
     args: Namespace
@@ -109,6 +150,8 @@ class Measurement:
         self.guest = safe_cast(Guest, guest)
         self.loadgen = safe_cast(LoadGen, loadgen)
 
+        create_lock_file()
+        check_orchestration_host()
         self.host.check_cpu_freq()
         self.loadgen.check_cpu_freq()
 
