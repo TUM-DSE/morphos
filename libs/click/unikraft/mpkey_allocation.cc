@@ -1,10 +1,11 @@
-#ifdef CONFIG_LIBPKU
 extern "C" {
 #include <sys/mman.h>
+#include <uk/print.h>
+#ifdef CONFIG_LIBPKU
 #include <uk/pku.h>
 #include <uk/plat/paging.h>
-}
 #endif
+}
 
 #include "mpkey_allocation.hh"
 
