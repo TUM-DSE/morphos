@@ -29,7 +29,7 @@
 #include <endian.h>
 #include "ubpf_int.h"
 #include <unistd.h>
-#ifdef CONFIG_LIBUBPF_ENABLE_MPK
+#ifdef CONFIG_LIBPKU
 #include <uk/plat/paging.h>
 #endif
 
@@ -298,7 +298,7 @@ void
 ubpf_unload_code(struct ubpf_vm* vm)
 {
     if (vm->jitted) {
-#ifdef CONFIG_LIBUBPF_ENABLE_MPK
+#ifdef CONFIG_LIBPKU
         struct uk_pagetable *pt = ukplat_pt_get_active();
         int pages = (vm->jitted_size / __PAGE_SIZE) + 1;
 		/* uk_pr_err("Unmap %p, %d\n", vm->jitted, pages); */
