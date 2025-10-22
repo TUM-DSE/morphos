@@ -252,7 +252,7 @@ function rxTimestamps(rxQueue, dstMac, histfile)
     -- bufs:free(numPkts)
 		local numPkts = rxQueue:recvWithTimestamps(bufs)
 		for i = 1, numPkts do
-		 bufs[i]:dump()
+		 -- bufs[i]:dump()
 			-- if bufs[i]:getUdpPacket().udp:getDstPort() == 0x10 then
 				local rxTs = dpdkc.get_timestamp_dynfield(bufs[i])
 			  if offset == 0 then
@@ -267,7 +267,7 @@ function rxTimestamps(rxQueue, dstMac, histfile)
 					-- txTs = ffi.cast("uint64_t*", ffi.cast("uint8_t*", bufs[i]:getData()) + 9*8+6)[0]
 				-- end
 				local latency = tonumber(rxTs - txTs) / tscFreq * 10^9 -- to nanoseconds
-				print(" rxTs: ", rxTs, " txTs: ", txTs, "lat: ", latency)
+				-- print(" rxTs: ", rxTs, " txTs: ", txTs, "lat: ", latency)
 				hist:update(latency) -- to nanoseconds
 			-- end
 		end
