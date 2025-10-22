@@ -18,7 +18,7 @@ from root import *
 from dataclasses import dataclass, field, asdict
 import subprocess
 import os
-from pandas import DataFrame
+from pandas import DataFrame, read_csv, concat
 import pandas as pd
 import traceback
 import click_configs
@@ -131,10 +131,9 @@ class ThroughputTest(AbstractBenchTest):
         elif self.direction == "tx":
             # parse click log
             with open(self.output_filepath(repetition), 'r') as f:
-                lines = f.readlines()
-            # pps values
-            values = [ float(line.split("\t")[0].strip()) for line in lines ]
-            values = values[warmup:]
+                moongen = read_csv(f)
+            # parse moongen (cut last value which is only a split-second)
+            values = moongen[moongen.Direction=='RX']['PacketRate'][:-1]*1_000_000
 
         else:
             raise ValueError(f"Unknown direction: {self.direction}")
@@ -181,14 +180,14 @@ class ThroughputTest(AbstractBenchTest):
             case ("ukebpf", "filter", _):
                 files = [ "benchmark/bpfilters/target-port", "benchmark/bpfilters/target-port.sig" ]
                 processing += "-> BPFilter(ID 1, FILE target-port, SIGNATURE target-port.sig, JIT false)"
-            case ("ukebpfjit", "filter", _):
+            case ("ukebpfjit" | "ukebpfjit_nompk", "filter", _):
                 files = [ "benchmark/bpfilters/target-port", "benchmark/bpfilters/target-port.sig" ]
                 processing += "-> BPFilter(ID 1, FILE target-port, SIGNATURE target-port.sig, JIT true)"
 
             case ("ukebpf", "nat", "rx"):
                 files = [ "benchmark/bpfilters/nat", "benchmark/bpfilters/nat.sig" ]
                 processing += "rw :: BPFClassifier(ID 1, FILE nat, SIGNATURE nat.sig, JIT false)"
-            case ("ukebpfjit", "nat", "rx"):
+            case ("ukebpfjit" | "ukebpfjit_nompk", "nat", "rx"):
                 files = [ "benchmark/bpfilters/nat", "benchmark/bpfilters/nat.sig" ]
                 processing += "rw :: BPFClassifier(ID 1, FILE nat, SIGNATURE nat.sig, JIT true)"
             case (_, "nat", _):
@@ -198,7 +197,7 @@ class ThroughputTest(AbstractBenchTest):
             case ("ukebpf", "mirror", "rx"):
                 files = [ "benchmark/bpfilters/ether-mirror", "benchmark/bpfilters/ether-mirror.sig" ]
                 processing += "-> BPFRewriter(ID 1, FILE ether-mirror, SIGNATURE ether-mirror.sig, JIT false)"
-            case ("ukebpfjit", "mirror", "rx"):
+            case ("ukebpfjit" | "ukebpfjit_nompk", "mirror", "rx"):
                 files = [ "benchmark/bpfilters/ether-mirror", "benchmark/bpfilters/ether-mirror.sig" ]
                 processing += "-> BPFRewriter(ID 1, FILE ether-mirror, SIGNATURE ether-mirror.sig, JIT true)"
             case ("uk", "mirror", "rx"):
@@ -211,7 +210,7 @@ class ThroughputTest(AbstractBenchTest):
             case ("ukebpf", "ids", _):
                 files = [ "benchmark/bpfilters/stringmatcher", "benchmark/bpfilters/stringmatcher.sig" ]
                 processing += "-> BPFilter(ID 1, FILE stringmatcher, SIGNATURE stringmatcher.sig, JIT false)"
-            case ("ukebpfjit", "ids", _):
+            case ("ukebpfjit" | "ukebpfjit_nompk", "ids", _):
                 files = [ "benchmark/bpfilters/stringmatcher", "benchmark/bpfilters/stringmatcher.sig" ]
                 processing += "-> BPFilter(ID 1, FILE stringmatcher, SIGNATURE stringmatcher.sig, JIT true)"
             case (_, "ids", _):
@@ -236,9 +235,13 @@ class ThroughputTest(AbstractBenchTest):
             batch = 1
             threads = 1
 
+        delay = 0 # no limit in the normal case
+        if self.vnf == "mirror" or self.vnf == "nat":
+            delay = 25000
+            threads = 1
         size = self.size - 4 # subtract 4 bytes for the CRC
         pktgen_cmd = f"{loadgen.project_root}/nix/builds/linux-pktgen/bin/pktgen_sample03_burst_single_flow" + \
-            f" -i {loadgen.test_iface} -s {self.size - 4} -d {strip_subnet_mask(guest.test_iface_ip_net)} -m {guest.test_iface_mac} -b {batch} -t {threads} | tee {remote_pktgen_log}";
+            f" -i {loadgen.test_iface} -s {self.size - 4} -d {strip_subnet_mask(guest.test_iface_ip_net)} -m {guest.test_iface_mac} -b {batch} -t {threads} -w {delay} | tee {remote_pktgen_log}";
         self.start_pktgen_helper(guest, loadgen, host, pktgen_cmd)
 
     def start_pktgen_helper(self, guest, loadgen, host, pktgen_cmd):
@@ -263,14 +266,22 @@ class ThroughputTest(AbstractBenchTest):
         loadgen.exec("sudo pkill -SIGINT pktgen")
 
     def run_linux_tx(self, repetition: int, guest, loadgen, host):
-        remote_monitor_file = "/tmp/throughput.tsv"
         remote_click_output = "/tmp/click.log"
-        local_monitor_file = self.output_filepath(repetition)
+        remote_statsfile = "/tmp/throughput.csv"
+        remote_moongen_log = "/tmp/moongen.log"
         local_click_output = self.output_filepath(repetition, "click.log")
+        local_statsfile = self.output_filepath(repetition)
+        local_moongen_log = self.output_filepath(repetition, "moongen.log")
 
-        loadgen.exec(f"sudo rm {remote_monitor_file} || true")
         guest.exec(f"sudo rm {remote_click_output} || true")
+        loadgen.exec(f"sudo rm {remote_statsfile} || true")
+        loadgen.exec(f"sudo rm {remote_moongen_log} || true")
 
+        # bind loadgen drivers here until rx has also moved to moongen
+        loadgen.delete_nic_ip_addresses(loadgen.test_iface)
+        loadgen.bind_test_iface() # bind DPDK driver
+
+        # prepare click config
         click_args = { "R": 0 }
         guest.kill_click()
         _, element = self.click_config()
@@ -280,20 +291,28 @@ class ThroughputTest(AbstractBenchTest):
         guest.copy_to("/tmp/linux.click", "/tmp/linux.click")
         guest.start_click("/tmp/linux.click", remote_click_output, script_args=click_args, dpdk=False)
 
-        info("Start measuring with bmon")
-        # count packets that actually arrive, but cut first line because it is always zero
-        monitor_cmd = f"bmon -p {loadgen.test_iface} -o '{bmon_format}' | tee {remote_monitor_file}"
-        loadgen.tmux_kill("monitor")
-        loadgen.tmux_new("monitor", monitor_cmd)
+        LoadGen.stop_receiver(loadgen)
+        LoadGen.run_receiver(server=loadgen,
+                            runtime=G.DURATION_S,
+                            statsfile=remote_statsfile,
+                            outfile=remote_moongen_log,
+                            )
 
         time.sleep(G.DURATION_S)
 
-        loadgen.tmux_kill("monitor")
+        # stop network monitor
+        try:
+            loadgen.wait_for_success(f'[[ $(tail -n 5 {remote_moongen_log}) = *"TEST_DONE"* ]]', timeout=60)
+        except TimeoutError:
+            error('Waiting for moongen to finish timed out')
+        LoadGen.stop_receiver(loadgen)
+
         guest.stop_click()
         guest.kill_click()
 
-        loadgen.copy_from(remote_monitor_file, local_monitor_file)
         guest.copy_from(remote_click_output, local_click_output)
+        loadgen.copy_from(remote_statsfile, local_statsfile)
+        loadgen.copy_from(remote_moongen_log, local_moongen_log)
 
     def run_linux_rx(self, repetition: int, guest, loadgen, host):
         loadgen.exec(f"sudo modprobe pktgen")
@@ -313,13 +332,13 @@ class ThroughputTest(AbstractBenchTest):
             config = click_configs.nat(
                 interface=guest.test_iface,
                 guest_ip=GUEST_IP,
-                guest_mac=measurement.guest.test_iface_mac,
+                guest_mac=guest.test_iface_mac,
                 gw_ip=strip_subnet_mask(loadgen.test_iface_ip_net),
                 gw_mac=loadgen.test_iface_mac,
                 src_ip=TEST_CLIENT_IP,
                 src_mac=loadgen.test_iface_mac,
                 dst_ip=strip_subnet_mask(loadgen.test_iface_ip_net),
-                dst_mac=measurement.guest.test_iface_mac,
+                dst_mac=guest.test_iface_mac,
                 size=self.size,
                 direction=self.direction,
                 rewriter=element
@@ -353,31 +372,47 @@ class ThroughputTest(AbstractBenchTest):
 
 
     def run_unikraft_tx(self, repetition: int, guest, loadgen, host, remote_unikraft_log_raw):
-        remote_monitor_file = "/tmp/throughput.tsv"
         remote_unikraft_log = f"{remote_unikraft_log_raw}.{repetition}"
-        local_monitor_file = self.output_filepath(repetition)
+        remote_statsfile = "/tmp/throughput.csv"
+        remote_moongen_log = "/tmp/moongen.log"
         local_unikraft_log = self.output_filepath(repetition, "unikraft.log")
+        local_statsfile = self.output_filepath(repetition)
+        local_moongen_log = self.output_filepath(repetition, "moongen.log")
 
-        loadgen.exec(f"sudo rm {remote_monitor_file} || true")
         host.exec(f"sudo rm {remote_unikraft_log} || true")
+        loadgen.exec(f"sudo rm {remote_statsfile} || true")
+        loadgen.exec(f"sudo rm {remote_moongen_log} || true")
+
+        # bind loadgen drivers here until rx has also moved to moongen
+        loadgen.delete_nic_ip_addresses(loadgen.test_iface)
+        loadgen.bind_test_iface() # bind DPDK driver
 
         # reset unikraft log
         host.exec(f"sudo truncate -s 0 {remote_unikraft_log_raw}")
 
-        info("Start measuring with bmon")
-        # measure on loadgen, because unikraft statistics only get printed very rately when busy sending
-        monitor_cmd = f"bmon -p {loadgen.test_iface} -o '{bmon_format}' | tee {remote_monitor_file}"
-        loadgen.tmux_kill("monitor")
-        loadgen.tmux_new("monitor", monitor_cmd)
+
+        LoadGen.stop_receiver(loadgen)
+        LoadGen.run_receiver(server=loadgen,
+                            runtime=G.DURATION_S,
+                            statsfile=remote_statsfile,
+                            outfile=remote_moongen_log,
+                            )
 
         time.sleep(G.DURATION_S)
 
-        loadgen.tmux_kill("monitor")
+        # stop network monitor
+        try:
+            loadgen.wait_for_success(f'[[ $(tail -n 5 {remote_moongen_log}) = *"TEST_DONE"* ]]', timeout=60)
+        except TimeoutError:
+            error('Waiting for moongen to finish timed out')
+        LoadGen.stop_receiver(loadgen)
+
 
         # copy raw to log, but only printable characters (cut leading null bytes)
         host.exec(f"strings {remote_unikraft_log_raw} | sudo tee {remote_unikraft_log}")
         host.copy_from(remote_unikraft_log, local_unikraft_log)
-        loadgen.copy_from(remote_monitor_file, local_monitor_file)
+        loadgen.copy_from(remote_statsfile, local_statsfile)
+        loadgen.copy_from(remote_moongen_log, local_moongen_log)
         pass
 
     def run_unikraft_rx(self, repetition: int, guest, loadgen, host, remote_unikraft_log_raw):
@@ -417,10 +452,11 @@ def main(measurement: Measurement, plan_only: bool = False) -> None:
           # Interface.BRIDGE_VHOST,
           ]
     directions = [ "rx", "tx" ]
-    systems = [ "linux", "uk", "ukebpfjit" ]
+    systems = [ "linux", "uk", "ukebpfjit_nompk" ]
     vm_nums = [ 1 ]
-    sizes = [ 64, 256, 1024, 1518 ]
+    sizes = [ 64, 256, 1024, 1508 ]
     vnfs = [ "empty", "filter", "nat", "ids", "mirror" ]
+    # vnfs = [ "mirror", "nat" ]
     repetitions = 3
     G.DURATION_S = 71 if not G.BRIEF else 15
     if safe_vpp_warmup:
@@ -432,16 +468,18 @@ def main(measurement: Measurement, plan_only: bool = False) -> None:
         # interfaces = [ Interface.BRIDGE_VHOST, Interface.VPP ]
         # directions = [ "rx", "tx" ]
         directions = [ "rx" ]
-        # systems = [ "linux", "uk", "ukebpfjit" ]
+        # systems = [ "linux", "uk", "ukebpfjit_nompk" ]
         # systems = [ "uk", "ukebpfjit" ]
         # systems = [ "uk" ]
-        # systems = [ "ukebpfjit" ]
-        systems = [ "linux" ]
+        systems = [ "ukebpfjit_nompk" ]
+        # systems = [ "linux" ]
         vm_nums = [ 1 ]
         # vm_nums = [ 128, 160 ]
-        # vnfs = [ "empty" ]
+        vnfs = [ "nat" ]
         sizes = [ 64 ]
-        vnfs = [ "mirror" ]
+        # vnfs = [ "filter" ]
+        # vnfs = [ "empty" ]
+        # vnfs = [ "empty", "filter", "ids" ]
         repetitions = 1
 
     def exclude(test):
@@ -450,6 +488,7 @@ def main(measurement: Measurement, plan_only: bool = False) -> None:
                     (test.vnf == "mirror" and test.direction == "tx") # bidirection test
         )
 
+    # list base throughput tests
     test_matrix = dict(
         repetitions=[ repetitions ],
         direction=directions,
@@ -460,8 +499,22 @@ def main(measurement: Measurement, plan_only: bool = False) -> None:
         system=systems,
     )
     tests: List[ThroughputTest] = []
-    tests = ThroughputTest.list_tests(test_matrix, exclude_test=exclude)
+    tests += ThroughputTest.list_tests(test_matrix, exclude_test=exclude)
 
+    # add list of MPK tests
+    if not G.BRIEF:
+        systems = [ "ukebpfjit", "ukebpfjit_nompk" ]
+        sizes = [ 64, 128, 256, 512, 758, 1024, 1280, 1518 ]
+        test_matrix = dict(
+            repetitions=[ repetitions ],
+            direction=["rx"],
+            interface=[ interface.value for interface in interfaces],
+            num_vms=vm_nums,
+            size=sizes,
+            vnf=["filter"],
+            system=systems,
+        )
+        tests += ThroughputTest.list_tests(test_matrix, exclude_test=exclude)
 
     args_reboot = ["interface", "num_vms", "direction", "system", "vnf", "size"]
     info(f"ThroughputTest execution plan:")
@@ -481,6 +534,9 @@ def main(measurement: Measurement, plan_only: bool = False) -> None:
             info("Booting VM for this test matrix:")
             info(ThroughputTest.test_matrix_string(a_tests))
 
+            assert len(a_tests) >= 1
+            assert all([a_tests[0] == test for test in a_tests]) # deduplicate tests
+            a_tests = [ a_tests[0] ] # only keep the first
             assert len(a_tests) == 1 # we have looped through all variables now, right?
             test = a_tests[0]
             info(f"Running {test}")
@@ -498,7 +554,7 @@ def main(measurement: Measurement, plan_only: bool = False) -> None:
             loadgen.setup_test_iface_ip_net()
 
 
-            if system in [ "uk", "ukebpf", "ukebpfjit" ]:
+            if system in [ "uk", "ukebpf", "ukebpfjit", "ukebpfjit_nompk" ]:
                 files, element = test.click_config()
                 click_config = ""
                 if test.vnf == "nat":
@@ -534,7 +590,7 @@ def main(measurement: Measurement, plan_only: bool = False) -> None:
                 host.exec(f"sudo rm {remote_unikraft_init_log} || true")
 
                 for repetition in range(repetitions): # restarting click for each repetition means restarting unikraft
-                    with measurement.unikraft_vm(interface, click_config, vm_log=remote_unikraft_log_raw, cpio_files=files) as guest:
+                    with measurement.unikraft_vm(interface, click_config, vm_log=remote_unikraft_log_raw, cpio_files=files, with_mpk=(test.system == "ukebpfjit")) as guest:
                         host.exec(f"sudo cp {remote_unikraft_log_raw} {remote_unikraft_init_log}")
 
                         if test.direction == "tx":

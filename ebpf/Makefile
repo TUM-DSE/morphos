@@ -8,17 +8,24 @@ BENCHMARK_DIR:=$(DIR)/../benchmark/bpfilters
 BINS := dns-filter drop ether-mirror pass rate-limiter round-robin strip-ether-vlan-header target-port udp-tcp-classifier state-migration-v1 state-migration-v2 stringmatcher nat firewall
 
 VERIFY ?= 0
+RECORD ?= 0
 
 define BUILD_TARGET
 $(1):
 	@echo -e "${GRAY_BOLD}Building ${RESET}$(1)..."
-	@cd $(DIR) && cargo build --bin $(1) --target bpfel-unknown-none --release -Z build-std=core
+	@if [ "$(RECORD)" = "1" ]; then \
+		cd $(DIR) && time PATH=${HOME}/.cargo/bin:${PATH} cargo build --bin $(1) --target bpfel-unknown-none --release -Z build-std=core > /dev/null 2>/dev/null || true; \
+	else \
+		cd $(DIR) && PATH=${HOME}/.cargo/bin:${PATH} cargo build --bin $(1) --target bpfel-unknown-none --release -Z build-std=core || true;\
+	fi
 	@echo ""
 	@if [ "$(VERIFY)" = "1" ]; then \
 		echo -e "${GRAY_BOLD}Verification Results:${RESET}"; \
 	 	$(DIR)/../verifier/build/ubpf_verifier -f $(TARGET_DIR)/$(1) -k $(DIR)/../verifier/keys/ec_private_key.pem -o $(TARGET_DIR)/$(1).sig || true; \
 	 fi
 endef
+
+#| grep "real" | cut -d 'm' -f 2 | awk -F 's' '{print $1;}'
 
 $(foreach bin,$(BINS),$(eval $(call BUILD_TARGET,$(bin))))
 

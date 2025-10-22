@@ -56,6 +56,10 @@ pub enum FileSystem<'a> {
 }
 
 pub fn start_click(fs: FileSystem, extra_args: &[String]) -> anyhow::Result<ClickVm> {
+    start_click2(fs, extra_args, "../VMs/unikraft")
+}
+
+pub fn start_click2(fs: FileSystem, extra_args: &[String], unikraft_path: &str) -> anyhow::Result<ClickVm> {
     let vfs_fstab = match fs {
         FileSystem::CpioArchive(_) => " vfs.fstab=[\"initrd0:/:extract::ramfs=1:\"]",
         FileSystem::Raw(_) => "",
@@ -76,6 +80,11 @@ pub fn start_click(fs: FileSystem, extra_args: &[String]) -> anyhow::Result<Clic
         "max",
         "-m",
         "3G",
+        // "-object",
+        // "memory-backend-file,id=mem,size=12G,mem-path=/dev/hugepages,share=on",
+        // "-mem-prealloc",
+        // "-numa",
+        // "node,memdev=mem",
         "-netdev",
         "bridge,id=en0,br=clicknet",
         "-device",
@@ -83,10 +92,11 @@ pub fn start_click(fs: FileSystem, extra_args: &[String]) -> anyhow::Result<Clic
         "-append",
         &format!(r#"{vfs_fstab} --"#),
         "-kernel",
-        "../.unikraft/build/click_qemu-x86_64",
+        unikraft_path,
+        // "../VMs/unikraft",
         "-initrd",
         initrd,
-        "-nographic",
+        "-nographic"
     ]
     .map(|s| s.to_string())
     .to_vec();

@@ -67,7 +67,7 @@ class ReconfigurationTest(AbstractBenchTest):
         """
         estimate time needed to run this benchmark excluding boot time in seconds
         """
-        return 0
+        return 10 * self.repetitions
 
 
     def parse_results(self, repetition: int) -> DataFrame:
@@ -164,7 +164,8 @@ def main(measurement: Measurement, plan_only: bool = False) -> None:
         "linux",
         "uk",
         "uktrace",
-        "ukebpfjit"
+        "ukebpfjit",
+        "xdp"
     ]
     vm_nums = [ 1 ]
     vnfs = [ "empty", "filter", "ids", "mirror", "nat", "firewall-2", "firewall-1000" ]
@@ -205,7 +206,7 @@ def main(measurement: Measurement, plan_only: bool = False) -> None:
 
 
     args_reboot = ["num_vms", "system", "vnf"]
-    info(f"ThroughputTest execution plan:")
+    info(f"ReconfigurationTest execution plan:")
     ReconfigurationTest.estimate_time2(tests, args_reboot)
 
     if plan_only:
@@ -225,7 +226,7 @@ def main(measurement: Measurement, plan_only: bool = False) -> None:
             test = a_tests[0]
             info(f"Running {test}")
 
-            # TODO we are not setting up network yet `make -C benchmark setup`
+            host.exec(f"cd {PROJECT_ROOT}; nix develop --command make -C benchmark setup")
 
             for repetition in range(repetitions):
                 if test.system == "ukebpfjit":
@@ -329,12 +330,12 @@ def main(measurement: Measurement, plan_only: bool = False) -> None:
                     xdp_program = f"{host.project_root}/nix/builds/xdp/lib/reflector.o"
                     remote_outfile = "/tmp/xdp.log"
                     local_outfile = test.output_filepath(repetition)
-                    iterations = 30
+                    iterations_many = iterations * 3
                     host.exec(f"sudo rm {remote_outfile} || true")
                     # time must be executed in sh. Other shells use other time impls
                     xdp_add_cmd = f"ip link set {iface} xdpgeneric obj {xdp_program} sec xdp"
                     xdp_del_cmd = f"sudo ip link set {iface} xdpgeneric off || true"
-                    cmd = f"sudo /bin/sh -c \"for i in {{1..{iterations}}}; do {xdp_del_cmd}; time {xdp_add_cmd}; done\" 2>&1 | tee -a {remote_outfile}"
+                    cmd = f"sudo /bin/sh -c \"for i in {{1..{iterations_many}}}; do {xdp_del_cmd}; time {xdp_add_cmd}; done\" 2>&1 | tee -a {remote_outfile}"
                     host.exec(cmd)
                     host.copy_from(remote_outfile, local_outfile)
 

@@ -13,7 +13,19 @@
 #include <vector>
 #include <string>
 
+extern "C" {
+#include <sys/mman.h>
+#ifdef CONFIG_LIBPKU
+#include <uk/pku.h>
+#include <uk/pkru.h>
+#include <uk/plat/paging.h>
+#endif
+}
+
 #include "bpfelement.hh"
+#ifdef CONFIG_LIBPKU
+#include "mpkey_allocation.hh"
+#endif
 
 CLICK_DECLS
 
@@ -52,6 +64,49 @@ char write_file(const std::string &filename, const std::vector <uint8_t> &buffer
     return 0;
 }
 
+#ifdef CONFIG_LIBPKU
+inline void mpk_ebpf_enter(int stack_key) {
+    // pkey_set_perm(PROT_READ | PROT_WRITE, stack_key); // allow all
+	pkey_set_perm(PROT_READ | PROT_WRITE, MPKEY_STACK);
+	pkey_set_perm(PROT_READ | PROT_WRITE, MPKEY_BUFFERS);
+	// pkey_set_perm(0, MPKEY_DEFAULT); // TODO can't do this yet as it breaks click for some reason
+}
+
+inline void mpk_ebpf_exit(int stack_key) {
+	// pkey_set_perm(0, stack_key); // prohibit all
+	// pkey_set_perm(PROT_READ | PROT_WRITE, MPKEY_DEFAULT);
+	pkey_set_perm(PROT_READ | PROT_WRITE, MPKEY_STACK);
+	pkey_set_perm(PROT_READ | PROT_WRITE, MPKEY_BUFFERS);
+}
+
+inline void ebpf_helper_enter(int stack_key) {
+	// pkey_set_perm(PROT_READ | PROT_WRITE, stack_key); // allow all
+	pkey_set_perm(PROT_READ | PROT_WRITE, MPKEY_STACK);
+	pkey_set_perm(PROT_READ | PROT_WRITE, MPKEY_BUFFERS);
+	//pkey_set_perm(PROT_READ | PROT_WRITE, MPKEY_DEFAULT); // TODO can't do this yet as it breaks click for some reason
+}
+
+inline void ebpf_helper_exit(int stack_key) {
+	// pkey_set_perm(0, stack_key); // prohibit all
+	pkey_set_perm(PROT_READ | PROT_WRITE, MPKEY_STACK);
+	pkey_set_perm(PROT_READ | PROT_WRITE, MPKEY_BUFFERS);
+	pkey_set_perm(0, MPKEY_DEFAULT);
+}
+
+#define WITH_PKEYS(name, function, stack_key) \
+uint32_t name(void) { \
+    int ret; \
+    ebpf_helper_enter(stack_key); \
+    ret = function(); \
+    ebpf_helper_exit(stack_key); \
+    return ret; \
+}
+WITH_PKEYS(pkey1_bpf_get_prandom_u32, bpf_get_prandom_u32, 1) // automate this 1..6 with a macro?
+WITH_PKEYS(pkey2_bpf_get_prandom_u32, bpf_get_prandom_u32, 2)
+
+WITH_PKEYS(pkey1_bpf_ktime_get_ns, bpf_ktime_get_ns, 1)
+#endif
+
 void BPFElement::init_ubpf_vm() {
     ubpf_vm *vm = ubpf_create();
     if (vm == NULL) {
@@ -69,9 +124,15 @@ void BPFElement::init_ubpf_vm() {
     ubpf_register(vm, 1, "bpf_map_lookup_elem", as_external_function_t((void *) bpf_map_lookup_elem));
     ubpf_register(vm, 2, "bpf_map_update_elem", as_external_function_t((void *) bpf_map_update_elem));
     ubpf_register(vm, 3, "bpf_map_delete_elem", as_external_function_t((void *) bpf_map_delete_elem));
-    ubpf_register(vm, 5, "bpf_ktime_get_ns", as_external_function_t((void *) bpf_ktime_get_ns));
+    #ifdef CONFIG_LIBCLICK_ENABLE_MPK
+    ubpf_register(vm, 5, "bpf_ktime_get_ns", as_external_function_t(_jit ? (void*)pkey1_bpf_ktime_get_ns : (void*)bpf_ktime_get_ns));
     ubpf_register(vm, 6, "bpf_trace_printk", as_external_function_t((void *) bpf_trace_printk));
-    ubpf_register(vm, 7, "bpf_get_prandom_u32", as_external_function_t((void *) bpf_get_prandom_u32));
+    ubpf_register(vm, 7, "bpf_get_prandom_u32", as_external_function_t(_jit ? (void*)pkey1_bpf_get_prandom_u32 : (void*)bpf_get_prandom_u32));
+    #else
+    ubpf_register(vm, 5, "bpf_ktime_get_ns", as_external_function_t((void*)bpf_ktime_get_ns));
+    ubpf_register(vm, 6, "bpf_trace_printk", as_external_function_t((void *) bpf_trace_printk));
+    ubpf_register(vm, 7, "bpf_get_prandom_u32", as_external_function_t((void*)bpf_get_prandom_u32));
+    #endif
     ubpf_register(vm, 20, "unwind", as_external_function_t((void *) unwind));
     ubpf_set_unwind_function_index(vm, 20);
 
@@ -173,6 +234,97 @@ int BPFElement::check_bpf_verification_signature(ErrorHandler *errh) {
     return 0;
 }
 
+int BPFElement::allocate_jit_stack() {
+#ifdef CONFIG_LIBPKU
+    int rc = mpkey_allocation_alloc();
+	if (rc < 0) {
+		uk_pr_err("Failed to allocate MPKEYs");
+		return -1;
+	}
+
+    _pkey_stack = MPKEY_STACK;
+	// _pkey_stack = pkey_alloc(0, 0);
+	// if (_pkey_stack < 0) {
+	// 	uk_pr_err("Could not allocate pkey %d\n", _pkey_stack);
+	// 	return -1;
+	// }
+
+    /*
+     * ebpf stack
+     */
+    UK_ASSERT(UBPF_EBPF_STACK_SIZE < __PAGE_SIZE);
+    int pages = 1;
+	void* ebpf_stack = (char*)uk_memalign(uk_alloc_get_default(), __PAGE_SIZE, pages*__PAGE_SIZE);
+    _ubpf_ebpf_stack = ebpf_stack;
+    _ubpf_ebpf_stack_len = UBPF_EBPF_STACK_SIZE;
+    if (_ubpf_ebpf_stack == NULL) {
+        return -1;
+    }
+
+#ifdef CONFIG_LIBCLICK_ENABLE_MPK
+	rc = pkey_mprotect(ebpf_stack, pages*__PAGE_SIZE, PROT_READ | PROT_WRITE, _pkey_stack);
+	if (rc < 0) {
+		uk_pr_err("Could not set pkey for ebpf stack %d\n", errno);
+		return -1;
+	}
+#endif
+
+    /* jit stack protector:
+     *
+     * Should the JIT stack grow up beyond the allocated size,
+     * it will hit this page and cause a fault.
+     */
+    struct uk_pagetable *pt = ukplat_pt_get_active();
+    pages = 1;
+    // TODO needs dynamic allocator, so that we can have multiple bpfelements
+    void* jit_stack_protector = (void*)0x80000000 + 0*__PAGE_SIZE; // the fist page at 0x80... is already used by ubpf_jit.c:ubpf_compile_ex()
+    rc = ukplat_page_mapx(pt, (__vaddr_t)jit_stack_protector,
+        __PADDR_ANY, pages,
+        0, // neither read, write, or execute permissions
+        0, NULL);
+	if (rc) {
+		uk_pr_err("Could not allocate page for jit stack protector %d\n", errno);
+		return -1;
+	}
+    _ubpf_jit_stack_protector_len = pages*__PAGE_SIZE;
+    _ubpf_jit_stack_protector = jit_stack_protector;
+
+#ifdef CONFIG_LIBCLICK_ENABLE_MPK
+	rc = pkey_mprotect(jit_stack_protector, pages*__PAGE_SIZE, PROT_READ | PROT_WRITE, _pkey_stack);
+	if (rc < 0) {
+		uk_pr_err("Could not set pkey for jit stack protector %d\n", errno);
+		return -1;
+	}
+#endif
+
+    /*
+     * JIT stack
+     */
+    pages = 1;
+    // TODO needs dynamic allocator, so that we can have multiple bpfelements
+    void* jit_stack = (void*)0x80000000 + 1*__PAGE_SIZE; // the second page is used for _ubpf_jit_stack_protector
+    rc = ukplat_page_mapx(pt, (__vaddr_t)jit_stack,
+        __PADDR_ANY, pages,
+        PAGE_ATTR_PROT_READ | PAGE_ATTR_PROT_WRITE, 0, NULL);
+	if (rc) {
+		uk_pr_err("Could not allocate page for jit stack %d\n", errno);
+        return -1;
+    }
+    _ubpf_jit_stack = jit_stack;
+    _ubpf_jit_stack_len = pages*__PAGE_SIZE;
+    UK_ASSERT(_ubpf_jit_stack_protector + _ubpf_jit_stack_protector_len == _ubpf_jit_stack);
+
+#ifdef CONFIG_LIBCLICK_ENABLE_MPK
+	rc = pkey_mprotect(jit_stack, pages*__PAGE_SIZE, PROT_READ | PROT_WRITE, _pkey_stack);
+	if (rc < 0) {
+		uk_pr_err("Could not set pkey for jit stack %d\n", errno);
+		return -1;
+	}
+#endif
+#endif
+    return 0;
+}
+
 int BPFElement::configure(Vector <String> &conf, ErrorHandler *errh) {
     if (conf.empty()) {
         return -1;
@@ -213,6 +365,12 @@ int BPFElement::configure(Vector <String> &conf, ErrorHandler *errh) {
         if (_ubpf_vm == NULL) {
             return errh->error("Error initializing ubpf vm\n");
         }
+        if (_jit) {
+            if (this->allocate_jit_stack()) {
+                return errh->error("Error allocating JIT stack\n");
+            }
+
+        }
     }
 
     uk_rwlock_wlock(&_lock);
@@ -240,8 +398,8 @@ int BPFElement::configure(Vector <String> &conf, ErrorHandler *errh) {
 	uint64_t ts_validate = ukplat_monotonic_clock();
 
     if (_jit) {
-        _ubpf_jit_fn = ubpf_compile(_ubpf_vm, &error_msg);
-        if (_ubpf_jit_fn == NULL) {
+        _ubpf_jit_ex_fn = ubpf_compile_ex(_ubpf_vm, &error_msg, ExtendedJitMode);
+        if (_ubpf_jit_ex_fn == NULL) {
             return errh->error("Error compiling ubpf program: %s\n", error_msg);
         }
     }
@@ -274,24 +432,48 @@ int BPFElement::configure(Vector <String> &conf, ErrorHandler *errh) {
     return 0;
 }
 
+// inline void BPFElement::ebpf_enter_mpk() {
+// 	pkey_set_perm(PROT_READ | PROT_WRITE, _pkey_stack); // allow all
+// }
+//
+// inline void BPFElement::ebpf_exit_mpk() {
+// 	pkey_set_perm(0, _pkey_stack); // prohibit all
+// }
+
 uint32_t BPFElement::exec(int port, Packet *p) {
-    auto ctx = (bpfelement_md) {
+    uint64_t ret = 0;
+
+    auto ctx_ = (bpfelement_md) {
             .data = (void *) p->data(),
             .data_end = (void *) p->end_data(),
             .port = port,
     };
 
     if (_jit) {
-        return (uint32_t) _ubpf_jit_fn(&ctx, sizeof(ctx));
+        UK_ASSERT(sizeof(bpfelement_md) == 24); // assumption made in ubpf_jit_x86_64.c
+        // move ebpf input context to JIT stack which is readable from ebpf context
+        auto ctx = (bpfelement_md*)(this->_ubpf_jit_stack + __PAGE_SIZE - sizeof(bpfelement_md));
+        //*ctx = ctx_;
+        ctx->data = ctx_.data;
+        ctx->data_end = ctx_.data_end;
+        ctx->port = ctx_.port;
+/*#ifdef CONFIG_LIBCLICK_ENABLE_MPK
+        mpk_ebpf_enter(_pkey_stack);
+#endif*/
+        // ret = (uint32_t) _ubpf_jit_fn(&ctx, sizeof(ctx));
+        asm volatile("" ::: "memory");
+        ret = (uint64_t) _ubpf_jit_ex_fn(ctx, sizeof(bpfelement_md), (uint8_t*)this->_ubpf_ebpf_stack, this->_ubpf_ebpf_stack_len);
+        asm volatile("" ::: "memory");
+/*#ifdef CONFIG_LIBCLICK_ENABLE_MPK
+        mpk_ebpf_exit(_pkey_stack);
+#endif*/
     } else {
-        uint64_t ret;
-        if (ubpf_exec(_ubpf_vm, &ctx, sizeof(ctx), &ret) != 0) {
+        if (ubpf_exec(_ubpf_vm, &ctx_, sizeof(ctx_), &ret) != 0) {
             uk_pr_err("Error executing bpf program\n");
-            return -1;
+            ret = -1;
         }
-
-        return (uint32_t) ret;
     }
+    return ret;
 }
 
 CLICK_ENDDECLS

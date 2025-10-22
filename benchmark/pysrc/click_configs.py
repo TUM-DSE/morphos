@@ -120,6 +120,7 @@ def nat(interface: str, guest_ip: str, guest_mac: str, gw_ip: str, gw_mac: str, 
             12/0800);               // [2] IP packets
 
      {"from_device" if direction == "rx" else pkt_gen_elements}
+     {"" if ((direction == "tx" or is_tx) or not interface.isdigit()) else "-> Delay('tx', 333) // 50% * 1/1.5Mpps tx perf"}
     -> ic0 :: AverageCounter()
     -> arp_class;
 

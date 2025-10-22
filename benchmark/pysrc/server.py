@@ -722,10 +722,21 @@ class Server(ABC):
         """
         cmd = f'sudo dpdk-devbind.py -b {driver} {dev_addr}'
 
-        if self.nixos:
-            _ = self.exec(f'{self.__cmd_with_package("dpdk")} sh -c "{cmd}"')
-        else:
-            _ = self.exec(cmd)
+        for i in range(99):
+            try:
+                if self.nixos:
+                    _ = self.exec(f'{self.__cmd_with_package("dpdk")} sh -c "{cmd}"')
+                else:
+                    _ = self.exec(cmd)
+            except CalledProcessError as e:
+                if i < 3:
+                    # retry a few times in case of failure
+                    pass
+                else:
+                    raise e
+            finally:
+                return
+
 
     def unbind_device(self: 'Server', dev_addr: str) -> None:
         """
@@ -1296,6 +1307,7 @@ class BatchExec:
     def __init__(self, server: Server, batchsize: int):
         self.server = server
         self.batchsize = batchsize
+        self.batch = []
 
     def exec(self, cmd: str):
         self.batch += [cmd]
@@ -1756,6 +1768,7 @@ class Host(Server):
         numactl = f"numactl -C {self.cpupinner.qemu(vm_number)}"
         # numactl = ""
 
+        self.exec("sudo rm /tmp/trace-vm{vm_number}.log || true")
         self.tmux_new(
             MultiHost.enumerate('qemu', vm_number),
             ('gdbserver 0.0.0.0:1234 ' if debug_qemu else '') +
@@ -1812,6 +1825,7 @@ class Host(Server):
         -------
         """
         self.tmux_kill('qemu')
+        self.exec('sudo rm /tmp/trace-vm*.log || true')
 
     def _memory_backend(self: 'Host', mem: int, vm_number: int) -> str:
         """
@@ -1895,6 +1909,7 @@ class Host(Server):
                      net_type: Interface,
                      vm_log_path: str = '',
                      qemu_build_dir: str = None,
+                     with_mpk: bool = True
                     ) -> None:
         vm_number = 0
         project_root = str(Path(self.project_root)) # nix wants nicely formatted paths
@@ -1906,7 +1921,11 @@ class Host(Server):
         qemu_bin_path = 'qemu-system-x86_64'
         if qemu_build_dir:
             qemu_bin_path = path_join(qemu_build_dir, qemu_bin_path)
-        unikraft_bin = f'{project_root}/.unikraft/build/click_qemu-x86_64'
+        unikraft_bin = ''
+        if with_mpk:
+            unikraft_bin = f'{project_root}/VMs/unikraft_mpk'
+        else:
+            unikraft_bin = f'{project_root}/VMs/unikraft'
 
         nix_shell = f"nix shell --inputs-from {project_root} nixpkgs#numactl --command"
         numactl = f"numactl -C {self.cpupinner.qemu(vm_number)}"
@@ -1925,7 +1944,6 @@ class Host(Server):
                 f' -chardev stdio,id=char0,mux=on,logfile={vm_log_path},signal=off' + \
                 ' -serial chardev:char0' + \
                 ' -mon chardev=char0'
-
 
         self.tmux_new(
             MultiHost.enumerate('qemu', vm_number),
@@ -1956,6 +1974,7 @@ class Host(Server):
 
     def kill_unikraft(self: 'Host') -> None:
         self.tmux_kill('qemu')
+        self.exec('sudo rm /tmp/trace-vm*.log || true')
 
 
     def start_vmux(self: 'Host', interface: Interface, num_vms: int = 0) -> None:
@@ -2320,6 +2339,7 @@ class LoadGen(Server):
                       f' -c {statsfile} -m {nr_macs} -e {nr_ethertypes} ' +
                       f'--srcIp {srcIp} --dstIp {dstIp} ' +
                       f'--srcPort {srcPort} --dstPort {dstPort} ' +
+                      f'--threads 0 ' +
                       f'{server._test_iface_id} {mac} ' +
                       f'2>&1 | tee {outfile}; echo TEST_DONE >> {outfile}; sleep 999')
 
@@ -2334,6 +2354,23 @@ class LoadGen(Server):
         Returns
         -------
         """
+        server.tmux_kill('loadlatency')
+
+    @staticmethod
+    def run_receiver(server: Server,
+                            runtime: int = 60,
+                            statsfile: str = '/tmp/throughput.csv',
+                            outfile: str = '/tmp/output.log'
+                            ):
+        server.tmux_new('loadlatency', f'cd {server.moongen_dir}; ' +
+                      'sudo bin/MoonGen '
+                      f'{server.project_root}/benchmark/configurations/receiver.lua ' +
+                      f'-c {statsfile} -T {runtime} '
+                      f'{server._test_iface_id} ' +
+                      f'2>&1 | tee {outfile}; echo TEST_DONE >> {outfile}; sleep 999')
+
+    @staticmethod
+    def stop_receiver(server: 'Server'):
         server.tmux_kill('loadlatency')
 
     @staticmethod

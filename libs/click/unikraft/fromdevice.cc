@@ -30,6 +30,7 @@
  */
 
 #include "fromdevice.hh"
+#include "mpkey_allocation.hh"
 
 #include <click/args.hh>
 #include <click/deque.hh>
@@ -37,6 +38,14 @@
 #include <click/standard/scheduleinfo.hh>
 #include <click/task.hh>
 #include <uk/netdev.h>
+
+extern "C" {
+#include <sys/mman.h>
+#ifdef CONFIG_LIBPKU
+#include <uk/pku.h>
+#include <uk/plat/paging.h>
+#endif
+}
 
 #ifdef xmit
 #undef xmit
@@ -76,6 +85,12 @@ FromDevice::configure(Vector<String> &conf, ErrorHandler *errh)
 	if (_devid < 0)
 		return errh->error("Device ID must be >= 0");
 
+	_pkey_buffers = MPKEY_BUFFERS;
+	// _pkey_buffers = pkey_alloc(0, 0);
+	// if (_pkey_buffers < 0) {
+	// 	return errh->error("Could not allocate pkey %d\n", _pkey_buffers);
+	// }
+
 	_dev = uk_netdev_get((unsigned int) _devid);
 	if (!_dev)
 		return errh->error("No such device %d", _devid);
@@ -102,11 +117,24 @@ FromDevice::netdev_alloc_rxpkts(void *argp, struct uk_netbuf *pkts[],
 	int i;
 
 	FromDevice *fd = static_cast<FromDevice *>(argp);
+	size_t alignment = fd->_dev_info.ioalign;
+	// size_t alignment = __PAGE_SIZE; // TODO this is more correct but then fails pkey_mprotect
+	UK_ASSERT(fd->_dev_info.ioalign <= alignment);
 	for (i = 0; i < count; ++i) {
 		pkts[i] = uk_netbuf_alloc_buf(uk_alloc_get_default(),
-				BUFSIZE, fd->_dev_info.ioalign, fd->_dev_info.nb_encap_rx, 0, NULL);
+				BUFSIZE, alignment, fd->_dev_info.nb_encap_rx, 0, NULL);
 		if (!pkts[i])
 			return i;
+
+#ifdef CONFIG_LIBCLICK_ENABLE_MPK
+		// TODO wrong alignment (BUFSIZE instead of __PAGE_SIZE), wrong vaddr (pkt instead of aligned pages), not necessary anyways (click/ebpf only handles buffers allocated by class Packet)
+		int pkey = fd->_pkey_buffers;
+		//int rc = pkey_mprotect(pkts[i], BUFSIZE, PROT_READ | PROT_WRITE, pkey);
+		int rc = 0;
+		if (rc < 0)
+			return i;
+#endif
+
 		pkts[i]->len = BUFSIZE;
 	}
 	return count;
@@ -119,6 +147,10 @@ FromDevice::initialize(ErrorHandler *errh)
 	struct uk_netdev_rxqueue_conf rx_conf;
 	struct uk_netdev_txqueue_conf tx_conf;
 	int rc;
+
+	rc = mpkey_allocation_alloc();
+	if (rc < 0)
+		return errh->error("Failed to allocate MPKEYs");
 
 	uk_pr_info("FromDevice::initialize %p device %p state %d\n",
 			this, _dev, _dev->_data->state);
@@ -173,7 +205,11 @@ FromDevice::take_packets()
 		}
 
 		++i;
-		p = Packet::make(0, buf->data, buf->len, 0);
+#ifndef CONFIG_LIBCLICK_ENABLE_MPK
+		p = Packet::make(0, buf->data, buf->len, 0); // memcpy! And may allocate a new packet if mempool is empty
+#else
+		p = Packet::make(0, buf->data, buf->len, 0, this->_pkey_buffers); // memcpy! And may allocate a new packet if mempool is empty
+#endif
 		p->set_timestamp_anno(Timestamp::now());
 		output(0).push(p); /* memcpy's pkt */
 		uk_netbuf_free(buf);

@@ -5,6 +5,8 @@ target
 .unikraft
 .config.click_qemu-x86_64
 .config.click_qemu-x86_64.old
+.config.vanilla_qemu-x86_64
+.config.vanilla_qemu-x86_64.old
 libs/ubpf/vm/libubpf.so
 rootfs/*.bin
 Makefile.uk
@@ -24,3 +26,4 @@ libs/click-og.zip
 
 VMs/
 out*/
+*.cpio

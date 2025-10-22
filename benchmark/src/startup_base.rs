@@ -8,6 +8,7 @@ use std::io::BufRead;
 #[derive(Clone)]
 pub enum System {
     Unikraft,
+    UnikraftNoPaging,
     Linux,
 }
 
@@ -24,7 +25,8 @@ pub fn run_benchmark(config: &Configuration) -> Duration {
 
     let start = Instant::now();
     let mut click_vm = match config.system {
-        System::Unikraft => vm::start_click(FileSystem::Raw(config.click_configuration), &extra_args),
+        System::Unikraft => vm::start_click2(FileSystem::Raw(config.click_configuration), &extra_args, "../VMs/unikraft"),
+        System::UnikraftNoPaging => vm::start_click2(FileSystem::Raw(config.click_configuration), &extra_args, "../VMs/unikraft_nopaging"),
         System::Linux => vm::start_linux_click(config.click_configuration, &extra_args),
     }.expect("failed to start click");
 

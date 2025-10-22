@@ -303,8 +303,14 @@ translate(struct ubpf_vm* vm, struct jit_state* state, char** errmsg)
 
     /*
      * Let's set RBP to RSP so that we can restore RSP later!
+     * Also, move from C stack to JIT stack.
      */
     emit_mov(state, RSP, RBP);
+    // mov $jit_stack+PAGE-1, %rsp
+    emit1(state, 0x48); // REX prefix field (see Table 2-4)
+    emit1(state, 0xBC); // movabs immediate to [rsp]
+    emit8(state, 0x80000000 + (1 * 0x1000) + 0x1000 - 24 - 1);    // immediate
+    //_ubpf_jit_stack + __PAGE_SIZE - sizeof(struct bpfelement_md) - 1
 
     /* Configure eBPF program stack space */
     if (state->jit_mode == BasicJitMode) {
@@ -390,6 +396,13 @@ translate(struct ubpf_vm* vm, struct jit_state* state, char** errmsg)
             emit1(state, 0x04); // Mod: 00b Reg: 000b RM: 100b
             emit1(state, 0x24); // Scale: 00b Index: 100b Base: 100b
             emit4(state, stack_usage);
+
+#ifdef CONFIG_LIBUBPF_ENABLE_MPK
+            /*
+             * WRPKRU (enter ebpf context)
+             */
+            emit_wrpkru(state, 3);
+#endif
 
             // Record the size of the prolog so that we can calculate offset when doing a local call.
             if (state->bpf_function_prolog_size == 0) {
@@ -765,6 +778,21 @@ translate(struct ubpf_vm* vm, struct jit_state* state, char** errmsg)
             }
             break;
         case EBPF_OP_EXIT:
+#ifdef CONFIG_LIBUBPF_ENABLE_MPK
+            /*
+            * WRPKRU (exit ebpf context)
+            *
+            * Must happen before we restore the stack to the one on a normal non-ebpf page.
+            *
+            * For wrpkru, we need eax, ecx, and edx.
+            * Stash rax into another ebpf register that is not used anymore (ebpf is done)
+            * ASSERT(map_register(BPF_REG_1) == RDI)
+            */
+            emit_mov(state, map_register(BPF_REG_0), map_register(BPF_REG_1));
+            emit_wrpkru(state, 0);
+            emit_mov(state, map_register(BPF_REG_1), map_register(BPF_REG_0));
+#endif
+
             /* There is an invariant that the top of the host stack contains
              * the amout of space used by the currently-executing eBPF function.
              * 8 bytes are required for the storage. So, anytime that we leave an
@@ -879,7 +907,10 @@ translate(struct ubpf_vm* vm, struct jit_state* state, char** errmsg)
         emit_mov(state, map_register(BPF_REG_0), RAX);
     }
 
-    /* Deallocate stack space by restoring RSP from RBP. */
+    /*
+     * Deallocate stack space by restoring RSP from RBP.
+     * Also moves back to the original C stack.
+     */
     emit_mov(state, RBP, RSP);
 
     if (!(_countof(platform_nonvolatile_registers) % 2)) {

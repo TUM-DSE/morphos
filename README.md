@@ -1,6 +1,6 @@
-# Network Function Virtualization with UniBPF
+# Network Function Virtualization with MorphOS
 
-This repository contains the source code and implementation of a framework that integrates eBPF into Unikernel-based Virtual Network Functions (VNFs) for my Bachelor thesis **Network Function Virtualization with UniBPF**.
+This repository contains the source code and implementation of a framework that integrates eBPF into Unikernel-based Virtual Network Functions (VNFs).
 
 The project leverages the Click Modular Router and eBPF to enhance packet processing flexibility, providing a secure and dynamic alternative to traditional VNFs. 
 Key features include live reconfigurability without downtime and state retention, and decoupled eBPF verification for secure JIT compilation. 
@@ -9,6 +9,8 @@ We also provide a set of benchmarks to evaluate the performance, a set of exampl
 system, and a set of eBPF programs to be used with the system.
 
 This work is based on [app-click](https://github.com/unikraft/app-click).
+
+Find instructions on how to reproduce our measurements in [REPRODUCE.md](REPRODUCE.md).
 
 ## Project Structure
 
@@ -61,7 +63,7 @@ This will automatically build all the eBPF programs in the `ebpf` directory. If 
 make all VERIFY=1
 ```
 
-If you make any changes to the eBPF programs, you can synchronize them with the vendored binaries inside the benchmarks and examples directories by running:
+If you make any changes to the eBPF programs, you synchronize them with the vendored binaries inside the benchmarks and examples directories by running:
 
 ```bash
 make sync
@@ -71,7 +73,7 @@ Further information about our ebpf build system: https://aya-rs.dev/book/start/d
 
 ## Running the Benchmarks
 
-You can run the benchmarks:
+After completing all of the above, you can run the benchmarks:
 
 ```
 # localhost doesn't support Interface.VPP (vhost-user):

@@ -29,8 +29,11 @@
 #include <sys/mman.h>
 #include <errno.h>
 #include "ubpf_int.h"
+#ifdef CONFIG_LIBPKU
 #include <uk/pku.h>
 #include <uk/plat/paging.h>
+#include "../../click/unikraft/mpkey_allocation.hh"
+#endif
 
 int
 ubpf_translate_ex(struct ubpf_vm* vm, uint8_t* buffer, size_t* size, char** errmsg, enum JitMode jit_mode)
@@ -109,6 +112,7 @@ ubpf_compile_ex(struct ubpf_vm* vm, char** errmsg, enum JitMode mode)
     void* jitted = NULL;
     uint8_t* buffer = NULL;
     size_t jitted_size;
+    int rc;
 
     if (vm->jitted && vm->jitted_result.compile_result == UBPF_JIT_COMPILE_SUCCESS &&
         vm->jitted_result.jit_mode == mode) {
@@ -116,10 +120,17 @@ ubpf_compile_ex(struct ubpf_vm* vm, char** errmsg, enum JitMode mode)
     }
 
     if (vm->jitted) {
+#ifdef CONFIG_LIBPKU
+        struct uk_pagetable *pt = ukplat_pt_get_active();
+        int pages = (vm->jitted_size / __PAGE_SIZE) + 1;
+		/* uk_pr_err("Unmap %p, %d\n", vm->jitted, pages); */
+        ukplat_page_unmap(pt, vm->jitted, pages, 0);
+#else
         munmap(vm->jitted, vm->jitted_size);
+#endif
         vm->jitted = NULL;
         vm->jitted_size = 0;
-    }
+   }
 
     *errmsg = NULL;
 
@@ -139,11 +150,12 @@ ubpf_compile_ex(struct ubpf_vm* vm, char** errmsg, enum JitMode mode)
         goto out;
     }
 
-    /* jitted = mmap(0, jitted_size, PROT_READ | PROT_WRITE | PROT_EXEC, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0); */
+#ifdef CONFIG_LIBPKU
     int pages = (jitted_size / __PAGE_SIZE) + 1;
     struct uk_pagetable *pt = ukplat_pt_get_active();
-    jitted = (void*)0x80000000;
-    int rc = ukplat_page_map(pt, jitted,
+    jitted = (void*)0x80000000 + 2*__PAGE_SIZE; // the second page is used for _ubpf_jit_stack_protector
+	/* uk_pr_err("Map %p, %d\n", jitted, pages); */
+    rc = ukplat_page_map(pt, jitted,
 		     __PADDR_ANY, pages,
 		     PAGE_ATTR_PROT_READ | PAGE_ATTR_PROT_WRITE, 0);
 	if (rc) {
@@ -151,6 +163,9 @@ ubpf_compile_ex(struct ubpf_vm* vm, char** errmsg, enum JitMode mode)
         jitted = NULL;
         goto out;
 	}
+#else
+    jitted = mmap(0, jitted_size, PROT_READ | PROT_WRITE | PROT_EXEC, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+#endif
 
     if (jitted == MAP_FAILED) {
         *errmsg = ubpf_error("internal uBPF error: mmap failed: %s\n", strerror(errno));
@@ -160,6 +175,8 @@ ubpf_compile_ex(struct ubpf_vm* vm, char** errmsg, enum JitMode mode)
 
     memcpy(jitted, buffer, jitted_size);
 
+    // revoke write permissions (current pkey_mprotect impl does the same again)
+#ifdef CONFIG_LIBPKU
     rc = ukplat_page_set_attr(pt, jitted,
 			 pages, PAGE_ATTR_PROT_READ | PAGE_ATTR_PROT_EXEC, 0);
     if (rc) {
@@ -167,6 +184,23 @@ ubpf_compile_ex(struct ubpf_vm* vm, char** errmsg, enum JitMode mode)
         jitted = NULL;
         goto out;
     }
+#ifdef CONFIG_LIBUBPF_ENABLE_MPK
+    /* ubpf JIT VM not only executes, but also reads JITed code (to find a
+     * potential TARGET_PC_EXTERNAL_DISPATCHER for ebpf helper functions).
+     * Add MPKEY_STACK to allow reads also in eBPF context with MPK.
+     */
+	  rc = pkey_mprotect(jitted, pages*__PAGE_SIZE, PAGE_ATTR_PROT_READ | PAGE_ATTR_PROT_EXEC, MPKEY_STACK);
+	  if (rc < 0) {
+		    uk_pr_err("Could not set pkey for ebpf stack %d\n", errno);
+		    return -1;
+	  }
+#endif
+#else
+    if (mprotect(jitted, jitted_size, PROT_READ | PROT_EXEC) < 0) { // this actually doesnt enable EXEC on unikraft
+        *errmsg = ubpf_error("internal uBPF error: mprotect failed: %s\n", strerror(errno));
+        goto out;
+    }
+#endif
 
     vm->jitted = jitted;
     vm->jitted_size = jitted_size;

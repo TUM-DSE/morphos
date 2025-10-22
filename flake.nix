@@ -205,13 +205,17 @@
         make-disk-image = import (./nix/make-disk-image.nix);
       in
       {
-        packages = {
+        packages = rec {
           unikraft = pkgs.callPackage ./nix/unikraft.nix {
             inherit pkgs;
             inherit unstable;
             inherit inputs;
             unikraftDeps = (buildDeps pkgs) ++ (unikraftDeps pkgs) ++ (prevailDeps pkgs);
           };
+          morphos = unikraft.override { kraftfile = "Kraftfile_nompk"; };
+          morphos-mpk = unikraft.override { kraftfile = "Kraftfile"; };
+          morphos-nopaging = unikraft.override { kraftfile = "Kraftfile_nopaging"; };
+          unikraft-vanilla = unikraft.override { kraftfile = "Kraftfile_vanilla"; };
 
           guest-image = make-disk-image {
             config = self.nixosConfigurations.guest.config;

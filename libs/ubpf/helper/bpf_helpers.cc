@@ -133,6 +133,7 @@ uint64_t bpf_ktime_get_ns() {
 }
 
 uint32_t bpf_get_prandom_u32() {
+    // TODO this impl doesnt work in unikraft
     std::random_device rd;
     std::mt19937 generator(rd());
 

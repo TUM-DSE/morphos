@@ -23,8 +23,8 @@ unikraft:
     CONFIG_LIBUKCPIO: 'y'
     CONFIG_LIBRAMFS: 'y'
     CONFIG_LIBUK9P: 'y'
-    CONFIG_LIBPKU: 'y'
-    CONFIG_PAGING: 'y'
+    # CONFIG_LIBPKU: 'y'
+    # CONFIG_PAGING: 'y'
 targets:
   - architecture: x86_64
     platform: kvm
@@ -63,11 +63,11 @@ libraries:
     kconfig:
       - CONFIG_LIBCLICK_MAIN=y
       - CONFIG_LIBCLICK_UBPF_VERIFY_SIGNATURE=y
-      - CONFIG_LIBCLICK_ENABLE_MPK=y
+      - CONFIG_LIBCLICK_ENABLE_MPK=n
   ubpf:
     source: libs/ubpf
     version: '0.1'
     kconfig:
      - CONFIG_LIBUBPF=y
-     - CONFIG_LIBUBPF_ENABLE_MPK=y
+     - CONFIG_LIBUBPF_ENABLE_MPK=n
 

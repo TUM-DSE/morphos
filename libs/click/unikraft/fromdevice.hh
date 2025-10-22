@@ -72,6 +72,8 @@ private:
     int _devid;
     struct uk_netdev *_dev;
     struct uk_netdev_info _dev_info;
+
+    int _pkey_buffers;
 };
 
 CLICK_ENDDECLS

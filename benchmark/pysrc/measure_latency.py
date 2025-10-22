@@ -108,7 +108,7 @@ class LatencyTest(AbstractBenchTest):
         """
         estimate time needed to run this benchmark excluding boot time in seconds
         """
-        return G.DURATION_S + 20 + (20 if self.system == "linux" else 0)
+        return (G.DURATION_S + 10 + (20 if self.system == "linux" else 0)) * self.repetitions
 
 
     def parse_results(self, repetition: int) -> DataFrame:
@@ -318,13 +318,13 @@ class LatencyTest(AbstractBenchTest):
             config = click_configs.nat(
                 interface=guest.test_iface,
                 guest_ip=GUEST_IP,
-                guest_mac=measurement.guest.test_iface_mac,
+                guest_mac=guest.test_iface_mac,
                 gw_ip=strip_subnet_mask(loadgen.test_iface_ip_net),
                 gw_mac=loadgen.test_iface_mac,
                 src_ip=TEST_CLIENT_IP,
                 src_mac=loadgen.test_iface_mac,
                 dst_ip=strip_subnet_mask(loadgen.test_iface_ip_net),
-                dst_mac=measurement.guest.test_iface_mac,
+                dst_mac=guest.test_iface_mac,
                 size=self.size,
                 direction=self.direction,
                 rewriter=element,
@@ -482,15 +482,15 @@ def main(measurement: Measurement, plan_only: bool = False) -> None:
         # directions = [ "rx", "tx" ]
         # systems = [ "linux", "uk", "ukebpfjit" ]
         # systems = [ "uk", "ukebpfjit" ]
-        # systems = [ "uk" ]
+        systems = [ "uk" ]
         # systems = [ "ukebpfjit" ]
-        systems = [ "linux" ]
+        # systems = [ "linux" ]
         vm_nums = [ 1 ]
         # vm_nums = [ 128, 160 ]
         # vnfs = [ "empty" ]
         sizes = [ 64 ]
         rates = [ 100 ]
-        vnfs = [ "nat" ]
+        vnfs = [ "mirror" ]
         repetitions = 1
 
     def exclude(test):
@@ -513,7 +513,7 @@ def main(measurement: Measurement, plan_only: bool = False) -> None:
     args_reboot = ["interface", "num_vms", "direction", "system", "vnf", "size"]
     info(f"LatencyTest execution plan:")
     LatencyTest.estimate_time2(tests, args_reboot)
-    info(LatencyTest.test_matrix_string(tests))
+    # info(LatencyTest.test_matrix_string(tests))
 
     if plan_only:
         return

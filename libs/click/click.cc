@@ -39,7 +39,9 @@ extern "C"{
 #include <string.h>
 #include <poll.h>
 #include <dirent.h>
+#ifdef CONFIG_LIBPKU
 #include <uk/pku.h>
+#endif
 }
 
 #include <click/config.h>
@@ -102,6 +104,7 @@ read_rid(char *path)
 }
 
 void test_mpk() {
+#ifdef CONFIG_LIBPKU
 	int rc;
 
 	int key = pkey_alloc(0, 0);
@@ -129,7 +132,7 @@ void test_mpk() {
 	// protect first page with pkey
 	rc = pkey_mprotect(page, __PAGE_SIZE, PROT_READ | PROT_WRITE, key);
 	if (rc < 0) {
-		uk_pr_err("Could not set pkey for thread stack %d\n", errno);
+		uk_pr_err("Could not set pkey %d\n", errno);
 		return;
 	}
 
@@ -152,7 +155,7 @@ void test_mpk() {
 	uk_free(uk_alloc_get_default(), page);
 
 	uk_pr_err("MPK test done\n");
-
+#endif
 }
 
 #if CLICK_CONSOLE_SUPPORT_IMPLEMENTED
