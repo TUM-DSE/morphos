@@ -7,3 +7,6 @@
 [submodule "libs/unikraft"]
 	path = libs/unikraft
 	url = https://github.com/TUM-DSE/unibpf-unikraft.git
+[submodule "benchmark/plotting"]
+	path = benchmark/plotting
+	url = https://github.com/pogobanane/appclick-ubpf-results.git
