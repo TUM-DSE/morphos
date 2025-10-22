@@ -18,7 +18,7 @@ The project is structured as follows:
 
 ## Measurement hosts
 
-Git-clone this repository on both hotsts (adelaide, wilfred) **into the same absolute path** with the `--recursive` flag to also clone the submodules.
+Git-clone this repository on both hosts (adelaide, christina) **into the same absolute path** with the `--recursive` flag to also clone the submodules.
 
 ```bash
 git clone https://github.com/TUM-DSE/morphos.git --recursive /scratch/$USER/morphos
@@ -67,7 +67,7 @@ The scripts will start VMs on adelaide, the device under test, and send test tra
 
 
 ```
-python3 benchmark/pysrc/measure_all.py -c benchmark/conf/uk_adelaide_wilfred.cfg -vvv -o ./output
+python3 benchmark/pysrc/measure_all.py -c benchmark/conf/uk_adelaide_christina.cfg -vvv -o ./output
 ```
 
 Unless other flags are specified, a measurement is skipped when it's output `*.log` file already exists.
@@ -79,14 +79,15 @@ Use other measurement scripts to run only a subset of tests.
 Finally, plot the results to pdfs.
 
 ```
-make -C benchmark/plotting all -B DATA_DIR=./output TODO=./output-plots
+mkdir ./output-plots
+make -C benchmark/plotting all -B DATA_DIR=$(pwd)/output OUT_DIR=$(pwd)/output-plots
 ```
 
 Plot graphs individually, e.g., with:
 
 ```
 
-make -C benchmark/plotting throughput.pdf -B DATA_DIR=./output TODO=./output-plots
+make -C benchmark/plotting throughput.pdf -B DATA_DIR=$(pwd)/output OUT_DIR=$(pwd)/output-plots
 ```
 
 
