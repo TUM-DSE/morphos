@@ -1,6 +1,6 @@
-# Network Function Virtualization with UniBPF
+# Network Function Virtualization with MorphOS
 
-This repository contains the source code and implementation of a framework that integrates eBPF into Unikernel-based Virtual Network Functions (VNFs) for my Bachelor thesis **Network Function Virtualization with UniBPF**.
+This repository contains the source code and implementation of a framework that integrates eBPF into Unikernel-based Virtual Network Functions (VNFs).
 
 The project leverages the Click Modular Router and eBPF to enhance packet processing flexibility, providing a secure and dynamic alternative to traditional VNFs. 
 Key features include live reconfigurability without downtime and state retention, and decoupled eBPF verification for secure JIT compilation. 
