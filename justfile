@@ -300,3 +300,10 @@ nat_buildtime OUTFILE="bpfbuild.csv":
     make -C ebpf nat VERIFY=1 RECORD=1 > $tmp 2> $tmp
     cat $tmp | grep -E "Verification took|real|Building" | sed -e 's/\x1b\[[0-9;]*m//g' | awk '/^real/{split($2,t,/[ms]/); printf "Out-of-band,Compile,%d\n", t[2]*1000} /^Verification/{printf "Out-of-band,Verify,%.1f\n", $3/1e6}' >> {{OUTFILE}}
     sudo kill -9 $(pidof bpftrace)
+
+build-verifier:
+    make -C verifier build -j
+
+build-ebpf:
+    make -C ebpf all VERIFY=1
+    make -C ebpf sync

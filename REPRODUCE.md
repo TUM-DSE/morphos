@@ -27,11 +27,13 @@ git clone https://github.com/TUM-DSE/morphos.git --recursive /scratch/$USER/morp
 
 ## Setup: Adelaide, Device under Test
 
+Connect to adelaide, change into the `/scratch/$user/morphos` directory and prepare dependencies:
+
 1. Run `nix develop` to enter the development environment with all system dependencies (the `nix` package manager is installed on the server)
 2. Run `just build-dependencies` to build benchmarking runtime dependencies
 3. Run `cargo install bpf-linker --version 0.9.14` to build `~/.cargo/bin/bpf-linker` required to compile ebpf programs
 4. Run `just vm-image-init` to build Linux VM images
-5. Run `make -C verifier build -j` to build the verifier
+5. Run `just build-verifier` to build the verifier
 
 
 ## Setup: Christina, Load Generator
@@ -45,19 +47,19 @@ Next, on the second host, some dependencies are also needed.
 ## Build
 
 1. Run `just build-morphos` to build unikraft variants (calls `nix/unikraft.nix`)
-2. Run `just TODO` to build and verify eBPF programs
+2. Run `just build-ebpf` to build and verify eBPF programs
 
 
 ## Running the Evaluation
 
-After completing all of the above, you can launch the benchmarks on wilfred, the load generator.
+After completing all of the above, you can launch the benchmarks on christina, the load generator.
 
 Overview:
 
+- `measure_throughput.py`: 7.9 hours for Fig. 1, 10, 11
 - `measure_firewall.py`: 3.3 hours for Fig. 13
 - `measure_latency.py`: 0.5 hours for Fig. 1, 12
 - `measure_reconfiguration.py`: 0.7 hours for Fig. 2, 7, 9
-- `measure_throughput.py`: 7.9 hours for Fig. 1, 10, 11
 - `measure_misc.py`: 0.1 hours for Fig. 8, 9
 
 Execute the python scripts on **christina**.
@@ -77,9 +79,15 @@ Use other measurement scripts to run only a subset of tests.
 Finally, plot the results to pdfs.
 
 ```
-make -C plotting DATA_DIR=./output TODO=./output-plots
+make -C benchmark/plotting all -B DATA_DIR=./output TODO=./output-plots
 ```
 
+Plot graphs individually, e.g., with:
+
+```
+
+make -C benchmark/plotting throughput.pdf -B DATA_DIR=./output TODO=./output-plots
+```
 
 
 ## Debugging
