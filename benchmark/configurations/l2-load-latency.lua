@@ -8,6 +8,7 @@ local timer  = require "timer"
 local log    = require "log"
 local dpdkc  = require "dpdkc"
 local eth    = require "proto.ethernet"
+local ffi = require "ffi"
 
 local function getRstFile(...)
 	local args = { ... }
@@ -41,47 +42,47 @@ end
 function master(args)
 	local dev = device.config({port = args.dev, rxQueues = args.threads + 1, txQueues = args.threads + 1})
 	device.waitForLinks()
-	for i = 0, args.threads - 1 do
-	    dev:getTxQueue(i):setRate(args.rate * (args.size + 4) * 8 / 1000)
-	    mg.startTask("loadSlave",
-	      dev:getTxQueue(i),
-	    	dev:getMac(true),
-	      args.mac,
-	      args.srcIp,
-	      args.dstIp,
-	      args.srcPort,
-	      args.dstPort,
-	      args.size,
-	      args.macs,
-	      args.ethertypes
-	    )
-  end
-	-- warmup
-	print("Wraming up...")
-	-- mg.startSharedTask("timerSlave", dev:getTxQueue(args.threads), dev:getRxQueue(args.threads), args.mac, args.file)
-	mg.startTask("txTimestampThread", dev:getTxQueue(args.threads), args.size, args.mac)
-	mg.startTask("rxTimestamps", dev:getRxQueue(0), args.mac, "")
-	mg.sleepMillis(5000)
-	print("Starting benchmark...")
-	mg:stop()
-	mg.waitForTasks()
+	-- for i = 0, args.threads - 1 do
+	--     dev:getTxQueue(i):setRate(args.rate * (args.size + 4) * 8 / 1000)
+	--     mg.startTask("loadSlave",
+	--       dev:getTxQueue(i),
+	--     	dev:getMac(true),
+	--       args.mac,
+	--       args.srcIp,
+	--       args.dstIp,
+	--       args.srcPort,
+	--       args.dstPort,
+	--       args.size,
+	--       args.macs,
+	--       args.ethertypes
+	--     )
+ --  end
+	-- -- warmup
+	-- print("Wraming up...")
+	-- -- mg.startSharedTask("timerSlave", dev:getTxQueue(args.threads), dev:getRxQueue(args.threads), args.mac, args.file)
+	-- mg.startTask("txTimestampThread", dev:getTxQueue(args.threads), args.size, args.mac)
+	-- mg.startTask("rxTimestamps", dev:getRxQueue(0), args.mac, "")
+	-- mg.sleepMillis(5000)
+	-- print("Starting benchmark...")
+	-- mg:stop()
+	-- mg.waitForTasks()
 	mg.setRuntime(9999)
 
-	for i = 0, args.threads - 1 do
-	    dev:getTxQueue(i):setRate(args.rate * (args.size + 4) * 8 / 1000)
-	    mg.startTask("loadSlave",
-	      dev:getTxQueue(i),
-	    	dev:getMac(true),
-	      args.mac,
-	      args.srcIp,
-	      args.dstIp,
-	      args.srcPort,
-	      args.dstPort,
-	      args.size,
-	      args.macs,
-	      args.ethertypes
-	    )
-  end
+	-- for i = 0, args.threads - 1 do
+	--     dev:getTxQueue(i):setRate(args.rate * (args.size + 4) * 8 / 1000)
+	--     mg.startTask("loadSlave",
+	--       dev:getTxQueue(i),
+	--     	dev:getMac(true),
+	--       args.mac,
+	--       args.srcIp,
+	--       args.dstIp,
+	--       args.srcPort,
+	--       args.dstPort,
+	--       args.size,
+	--       args.macs,
+	--       args.ethertypes
+	--     )
+ --  end
 	mg.startTask("txTimestampThread",
 			dev:getTxQueue(args.threads),
 	    dev:getMac(true),
@@ -213,24 +214,62 @@ function txTimestampThread(txQueue, srcMac, dstMac, srcIp, dstIp, srcPort, dstPo
   end
 end
 
+local uint64Ptr = ffi.typeof("uint64_t*")
+local uint8Ptr = ffi.typeof("uint8_t*")
+
+function findTimestampOffset(buf, rxTs)
+	-- try to find the offset of the timestamp field in the packet
+	local data = buf:getData()
+	-- local matcher = ffi.new("uint16_t", ffi.new("uint64_t", txTs) >> 48)
+	local msb16 = tonumber(rxTs / 2^48)  -- convert to Lua number
+	msb16 = math.floor(msb16)             -- truncate any fractional part
+	for i = 0, buf:getSize() - 2, 1 do
+		-- local val = ffi.cast("uint16_t*", data+i)[0]
+		local val = ffi.cast("uint16_t*", ffi.cast("uint8_t*", data) + i)[0]
+		if val == msb16 then
+			return i - 6
+		end
+	end
+	return 0
+end
+
 function rxTimestamps(rxQueue, dstMac, histfile)
 	local tscFreq = mg.getCyclesFrequency()
-	local bufs = memory.bufArray(64)
+	local bufs = memory.bufArray()
 	-- use whatever filter appropriate for your packet type
 	-- rxQueue:filterL2Timestamps()
 	print("ok")
 
 	local hist = hist:new()
+	local offset = 0
 	while mg.running() do
+		-- local numPkts = rxQueue:tryRecv(bufs, 32)
+		-- -- print("ok3")
+		-- if numPkts > 0 then
+    -- 		-- print(numPkts)
+    -- 		bufs[1]:dump()
+    -- end
+    -- bufs:free(numPkts)
 		local numPkts = rxQueue:recvWithTimestamps(bufs)
 		for i = 1, numPkts do
-			if bufs[i]:getUdpPacket().udp:getDstPort() == 0x10 then
+		 bufs[i]:dump()
+			-- if bufs[i]:getUdpPacket().udp:getDstPort() == 0x10 then
 				local rxTs = dpdkc.get_timestamp_dynfield(bufs[i])
-				local txTs = bufs[i]:getSoftwareTxTimestamp()
+			  if offset == 0 then
+			    offset = findTimestampOffset(bufs[i], rxTs)
+				end
+				local txTs = ffi.cast("uint64_t*", ffi.cast("uint8_t*", bufs[i]:getData()) + offset)[0]
+				-- local txTs = bufs[i]:getSoftwareTxTimestamp()
+				-- if txTs == 0 then
+					-- txTs = uint64Ptr(bufs[i]:getData())[2] -- looks like the value we are looking for is here instead
+					-- txTs = uint64Ptr(bufs[i]:getData())[9] -- looks like the value we are looking for is here instead
+					-- txTs = uint64Ptr(uint8Ptr(bufs[i]:getData())[9*8+3]) -- looks like the value we are looking for is here instead
+					-- txTs = ffi.cast("uint64_t*", ffi.cast("uint8_t*", bufs[i]:getData()) + 9*8+6)[0]
+				-- end
 				local latency = tonumber(rxTs - txTs) / tscFreq * 10^9 -- to nanoseconds
-				-- print(" rxTs: ", rxTs, " txTs: ", txTs, "lat: ", latency)
+				print(" rxTs: ", rxTs, " txTs: ", txTs, "lat: ", latency)
 				hist:update(latency) -- to nanoseconds
-			end
+			-- end
 		end
 		bufs:free(numPkts)
 	end
