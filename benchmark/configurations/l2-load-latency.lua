@@ -10,6 +10,8 @@ local dpdkc  = require "dpdkc"
 local eth    = require "proto.ethernet"
 local ffi = require "ffi"
 
+local C = ffi.C
+
 local function getRstFile(...)
 	local args = { ... }
 	for i, v in ipairs(args) do
@@ -37,6 +39,50 @@ function configure(parser)
 	parser:option("-T --time", "Time to transmit for in seconds."):default(60):convert(tonumber)
 	parser:option("-m --macs", "Send in round robin to (ethDst...ethDst+macs)."):default(1):convert(tonumber)
 	parser:option("-e --ethertypes", "Send in round robin to (0x1234...0x1234+ethertypes)."):default(1):convert(tonumber)
+end
+
+function showStats(dev)
+	local rxStats = dev:getStats()
+	log:info(green("------------------------STATS--------------------------------"))
+  log:info("ipacktes: " .. tostring(rxStats.ipackets))
+  log:info("opacktes: " .. tostring(rxStats.opackets))
+  log:info("ibytes: " .. tostring(rxStats.ibytes))
+  log:info("obytes: " .. tostring(rxStats.obytes))
+  log:info("imissed: " .. tostring(rxStats.imissed))
+  log:info("ierrors: " .. tostring(rxStats.ierrors))
+  log:info("oerrors: " .. tostring(rxStats.oerrors))
+  log:info("rx_nombuf: " .. tostring(rxStats.rx_nombuf))
+  log:info("q_ipacktes[0]: " .. tostring(rxStats.q_ipackets[0]))
+  log:info("q_ipacktes[1]: " .. tostring(rxStats.q_ipackets[1]))
+  log:info("q_ipacktes[2]: " .. tostring(rxStats.q_ipackets[2]))
+  log:info("q_ipacktes[3]: " .. tostring(rxStats.q_ipackets[3]))
+
+	-- retrieve the number of xstats on the recieving NIC
+  -- xstats related C definitions are in device.lua
+  local numxstats = 0
+  local xstats = ffi.new("struct rte_eth_xstat[?]", numxstats)
+
+  -- because there is no easy function which returns the number of xstats we try to retrieve
+  -- the xstats with a zero sized array
+  -- if result > numxstats (0 in our case), then result equals the real number of xstats
+  local result = C.rte_eth_xstats_get(dev.id, xstats, numxstats)
+  numxstats = tonumber(result)
+
+  -- if no xstats are available we will skip them
+  if numxstats > 0 then
+    xstats = ffi.new("struct rte_eth_xstat[?]", numxstats)
+    C.rte_eth_xstats_get(dev.id, xstats, numxstats)
+    xstatNames = ffi.new("struct rte_eth_xstat_name[?]", numxstats)
+    C.rte_eth_xstats_get_names(dev.id, xstatNames, numxstats)
+    log:info(green("------------------------XSTATS-------------------------------"))
+    log:info("Number of xstats: " .. numxstats)
+
+    for i=0,result-1 do
+        log:info(ffi.string(xstatNames[i].name, 64) .. ": " .. tostring(xstats[i].value))
+    end
+  else
+    log:warn("This device does not provide any xstats")
+  end
 end
 
 function master(args)
@@ -82,7 +128,7 @@ function master(args)
 	--       args.macs,
 	--       args.ethertypes
 	--     )
- --  end
+  -- end
 	mg.startTask("txTimestampThread",
 			dev:getTxQueue(args.threads),
 	    dev:getMac(true),
@@ -106,7 +152,10 @@ function master(args)
 		mg:stop()
 	end
 
-	mg.waitForTasks()
+	-- showStats(dev)
+
+  mg.waitForTasks()
+
 end
 
 function setMac(buf, mac_nr, small_offset)
@@ -170,8 +219,8 @@ function loadSlave(queue, srcMac, dstMac, srcIp, dstIp, srcPort, dstPort, pktSiz
 			ethType = 0x0800,
 			ip4Src = srcIp,
 			ip4Dst = dstIp,
-			portSrc = srcPort,
-			portDst = dstPort,
+			udpSrc = srcPort,
+			udpDst = dstPort,
 			pktLength = pktSize,
 		}
 		buf:getIP4Packet().ip4:calculateChecksum()
@@ -179,7 +228,7 @@ function loadSlave(queue, srcMac, dstMac, srcIp, dstIp, srcPort, dstPort, pktSiz
 	end)
 	local bufs = mem:bufArray()
 	if numDstMacs > 1 or numEthertypes > 1 then
-		-- error("Sending to multiple MACs and ethertypes at the same time is not supproted.") -- no it is
+		error("Sending to multiple MACs and ethertypes at the same time is not supproted.") -- no it is
 		sendMacs(queue, bufs, pktSize, dstMac, numDstMacs, numEthertypes)
 	else
 			sendSimple(queue, bufs, pktSize)
