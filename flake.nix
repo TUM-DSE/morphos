@@ -328,6 +328,18 @@
                   ps.flake8
                   ps.isort
                   ps.mypy
+
+                  # plotting
+                  ps.black # auto formatting
+                  ps.flake8 # annoying "good practice" annotations
+                  ps.mypy # static typing
+                  ps.pkgs.ruff # language server ("linting")
+
+                  ps.numpy
+                  ps.matplotlib
+                  ps.seaborn
+                  ps.tqdm
+                  ps.scipy
                 ]))
 
               ];
