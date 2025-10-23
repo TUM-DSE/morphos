@@ -308,3 +308,9 @@ build-ebpf:
     make -C ebpf all VERIFY=1
     make -C ebpf sync
     make -C ebpf sync-firewalls
+
+archive:
+    git clone https://github.com/TUM-DSE/morphos.git --recursive /tmp/morphos
+    cd /tmp/morphos; just downloadLibs
+    tar -czf morphos.tar.gz /tmp/morphos
+    rm -rf /tmp/morphos
