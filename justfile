@@ -307,3 +307,4 @@ build-verifier:
 build-ebpf:
     make -C ebpf all VERIFY=1
     make -C ebpf sync
+    make -C ebpf sync-firewalls
