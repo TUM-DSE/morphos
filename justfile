@@ -307,7 +307,7 @@ build-verifier:
 build-ebpf:
     make -C ebpf all VERIFY=1
     make -C ebpf sync
-    make -C ebpf sync-firewalls
+    make -C ebpf sync-firewalls VERIFY=1
 
 archive:
     git clone https://github.com/TUM-DSE/morphos.git --recursive /tmp/morphos
