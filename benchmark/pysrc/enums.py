@@ -178,8 +178,8 @@ class MultiHost:
         """
         kernel interface name
         """
-        if vm_number == 0: return tap_name
-        max_len = 15
+        max_len = 12 # could be up to 15, but lets also cut reviewer numbers off just to be safe
+        if vm_number == 0: return tap_name[:max_len]
         length = max_len - len("-999")
         if vm_number == -1: return f"{tap_name[:length]}-"
         return f"{tap_name[:length]}-{vm_number}"
