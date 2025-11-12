@@ -18,6 +18,7 @@ import cpupinning
 
 BRIDGE_QUEUES: int = 0; # legacy default: 4
 MAX_VMS: int = 35; # maximum number of VMs expected (usually for cleanup functions that dont know what to clean up)
+EXTRA_TMUX_CLEANUP_USERS: List[str] = [ "okelmann", "conextRev1", "conextRev2", "conextRev3" ]
 
 
 @dataclass
@@ -401,9 +402,18 @@ class Server(ABC):
         tmux_send_keys : Send keys to a tmux session on the server.
         """
         _ = self.exec(f'tmux -L {self.tmux_socket}' +
-                      ' list-sessions | cut -d ":" -f 1 ' +
-                      f'| grep {session_name} | xargs -I {{}} ' +
-                      f'tmux -L {self.tmux_socket} kill-session -t {{}} || true')
+                    ' list-sessions | cut -d ":" -f 1 ' +
+                    f'| grep {session_name} | xargs -I {{}} ' +
+                    f'tmux -L {self.tmux_socket} kill-session -t {{}} || true')
+
+        # cleanup other users tmux sessions as well (assuming same tmux socket name pattern)
+        current_username = self.whoami()
+        for username in EXTRA_TMUX_CLEANUP_USERS:
+            tmux_socket = self.tmux_socket.replace(current_username, username)
+            _ = self.exec(f'sudo -u {username} tmux -L {tmux_socket}' +
+                        ' list-sessions | cut -d ":" -f 1 ' +
+                        f'| grep {session_name} | xargs -I {{}} ' +
+                        f'sudo -u {username} tmux -L {tmux_socket} kill-session -t {{}} || true')
 
     def tmux_send_keys(self: 'Server', session_name: str, keys: str) -> None:
         """
