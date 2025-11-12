@@ -537,6 +537,7 @@ def main(measurement: Measurement, plan_only: bool = False) -> None:
             debug('Binding loadgen interface')
             loadgen.delete_nic_ip_addresses(loadgen.test_iface)
             loadgen.bind_test_iface() # bind DPDK driver
+            subprocess.run(["sudo", "rm", "/tmp/linux.click"], check=False) # clean up other user's tmpfile on localhost
 
 
             if system in [ "uk", "ukebpf", "ukebpfjit" ]:

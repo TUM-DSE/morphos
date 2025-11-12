@@ -227,6 +227,7 @@ def main(measurement: Measurement, plan_only: bool = False) -> None:
             info(f"Running {test}")
 
             host.exec(f"cd {PROJECT_ROOT}; nix develop --command make -C benchmark setup")
+            subprocess.run(["sudo", "rm", "/tmp/linux.click"], check=False) # clean up other user's tmpfile on localhost
 
             for repetition in range(repetitions):
                 if test.system == "ukebpfjit":

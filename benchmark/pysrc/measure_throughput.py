@@ -552,6 +552,7 @@ def main(measurement: Measurement, plan_only: bool = False) -> None:
             if test.vnf == "nat":
                 loadgen.exec(f"sudo ip address add {TEST_CLIENT_IP}/32 dev {loadgen.test_iface}")
             loadgen.setup_test_iface_ip_net()
+            subprocess.run(["sudo", "rm", "/tmp/linux.click"], check=False) # clean up other user's tmpfile on localhost
 
 
             if system in [ "uk", "ukebpf", "ukebpfjit", "ukebpfjit_nompk" ]:
