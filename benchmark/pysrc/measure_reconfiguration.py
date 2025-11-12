@@ -249,8 +249,8 @@ def main(measurement: Measurement, plan_only: bool = False) -> None:
                     env_vars = f"QEMU_OUT='{remote_qemu_log}' ONLY='{criterion_selector}'"
                     bench_cmd = "cargo bench --bench live_reconfigure"
                     cmd = f"cd {dir}; {env_vars} nix develop --command {bench_cmd}; echo done > {remote_test_done}"
-                    host.tmux_kill("qemu0")
-                    host.tmux_new("qemu0", cmd)
+                    host.tmux_kill("qemu")
+                    host.tmux_new("qemu", cmd)
 
                     # wait for test to complete
                     time.sleep(15) # by default, citerion.rs tries to run benchmarks for 5 seconds
@@ -260,7 +260,7 @@ def main(measurement: Measurement, plan_only: bool = False) -> None:
                         error('Waiting for test to finish timed out')
 
                     # collect results
-                    host.tmux_kill("qemu0")
+                    host.tmux_kill("qemu")
                     host.copy_from(remote_qemu_log, local_outfile)
                     host.copy_from(remote_criterion_file, local_criterion_file)
 
@@ -280,7 +280,7 @@ def main(measurement: Measurement, plan_only: bool = False) -> None:
                     # clean old stuff
                     host.exec(f"sudo rm {remote_qemu_log} || true")
                     host.tmux_kill("bpftrace")
-                    host.tmux_kill("qemu0")
+                    host.tmux_kill("qemu")
                     if test.system == "uktrace":
                         host.exec(f"sudo rm {remote_bpftrace_log} || true")
                         env_vars = "BPFTRACE_MAX_STRLEN=123"
@@ -311,8 +311,8 @@ def main(measurement: Measurement, plan_only: bool = False) -> None:
                                     env_vars = f"ONLY={test.system}"
                         bench_cmd = "cargo run --bin bench-helper --features print-output"
                         cmd = f"{nix_prefix(env_vars=env_vars, subdir='benchmark')} {bench_cmd} 2>&1 | tee -a {remote_qemu_log}; echo done > {remote_test_done}"
-                        host.tmux_kill("qemu0")
-                        host.tmux_new("qemu0", cmd)
+                        host.tmux_kill("qemu")
+                        host.tmux_new("qemu", cmd)
 
                         # wait for test to complete
                         time.sleep(3)
@@ -320,7 +320,7 @@ def main(measurement: Measurement, plan_only: bool = False) -> None:
                             host.wait_for_success(f'[[ -e {remote_test_done} ]]', timeout=60)
                         except TimeoutError:
                             error('Waiting for test to finish timed out')
-                        host.tmux_kill("qemu0")
+                        host.tmux_kill("qemu")
 
                     # collect results
                     host.copy_from(remote_qemu_log, local_outfile)
