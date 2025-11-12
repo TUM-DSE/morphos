@@ -38,6 +38,7 @@ START_MARKER ?= \/\/ start
 END_MARKER ?= \/\/ end
 
 generate-cases:
+	timeout 5 sudo rm -f $(TMPFILE) || true
 	@rm -f $(TMPFILE)
 	sed -i '/$(START_MARKER)/,/$(END_MARKER)/{/$(START_MARKER)/!{/$(END_MARKER)/!d;};}' $(PATCH_FILE)
 	@for i in $$(seq $(START) 2 $(END)); do \
