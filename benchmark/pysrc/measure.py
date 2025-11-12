@@ -106,7 +106,9 @@ def create_lock_file():
             os.kill(old_pid, 0)
         except ProcessLookupError:
             # Process is not alive, safe to overwrite
-            subprocess.run(f"echo {current_pid} > sudo tee {lockfile_path}", shell=True, check=True)
+            subprocess.run(f"sudo rm {lockfile_path}", shell=True, check=True)
+            with open(lockfile_path, 'w') as f:
+                f.write(str(current_pid))
         # except PermissionError: # dont fail! This means the process exists
         #     # No permission to signal the process
         #     raise LockFileError(f"No permission to check process {old_pid}")
