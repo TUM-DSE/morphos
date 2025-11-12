@@ -288,6 +288,7 @@ class ThroughputTest(AbstractBenchTest):
         config = click_tx_config(guest.test_iface, size=self.size, dst_mac=loadgen.test_iface_mac, extra_processing=element)
         with open("/tmp/linux.click", "w") as text_file:
             text_file.write(config)
+        guest.exec("sudo rm /tmp/linux.click || true")
         guest.copy_to("/tmp/linux.click", "/tmp/linux.click")
         guest.start_click("/tmp/linux.click", remote_click_output, script_args=click_args, dpdk=False)
 
@@ -354,6 +355,7 @@ class ThroughputTest(AbstractBenchTest):
             config = click_rx_config(guest.test_iface, extra_processing=element)
         with open("/tmp/linux.click", "w") as text_file:
             text_file.write(config)
+        guest.exec("sudo rm /tmp/linux.click || true")
         guest.copy_to("/tmp/linux.click", "/tmp/linux.click")
         guest.start_click("/tmp/linux.click", remote_click_output, script_args=click_args, dpdk=False)
         # start network load

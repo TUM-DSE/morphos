@@ -282,6 +282,7 @@ def main(measurement: Measurement, plan_only: bool = False) -> None:
                     host.tmux_kill("bpftrace")
                     host.tmux_kill("qemu0")
                     if test.system == "uktrace":
+                        host.exec(f"sudo rm {remote_bpftrace_log} || true")
                         env_vars = "BPFTRACE_MAX_STRLEN=123"
                         bpftrace_cmd = f"{nix_prefix(env_vars=env_vars)} sudo -E bpftrace -e '{bpftrace_program(which_qemu)}' 2>&1 | tee {remote_bpftrace_log}; sleep 999"
                         host.tmux_new("bpftrace", bpftrace_cmd)
@@ -302,6 +303,7 @@ def main(measurement: Measurement, plan_only: bool = False) -> None:
                                 config = test.click_config()
                                 with open("/tmp/linux.click", "w") as text_file:
                                     text_file.write(config)
+                                host.exec("sudo rm /tmp/config.click || true")
                                 host.copy_to("/tmp/linux.click", "/tmp/config.click")
                                 if test.system == "uktrace":
                                     env_vars = "ONLY=uk"

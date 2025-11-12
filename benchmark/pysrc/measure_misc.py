@@ -56,6 +56,7 @@ def main(measurement: Measurement, plan_only: bool = False) -> None:
                 repetition = 0
                 remote_outfile = "/tmp/imagesizes.csv"
                 remote_logfile = "/tmp/just.log"
+                host.exec(f"sudo rm {remote_outfile} {remote_logfile} || true")
                 local_outfile = test.output_filepath(repetition)
                 host.exec(f"cd {PROJECT_ROOT}; nix develop --command bash -c 'just imagesizes > {remote_outfile}' 2> {remote_logfile}")
                 host.copy_from(remote_outfile, local_outfile)
@@ -63,6 +64,7 @@ def main(measurement: Measurement, plan_only: bool = False) -> None:
                 repetition = 0
                 remote_outfile = "/tmp/buildtime.csv"
                 remote_logfile = "/tmp/just.log"
+                host.exec(f"sudo rm {remote_outfile} {remote_logfile} || true")
                 local_outfile = test.output_filepath(repetition)
                 host.exec(f"cd {PROJECT_ROOT}; nix develop --command bash -c 'just nat_buildtime {remote_outfile}' 2> {remote_logfile}")
                 host.copy_from(remote_outfile, local_outfile)
