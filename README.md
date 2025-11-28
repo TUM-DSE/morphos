@@ -20,9 +20,9 @@ The project is structured as follows:
 .
 ├── benchmark: Contains the benchmarks for the system
 ├── ebpf: Contains the eBPF programs
-├── examples: Contains system examples running the framework with different eBPF programs and Click configurations
+├── examples: Contains some example eBPF binaries
 ├── helper: Contains a helper binary to, e.g., send reconfiguration packets to the Unikernel 
-├── libs: Contains the ubpf library, and the Click library containing the BPF elements
+├── libs: Contains the ubpf JIT compiler, and the (Morph)Click port for Unikraft, and Unikraft
 └── verifier: Contains the external verifier for the eBPF programs
 ```
 
@@ -140,3 +140,26 @@ build/ubpf_verifier -f [PROGRAM] -k keys/ec_private_key.pem -o [SIGNATURE_OUTPUT
 ```
 
 **Keep in mind that the supplied private keys are for test purposes only. They are deliberately shared to make it easy to test.**
+
+## Citing this Work
+
+MorphOS: An Extensible Networked Operating System  
+_Peter Okelmann, Ilya Meignan-Masson, Masanori Misono, Pramod Bhatotia_  
+**CoNEXT 2025**
+
+  ```
+@article{10.1145/3768977,
+author = {Okelmann, Peter and Meignan-{}-Masson, Ilya and Misono, Masanori and Bhatotia, Pramod},
+title = {MorphOS: An Extensible Networked Operating System},
+year = {2025},
+publisher = {ACM},
+address = {New York, NY, USA},
+volume = {3},
+number = {CoNEXT4},
+url = {https://doi.org/10.1145/3768977},
+journal = {Proc. ACM Netw.},
+articleno = {30},
+}
+  ```
+  
+
