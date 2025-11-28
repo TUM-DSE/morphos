@@ -1,16 +1,15 @@
-# Network Function Virtualization with MorphOS
+# MorphOS: An Extensible Networked Operating System
 
-This repository contains the source code and implementation of a framework that integrates eBPF into Unikernel-based Virtual Network Functions (VNFs).
+MorphOS is an extensible networked operating system that addresses the runtime inflexibility of unikernels for dynamic, stateful network-intensive applications like Virtual Network Functions (VNFs). While unikernels offer superior performance (2-3× faster than Linux), their traditional update mechanisms require costly rebuilds and restarts, leading to service disruption and state loss.
 
-The project leverages the Click Modular Router and eBPF to enhance packet processing flexibility, providing a secure and dynamic alternative to traditional VNFs. 
-Key features include live reconfigurability without downtime and state retention, and decoupled eBPF verification for secure JIT compilation. 
+MorphOS solves this by integrating eBPF into unikernels, enabling:
+- **Live reconfigurability** without downtime or state loss
+- **Out-of-band verification** via PREVAIL-based verifier with cryptographic signatures
+- **Hardware-assisted memory isolation** using Intel MPK for security hardening
 
-We also provide a set of benchmarks to evaluate the performance, a set of examples showcasing the capabilities of the
-system, and a set of eBPF programs to be used with the system.
+MorphOS is built on [Unikraft](https://unikraft.org/), supports the [Click Modular Router](https://github.com/kohler/click), and extends [uBPF](https://github.com/iovisor/ubpf) for JIT compilation.
 
-This work is based on [app-click](https://github.com/unikraft/app-click).
-
-Find instructions on how to reproduce our measurements in [REPRODUCE.md](REPRODUCE.md).
+This repository includes the MorphOS implementation, eBPF program examples, benchmarks, and tools for reproducing our [CoNEXT 2025](https://doi.org/10.1145/3768977) evaluation. See [REPRODUCE.md](REPRODUCE.md) for measurement reproduction instructions.
 
 ## Project Structure
 
